@@ -1,0 +1,450 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-heading: var(--font-jakarta), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-jetbrains), ui-monospace, monospace;
+
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+
+  /* Blueprint semantic tokens */
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-danger: var(--danger);
+  --color-danger-foreground: var(--danger-foreground);
+  --color-info: var(--info);
+  --color-info-foreground: var(--info-foreground);
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
+}
+
+/* ============================================================
+   Practicum Evaluation Portal — Design Tokens (v2 refined)
+   Scholarly palette: Slate neutrals + Teal brand + Amber accent
+   (No indigo / blue — per blueprint)
+
+   v2 refinements:
+   - Warmer, softer app background for a premium SaaS feel
+   - Unified elevation scale (xs → 2xl)
+   - Refined border/ring tokens (hairline borders)
+   - Text-color hierarchy via semantic opacity
+   - Transition timing curves (calm / spring / emphasis)
+   - Glassmorphism utility for sticky surfaces
+   - Better dark-mode contrast parity
+   ============================================================ */
+:root {
+  --radius: 0.625rem; /* 10px — slightly rounder, more modern */
+
+  /* App surface — warm off-white instead of pure slate-50 */
+  --background: #fbfbfa;
+  --foreground: #1a1d21;
+  --card: #ffffff;
+  --card-foreground: #1a1d21;
+  --popover: #ffffff;
+  --popover-foreground: #1a1d21;
+
+  /* Brand — teal-700 (richer, more grounded) */
+  --primary: #0f766e;
+  --primary-foreground: #ffffff;
+
+  --secondary: #f4f5f4;
+  --secondary-foreground: #1a1d21;
+
+  --muted: #f4f5f4;
+  --muted-foreground: #6b7280;
+
+  /* Accent — amber (rating/highlight) */
+  --accent: #fef3c7;
+  --accent-foreground: #92400e;
+
+  --destructive: #dc2626;
+  --destructive-foreground: #ffffff;
+
+  --success: #059669;
+  --success-foreground: #ffffff;
+  --warning: #d97706;
+  --warning-foreground: #ffffff;
+  --danger: #dc2626;
+  --danger-foreground: #ffffff;
+  --info: #475569;
+  --info-foreground: #ffffff;
+
+  /* Hairline borders — softer than slate-200 */
+  --border: #ececea;
+  --input: #e4e4e0;
+  --ring: #0f766e;
+
+  /* ---- Elevation scale ---- */
+  --shadow-xs: 0 1px 2px 0 rgb(15 23 42 / 0.04);
+  --shadow-sm: 0 1px 3px 0 rgb(15 23 42 / 0.05), 0 1px 2px -1px rgb(15 23 42 / 0.04);
+  --shadow-md: 0 4px 12px -2px rgb(15 23 42 / 0.06), 0 2px 6px -2px rgb(15 23 42 / 0.04);
+  --shadow-lg: 0 12px 28px -6px rgb(15 23 42 / 0.10), 0 6px 12px -4px rgb(15 23 42 / 0.06);
+  --shadow-xl: 0 20px 48px -12px rgb(15 23 42 / 0.16), 0 8px 20px -6px rgb(15 23 42 / 0.08);
+
+  /* Card default elevation */
+  --shadow-card: var(--shadow-sm);
+  --shadow-card-hover: var(--shadow-md);
+
+  /* ---- Transition curves ---- */
+  --ease-calm: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --ease-emphasis: cubic-bezier(0.16, 1, 0.3, 1);
+
+  --chart-1: #0f766e;   /* teal */
+  --chart-2: #d97706;   /* amber */
+  --chart-3: #059669;   /* emerald */
+  --chart-4: #475569;   /* slate */
+  --chart-5: #dc2626;   /* red */
+
+  /* Sidebar — soft scholarly off-white with teal active */
+  --sidebar: #ffffff;
+  --sidebar-foreground: #1a1d21;
+  --sidebar-primary: #0f766e;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #f0fdfa;      /* teal-50 tint for active */
+  --sidebar-accent-foreground: #0f766e;
+  --sidebar-border: #f0f0ee;
+  --sidebar-ring: #0f766e;
+}
+
+.dark {
+  /* Refined dark — clearer card/app separation, brighter text for readability */
+  --background: #0f1115;
+  --foreground: #f0f1f3;
+  --card: #1a1d24;
+  --card-foreground: #f0f1f3;
+  --popover: #1a1d24;
+  --popover-foreground: #f0f1f3;
+
+  --primary: #2dd4bf;             /* teal-400 — brighter for dark */
+  --primary-foreground: #042f2e;
+
+  --secondary: #242830;
+  --secondary-foreground: #f0f1f3;
+
+  --muted: #242830;
+  --muted-foreground: #b8c0cc;    /* brighter for better contrast */
+
+  --accent: #422006;
+  --accent-foreground: #fbbf24;
+
+  --destructive: #f87171;
+  --destructive-foreground: #1a1d21;
+
+  --success: #34d399;
+  --success-foreground: #042f2e;
+  --warning: #fbbf24;
+  --warning-foreground: #1a1d21;
+  --danger: #f87171;
+  --danger-foreground: #1a1d21;
+  --info: #94a3b8;
+  --info-foreground: #1a1d21;
+
+  --border: #2e333d;              /* slightly brighter for visible separation */
+  --input: #3a424d;
+  --ring: #2dd4bf;
+
+  /* Elevation in dark uses a tinted black with subtle teal */
+  --shadow-xs: 0 1px 2px 0 rgb(0 0 0 / 0.3);
+  --shadow-sm: 0 1px 3px 0 rgb(0 0 0 / 0.4), 0 1px 2px -1px rgb(0 0 0 / 0.3);
+  --shadow-md: 0 4px 12px -2px rgb(0 0 0 / 0.4), 0 2px 6px -2px rgb(0 0 0 / 0.3);
+  --shadow-lg: 0 12px 28px -6px rgb(0 0 0 / 0.5), 0 6px 12px -4px rgb(0 0 0 / 0.35);
+  --shadow-xl: 0 20px 48px -12px rgb(0 0 0 / 0.6), 0 8px 20px -6px rgb(0 0 0 / 0.4);
+
+  --shadow-card: var(--shadow-sm);
+  --shadow-card-hover: var(--shadow-md);
+
+  --chart-1: #2dd4bf;
+  --chart-2: #fbbf24;
+  --chart-3: #34d399;
+  --chart-4: #94a3b8;
+  --chart-5: #f87171;
+
+  --sidebar: #0f1115;
+  --sidebar-foreground: #f0f1f3;
+  --sidebar-primary: #2dd4bf;
+  --sidebar-primary-foreground: #042f2e;
+  --sidebar-accent: #1a2a27;
+  --sidebar-accent-foreground: #5eead4;
+  --sidebar-border: #242830;
+  --sidebar-ring: #2dd4bf;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+    /* Refined text rendering */
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+  h1, h2, h3, h4 {
+    font-family: var(--font-jakarta), ui-sans-serif, system-ui, sans-serif;
+    letter-spacing: -0.018em;
+  }
+
+  /* Custom scrollbars — slimmer, more polished */
+  .scroll-area-custom {
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
+  }
+  .scroll-area-custom::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  .scroll-area-custom::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .scroll-area-custom::-webkit-scrollbar-thumb {
+    background-color: var(--border);
+    border-radius: 9999px;
+    border: 2px solid transparent;
+    background-clip: content-box;
+  }
+  .scroll-area-custom::-webkit-scrollbar-thumb:hover {
+    background-color: var(--muted-foreground);
+    background-clip: content-box;
+  }
+}
+
+/* ============================================================
+   Utility classes — elevation, glass, gradients
+   ============================================================ */
+@layer utilities {
+  .elev-xs { box-shadow: var(--shadow-xs); }
+  .elev-sm { box-shadow: var(--shadow-sm); }
+  .elev-md { box-shadow: var(--shadow-md); }
+  .elev-lg { box-shadow: var(--shadow-lg); }
+  .elev-xl { box-shadow: var(--shadow-xl); }
+  .elev-card { box-shadow: var(--shadow-card); }
+  .elev-card-hover { box-shadow: var(--shadow-card-hover); }
+
+  /* Glassmorphism for sticky surfaces (topbar, action bar, dialogs) */
+  .glass {
+    background-color: color-mix(in srgb, var(--background) 72%, transparent);
+    backdrop-filter: saturate(180%) blur(14px);
+    -webkit-backdrop-filter: saturate(180%) blur(14px);
+  }
+  .dark .glass {
+    background-color: color-mix(in srgb, var(--background) 78%, transparent);
+  }
+
+  /* Brand gradient surface (login panel, hero accents) */
+  .bg-brand-gradient {
+    background-image:
+      radial-gradient(circle at 15% 20%, color-mix(in srgb, var(--primary) 0%, #ffffff 18%) 0, transparent 42%),
+      radial-gradient(circle at 85% 80%, color-mix(in srgb, #14b8a6 0%, #ffffff 14%) 0, transparent 38%),
+      linear-gradient(135deg, var(--primary) 0%, color-mix(in srgb, var(--primary) 70%, #134e4a) 100%);
+  }
+  .dark .bg-brand-gradient {
+    background-image:
+      radial-gradient(circle at 15% 20%, rgba(45, 212, 191, 0.16) 0, transparent 42%),
+      radial-gradient(circle at 85% 80%, rgba(20, 184, 166, 0.12) 0, transparent 38%),
+      linear-gradient(135deg, #0f766e 0%, #134e4a 100%);
+  }
+
+  /* Subtle grid texture for brand panels */
+  .bg-grid-texture {
+    background-image:
+      linear-gradient(to right, rgba(255,255,255,0.06) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(255,255,255,0.06) 1px, transparent 1px);
+    background-size: 36px 36px;
+  }
+
+  /* Hairline divider — softer than border */
+  .hairline {
+    border-color: color-mix(in srgb, var(--border) 80%, transparent);
+  }
+
+  /* Focus ring utility — consistent accessible focus */
+  .focus-ring {
+    @apply outline-none focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background;
+  }
+
+  /* Text hierarchy helpers */
+  .text-primary-strong { color: var(--foreground); }
+  .text-secondary { color: color-mix(in srgb, var(--foreground) 72%, transparent); }
+  .text-tertiary { color: var(--muted-foreground); }
+}
+
+/* ============================================================
+   Enhanced focus rings for accessibility
+   ============================================================ */
+@layer base {
+  button:focus-visible,
+  a:focus-visible,
+  [role="button"]:focus-visible,
+  input:focus-visible,
+  select:focus-visible,
+  textarea:focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
+}
+
+/* ============================================================
+   Component polish — applied broadly via @layer components
+   ============================================================ */
+@layer components {
+  /* Card — refined default elevation + radius */
+  .card-refined {
+    box-shadow: var(--shadow-card);
+    transition: box-shadow 220ms var(--ease-calm), transform 220ms var(--ease-calm), border-color 220ms var(--ease-calm);
+  }
+  .card-refined.is-interactive:hover {
+    box-shadow: var(--shadow-card-hover);
+    border-color: color-mix(in srgb, var(--primary) 24%, var(--border));
+  }
+
+  /* Input focus — refined ring */
+  .input-refined {
+    transition: border-color 180ms var(--ease-calm), box-shadow 180ms var(--ease-calm), background-color 180ms var(--ease-calm);
+  }
+  .input-refined:focus-visible,
+  .input-refined:focus {
+    border-color: color-mix(in srgb, var(--primary) 60%, var(--input));
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 14%, transparent);
+    outline: none;
+  }
+}
+
+/* Print styles for PDF / report views — "what I see is what prints" */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  .print-area {
+    box-shadow: none !important;
+    border: none !important;
+    max-width: none !important;
+    padding: 0 !important;
+  }
+  body {
+    background: #ffffff !important;
+  }
+  /* Force section breaks onto their own page in the accreditation doc */
+  .page-break-before {
+    break-before: page;
+    page-break-before: always;
+  }
+  /* Cover page gets its own page too */
+  .cover-page {
+    break-after: page;
+    page-break-after: always;
+  }
+  /* Prevent signature lines from splitting across pages */
+  section {
+    break-inside: avoid-page;
+  }
+  @page {
+    margin: 1.5cm;
+  }
+}
+
+/* ============================================================
+   Mobile UX polish — view transitions + scroll behavior
+   ============================================================ */
+
+/* View enter animation — keyed on the view name in AppShell so React
+   remounts the wrapper on every route change. A subtle fade + 4px
+   upward slide gives a native-app "page push" feel without being
+   distracting. Duration kept short (220ms) for snappy mobile nav. */
+@keyframes portal-view-enter {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.view-enter {
+  animation: portal-view-enter 220ms var(--ease-calm);
+}
+
+/* Respect users who prefer reduced motion — disable the slide. */
+@media (prefers-reduced-motion: reduce) {
+  .view-enter {
+    animation: none;
+  }
+  html {
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Mobile: ensure the body has smooth scrolling enabled by default,
+   but only on devices that support it well (coarse pointer). */
+@media (pointer: coarse) {
+  html {
+    -webkit-tap-highlight-color: transparent;
+  }
+  /* Prevent the rubber-band overscroll from showing white gaps
+     under the fixed bottom nav on iOS. */
+  body {
+    overscroll-behavior-y: none;
+  }
+}
+
+/* Hide scrollbars on horizontal chip rows (used in messages view,
+   filter strips, etc.) for a cleaner mobile look. */
+.no-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* Mobile safe-area top padding for the sticky topbar — ensures
+   the topbar clears the iOS notch / dynamic island. */
+@supports (padding-top: env(safe-area-inset-top)) {
+  .topbar-safe-top {
+    padding-top: env(safe-area-inset-top, 0px);
+  }
+}
