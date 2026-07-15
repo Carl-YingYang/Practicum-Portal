@@ -64,12 +64,12 @@ export function NotificationsDropdown() {
       <DropdownMenuTrigger asChild>
         <button
           className={cn(
-            "relative flex h-9 w-9 items-center justify-center rounded-full text-topbar-foreground transition-colors hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30",
+            "relative flex h-8 w-8 items-center justify-center rounded-full text-foreground transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40",
             hasUrgent && !open && "text-red-500 hover:text-red-600"
           )}
           aria-label={"Notifications" + (unreadCount > 0 ? `, ${unreadCount} unread` : "")}
         >
-          <Bell className="h-[18px] w-[18px]" />
+          <Bell className="h-[16px] w-[16px]" />
           {unreadCount > 0 && (
             <span
               className={cn(

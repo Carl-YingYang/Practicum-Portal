@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { Sidebar, MobileSidebar } from "./sidebar";
-import { Topbar } from "./topbar";
+import { PageActions } from "./page-actions";
 import { BottomTabBar } from "./bottom-tab-bar";
 import { ActiveSessionBanner } from "@/components/portal/shared/active-session-banner";
 import { useAppStore } from "@/store/use-app-store";
@@ -57,7 +57,10 @@ export function AppShell({ children }: AppShellProps) {
       <MobileSidebar open={mobileNavOpen} onOpenChange={setMobileNavOpen} />
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <Topbar onOpenMobileNav={() => setMobileNavOpen(true)} />
+        {/* Floating page actions — merged into the page, no separate header bar.
+            Sticky top-right pill with backdrop blur. Contains only the essential
+            controls: mobile nav, notifications, theme, account. */}
+        <PageActions onOpenMobileNav={() => setMobileNavOpen(true)} />
         <ActiveSessionBanner />
         {/*
           Content rhythm. On mobile we add bottom padding equal to the tab bar

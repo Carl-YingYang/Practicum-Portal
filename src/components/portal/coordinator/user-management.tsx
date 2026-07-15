@@ -391,6 +391,16 @@ export function UserManagement() {
                     <span className="truncate text-xs text-muted-foreground">Single supervisor account</span>
                   </div>
                 </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => navigate("coordinator.coordinator-new")}
+                  className="gap-2.5 rounded-md py-2"
+                >
+                  <ShieldCheck className="h-4 w-4 text-muted-foreground" />
+                  <div className="flex min-w-0 flex-col">
+                    <span className="text-sm font-medium">Add Coordinator</span>
+                    <span className="truncate text-xs text-muted-foreground">Full program-management access</span>
+                  </div>
+                </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
                   onClick={() => navigate("coordinator.bulk-create")}
@@ -427,6 +437,7 @@ export function UserManagement() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All roles</SelectItem>
+                <SelectItem value="coordinator">Coordinators</SelectItem>
                 <SelectItem value="student">Students</SelectItem>
                 <SelectItem value="supervisor">Supervisors</SelectItem>
               </SelectContent>
@@ -456,8 +467,20 @@ export function UserManagement() {
               title={r.name}
               subtitle={
                 <span className="flex items-center gap-1.5">
-                  <Badge tone={r.role === "student" ? "slate" : "teal"}>
-                    {r.role === "student" ? "Student" : "Supervisor"}
+                  <Badge
+                    tone={
+                      r.role === "student"
+                        ? "slate"
+                        : r.role === "supervisor"
+                          ? "teal"
+                          : "amber"
+                    }
+                  >
+                    {r.role === "student"
+                      ? "Student"
+                      : r.role === "supervisor"
+                        ? "Supervisor"
+                        : "Coordinator"}
                   </Badge>
                   <span className="truncate">{r.email}</span>
                 </span>
