@@ -264,6 +264,81 @@ export interface ToolsConfig {
 /** Which of the 4 external tools are connected (derived from ToolsConfig). */
 export type ToolKey = "drive" | "journalTemplate" | "form" | "jibble";
 
+// ============================================================
+// Subscription & billing (hours-based)
+// ============================================================
+
+/**
+ * Subscription tier the school is on. Drives the included hours pool and the
+ * top-up rate per intern-hour. Billing is *hours-based*: the school purchases a
+ * pool of intern-hours, and each student's `requiredHours` draws against that
+ * pool (commitment), while their `loggedHours` consume it (actual usage).
+ */
+export type PlanTier = "starter" | "growth" | "enterprise";
+export type BillingCycle = "monthly" | "per-term" | "annual";
+export type SubscriptionStatus = "trialing" | "active" | "past_due" | "canceled";
+export type PaymentMethod = "card" | "bank" | "invoice";
+
+export interface SubscriptionPlan {
+  tier: PlanTier;
+  label: string;
+  /** Hours included in the base plan per billing cycle. */
+  baseHours: number;
+  /** Price per intern-hour for top-ups beyond the base pool (PHP). */
+  ratePerHourPhp: number;
+  /** Base price per billing cycle (PHP). */
+  basePricePhp: number;
+  /** Max enrolled students on this tier. */
+  maxStudents: number;
+  blurb: string;
+  features: string[];
+  accent: "teal" | "amber" | "emerald" | "slate" | "red";
+}
+
+export interface SubscriptionInvoice {
+  id: string;
+  /** ISO date issued. */
+  issuedAt: string;
+  description: string;
+  /** Number of intern-hours purchased (0 for non-hour line items). */
+  hours: number;
+  amountPhp: number;
+  status: "paid" | "pending" | "failed";
+}
+
+export interface Subscription {
+  planTier: PlanTier;
+  status: SubscriptionStatus;
+  /** Total intern-hours the school has purchased (base pool + top-ups). */
+  purchasedHours: number;
+  billingCycle: BillingCycle;
+  paymentMethod: PaymentMethod;
+  /** ISO date the subscription started. */
+  startedAt: string;
+  /** ISO date of next renewal. */
+  renewsAt: string;
+  invoices: SubscriptionInvoice[];
+}
+
+/** Derived billing metrics computed from the subscription + active students. */
+export interface SubscriptionMetrics {
+  totalAssignedHours: number;
+  totalUsedHours: number;
+  remainingCredits: number;
+  /** % of purchased credits consumed by actual logged usage. */
+  utilizationPct: number;
+  /** % of purchased credits committed via student.requiredHours. */
+  coveragePct: number;
+  /** True when assigned hours exceed purchased credits (over-committed). */
+  overAllocated: boolean;
+  /** True when remaining credits are below 10% of purchased. */
+  lowCredits: boolean;
+  /** Estimated cost (PHP) of over-allocation at the current tier's top-up rate. */
+  projectedSpendPhp: number;
+  /** Count of active students driving the commitment. */
+  activeStudents: number;
+}
+
 /**
  * A clock-in / clock-out time-tracking session for ANY user (student,
  * supervisor, or coordinator). While `clockOutAt` is null the session is
@@ -438,6 +513,7 @@ export type ViewKey =
   | "coordinator.bulk-create"
   | "coordinator.coordinator-new"
   | "coordinator.settings-school"
+  | "coordinator.subscription"
   | "coordinator.profile";
 
 export interface NavItem {

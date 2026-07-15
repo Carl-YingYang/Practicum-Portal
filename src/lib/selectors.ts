@@ -4,11 +4,14 @@ import type {
   Journal,
   Role,
   Student,
+  Subscription,
+  SubscriptionMetrics,
   Supervisor,
   TimeLog,
   ToolsConfig,
   User,
 } from "./types";
+import { SUBSCRIPTION_PLANS } from "./mock-data";
 
 // ============================================================
 // Pure selectors & formatting helpers.
@@ -165,6 +168,59 @@ export function averageScore(e: Evaluation): number {
 export function hoursPercent(s: Student): number {
   if (s.requiredHours === 0) return 0;
   return Math.min(100, Math.round((s.loggedHours / s.requiredHours) * 100));
+}
+
+// ============================================================
+// Subscription & billing metrics (hours-based)
+// ============================================================
+
+/**
+ * Compute billing metrics from the subscription + active students.
+ *
+ * - `totalAssignedHours` = Σ student.requiredHours (the commitment the school
+ *   has made by enrolling interns).
+ * - `totalUsedHours` = Σ student.loggedHours (actual consumption).
+ * - `remainingCredits` = purchasedHours − totalUsedHours.
+ * - `coveragePct` = how much of the purchased pool is *committed* (assigned).
+ *   > 100% means the school has over-allocated — they owe a top-up.
+ * - `utilizationPct` = how much of the purchased pool has been *consumed*.
+ * - `projectedSpendPhp` = cost of the over-allocation at the current tier rate.
+ */
+export function computeSubscriptionMetrics(
+  subscription: Subscription,
+  students: Student[]
+): SubscriptionMetrics {
+  const active = students.filter((s) => s.status === "active");
+  const totalAssignedHours = active.reduce(
+    (sum, s) => sum + (s.requiredHours || 0),
+    0
+  );
+  const totalUsedHours = active.reduce(
+    (sum, s) => sum + (s.loggedHours || 0),
+    0
+  );
+  const purchased = subscription.purchasedHours;
+  const remainingCredits = Math.max(0, purchased - totalUsedHours);
+  const utilizationPct =
+    purchased === 0 ? 0 : Math.round((totalUsedHours / purchased) * 100);
+  const coveragePct =
+    purchased === 0 ? 0 : Math.round((totalAssignedHours / purchased) * 100);
+  const overAllocated = totalAssignedHours > purchased;
+  const lowCredits = purchased > 0 && remainingCredits < purchased * 0.1;
+  const plan = SUBSCRIPTION_PLANS.find((p) => p.tier === subscription.planTier);
+  const rate = plan?.ratePerHourPhp ?? 8;
+  const projectedSpendPhp = Math.max(0, totalAssignedHours - purchased) * rate;
+  return {
+    totalAssignedHours,
+    totalUsedHours,
+    remainingCredits,
+    utilizationPct,
+    coveragePct,
+    overAllocated,
+    lowCredits,
+    projectedSpendPhp,
+    activeStudents: active.length,
+  };
 }
 
 /** Color band by score (1-2 red, 3 amber, 4-5 emerald). */

@@ -20,6 +20,7 @@ import { FormEditor } from "./form-editor";
 import { UserManagement } from "./user-management";
 import { BulkCreateUsers } from "./bulk-create-users";
 import { CoordinatorForm } from "./coordinator-form";
+import { SubscriptionPage } from "./subscription";
 import { SchoolIdentitySettings } from "../settings/school-identity-settings";
 
 /**
@@ -65,6 +66,8 @@ export function CoordinatorWorkspace() {
       return <CoordinatorForm coordinatorId={viewParams.coordinatorId} />;
     case "coordinator.settings-school":
       return <SchoolIdentitySettings />;
+    case "coordinator.subscription":
+      return <SubscriptionPage />;
     case "coordinator.reports":
       return <CoordinatorReports />;
     case "coordinator.profile":
@@ -93,4 +96,5 @@ export {
   UserManagement,
   BulkCreateUsers,
   CoordinatorForm,
+  SubscriptionPage,
 };

@@ -8,6 +8,8 @@ import type {
   Role,
   SchoolIdentity,
   Student,
+  Subscription,
+  SubscriptionPlan,
   Supervisor,
   TimeLog,
   ToolsConfig,
@@ -1283,4 +1285,97 @@ export const defaultToolsConfig: ToolsConfig = {
   termEnd: "2025-12-15",
   journalDueDay: "friday",
   requiredHours: 300,
+};
+
+// ============================================================
+// Subscription & billing seed (hours-based)
+// ============================================================
+
+/**
+ * The three subscription tiers the school can choose from. Hours-based billing:
+ * each tier includes a base pool of intern-hours per term, plus a per-hour
+ * top-up rate for overages. Each student's `requiredHours` draws against the
+ * purchased pool.
+ */
+export const SUBSCRIPTION_PLANS: SubscriptionPlan[] = [
+  {
+    tier: "starter",
+    label: "Starter",
+    baseHours: 3_000,
+    ratePerHourPhp: 8,
+    basePricePhp: 18_000,
+    maxStudents: 15,
+    blurb: "For small cohorts piloting the practicum portal.",
+    features: [
+      "Up to 15 active students",
+      "3,000 included intern-hours / term",
+      "Core journals, evaluations & reports",
+      "Email support",
+    ],
+    accent: "slate",
+  },
+  {
+    tier: "growth",
+    label: "Growth",
+    baseHours: 10_000,
+    ratePerHourPhp: 6,
+    basePricePhp: 50_000,
+    maxStudents: 60,
+    blurb: "For departments running a steady internship program.",
+    features: [
+      "Up to 60 active students",
+      "10,000 included intern-hours / term",
+      "Advanced analytics & exports",
+      "Priority support",
+    ],
+    accent: "teal",
+  },
+  {
+    tier: "enterprise",
+    label: "Enterprise",
+    baseHours: 30_000,
+    ratePerHourPhp: 4,
+    basePricePhp: 120_000,
+    maxStudents: 250,
+    blurb: "For universities managing multiple programs at scale.",
+    features: [
+      "Up to 250 active students",
+      "30,000 included intern-hours / term",
+      "Custom integrations & SSO",
+      "Dedicated success manager",
+    ],
+    accent: "emerald",
+  },
+];
+
+/**
+ * Default (seed) subscription. The school is on the Growth tier with a small
+ * top-up already purchased, so the demo shows partial utilization.
+ */
+export const defaultSubscription: Subscription = {
+  planTier: "growth",
+  status: "active",
+  purchasedHours: 12_000, // 10,000 base + 2,000 top-up
+  billingCycle: "per-term",
+  paymentMethod: "invoice",
+  startedAt: "2024-06-02T00:00:00.000Z",
+  renewsAt: "2025-12-15T00:00:00.000Z",
+  invoices: [
+    {
+      id: "INV-2024-001",
+      issuedAt: "2024-06-02T00:00:00.000Z",
+      description: "Growth plan — Term 2024-2025 base",
+      hours: 10_000,
+      amountPhp: 50_000,
+      status: "paid",
+    },
+    {
+      id: "INV-2024-002",
+      issuedAt: "2024-08-15T00:00:00.000Z",
+      description: "Top-up — 2,000 intern-hours",
+      hours: 2_000,
+      amountPhp: 12_000,
+      status: "paid",
+    },
+  ],
 };

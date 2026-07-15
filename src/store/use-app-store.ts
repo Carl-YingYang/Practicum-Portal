@@ -7,12 +7,14 @@ import {
   companies as seedCompanies,
   coordinators as seedCoordinators,
   defaultSchoolIdentity,
+  defaultSubscription,
   defaultToolsConfig,
   evaluations as seedEvaluations,
   formDocuments as seedFormDocuments,
   journals as seedJournals,
   mockUsers,
   students as seedStudents,
+  SUBSCRIPTION_PLANS,
   supervisors as seedSupervisors,
   timeLogs as seedTimeLogs,
 } from "@/lib/mock-data";
@@ -29,9 +31,11 @@ import {
   type FormStatus,
   type Journal,
   type JournalStatus,
+  type PlanTier,
   type Role,
   type SchoolIdentity,
   type Student,
+  type Subscription,
   type Supervisor,
   type TimeLog,
   type ToolsConfig,
@@ -78,6 +82,19 @@ interface AppState {
   resetSchoolIdentity: () => void;
   /** Load school identity from localStorage (called once on mount). */
   hydrateSchoolIdentity: () => void;
+
+  // --- subscription & billing (hours-based; coordinator-managed) ---
+  subscription: Subscription;
+  /** Patch subscription fields (merges). Persists to localStorage. */
+  updateSubscription: (input: Partial<Subscription>) => void;
+  /** Purchase additional intern-hours; appends an invoice + activity log. */
+  purchaseHours: (hours: number) => void;
+  /** Switch to a different plan tier; resets the base pool + invoice. */
+  changePlan: (tier: PlanTier) => void;
+  /** Reset to the seeded default subscription. */
+  resetSubscription: () => void;
+  /** Load subscription from localStorage (called once on mount). */
+  hydrateSubscription: () => void;
 
   // --- auth actions ---
   login: (role: Role) => void;
@@ -354,6 +371,118 @@ export const useAppStore = create<AppState>((set, get) => ({
       if (!raw) return;
       const parsed = JSON.parse(raw) as Partial<SchoolIdentity>;
       set((s) => ({ schoolIdentity: { ...s.schoolIdentity, ...parsed } }));
+    } catch {
+      // Corrupt JSON — ignore and keep defaults.
+    }
+  },
+
+  // ===========================================================
+  // Subscription & billing (hours-based)
+  // ===========================================================
+  subscription: defaultSubscription,
+  updateSubscription: (input) => {
+    set((s) => {
+      const next = { ...s.subscription, ...input };
+      try {
+        localStorage.setItem("pp:subscription", JSON.stringify(next));
+      } catch {
+        // Private mode / quota — fail silently.
+      }
+      return { subscription: next };
+    });
+  },
+  purchaseHours: (hours) => {
+    if (!Number.isFinite(hours) || hours <= 0) return;
+    const hrs = Math.round(hours);
+    const plan = SUBSCRIPTION_PLANS.find(
+      (p) => p.tier === get().subscription.planTier
+    );
+    const rate = plan?.ratePerHourPhp ?? 8;
+    const amount = hrs * rate;
+    const invoiceId = `INV-${new Date().getFullYear()}-${String(
+      get().subscription.invoices.length + 1
+    ).padStart(3, "0")}`;
+    const invoice = {
+      id: invoiceId,
+      issuedAt: new Date().toISOString(),
+      description: `Top-up — ${hrs.toLocaleString()} intern-hours`,
+      hours: hrs,
+      amountPhp: amount,
+      status: "paid" as const,
+    };
+    set((s) => ({
+      subscription: {
+        ...s.subscription,
+        purchasedHours: s.subscription.purchasedHours + hrs,
+        invoices: [invoice, ...s.subscription.invoices],
+      },
+      activity: logActivity(
+        s.activity,
+        "coordinator_action",
+        `Purchased ${hrs.toLocaleString()} intern-hours (₱${amount.toLocaleString()})`,
+        s.currentUser?.id ?? ""
+      ),
+    }));
+    try {
+      localStorage.setItem(
+        "pp:subscription",
+        JSON.stringify(get().subscription)
+      );
+    } catch {
+      // ignore
+    }
+  },
+  changePlan: (tier) => {
+    const plan = SUBSCRIPTION_PLANS.find((p) => p.tier === tier);
+    if (!plan) return;
+    const invoiceId = `INV-${new Date().getFullYear()}-${String(
+      get().subscription.invoices.length + 1
+    ).padStart(3, "0")}`;
+    const invoice = {
+      id: invoiceId,
+      issuedAt: new Date().toISOString(),
+      description: `Switched to ${plan.label} plan — base pool`,
+      hours: plan.baseHours,
+      amountPhp: plan.basePricePhp,
+      status: "paid" as const,
+    };
+    set((s) => ({
+      subscription: {
+        ...s.subscription,
+        planTier: tier,
+        purchasedHours: plan.baseHours,
+        invoices: [invoice, ...s.subscription.invoices],
+      },
+      activity: logActivity(
+        s.activity,
+        "coordinator_action",
+        `Switched subscription to ${plan.label} plan`,
+        s.currentUser?.id ?? ""
+      ),
+    }));
+    try {
+      localStorage.setItem(
+        "pp:subscription",
+        JSON.stringify(get().subscription)
+      );
+    } catch {
+      // ignore
+    }
+  },
+  resetSubscription: () => {
+    try {
+      localStorage.removeItem("pp:subscription");
+    } catch {
+      // ignore
+    }
+    set({ subscription: defaultSubscription });
+  },
+  hydrateSubscription: () => {
+    try {
+      const raw = localStorage.getItem("pp:subscription");
+      if (!raw) return;
+      const parsed = JSON.parse(raw) as Partial<Subscription>;
+      set((s) => ({ subscription: { ...s.subscription, ...parsed } }));
     } catch {
       // Corrupt JSON — ignore and keep defaults.
     }

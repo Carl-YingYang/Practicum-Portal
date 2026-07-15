@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils";
 import { useAppStore } from "@/store/use-app-store";
 import {
   averageScore,
+  computeSubscriptionMetrics,
   evaluationsForStudent,
   formatDate,
   getCompany,
@@ -41,6 +42,7 @@ import {
   CalendarClock,
   XCircle,
   FileText,
+  Wallet,
 } from "lucide-react";
 
 const TERM = "2024-2025";
@@ -63,6 +65,38 @@ interface CohortRow {
 }
 
 type AttentionTab = "unassigned" | "noEval" | "rejected" | "overdue";
+
+/**
+ * Subscription KPI tile for the coordinator dashboard. Shows remaining
+ * intern-hour credits and links to the Subscription & Billing page. Turns red
+ * when over-allocated or low on credits.
+ */
+function SubscriptionKpiCard() {
+  const subscription = useAppStore((s) => s.subscription);
+  const students = useAppStore((s) => s.students);
+  const navigate = useAppStore((s) => s.navigate);
+  const metrics = React.useMemo(
+    () => computeSubscriptionMetrics(subscription, students),
+    [subscription, students]
+  );
+  const danger = metrics.overAllocated || metrics.lowCredits;
+  return (
+    <StatCard
+      label="Hour Credits"
+      value={metrics.remainingCredits.toLocaleString()}
+      icon={Wallet}
+      tone={danger ? "red" : "slate"}
+      hint={
+        danger
+          ? metrics.overAllocated
+            ? "Over-allocated — top up"
+            : "Low credits — top up"
+          : `of ${subscription.purchasedHours.toLocaleString()} purchased`
+      }
+      compact
+    />
+  );
+}
 
 export function CoordinatorDashboard() {
   const navigate = useAppStore((s) => s.navigate);
@@ -294,8 +328,8 @@ export function CoordinatorDashboard() {
       />
 
       <div className="space-y-5">
-        {/* KPIs — 3 cards. 2-up on phone, 3-up sm+. */}
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4">
+        {/* KPIs — 4 cards. 2-up on phone, 4-up sm+. */}
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4">
           <StatCard
             label="Total Students"
             value={students.length}
@@ -319,8 +353,8 @@ export function CoordinatorDashboard() {
             tone="amber"
             hint={`${approvedJournals}/${journals.length} approved`}
             compact
-            className="col-span-2 sm:col-span-1"
           />
+          <SubscriptionKpiCard />
         </div>
 
         {/* Your school — tappable branded strip; opens the school identity modal. */}

@@ -23,12 +23,15 @@ export function PortalApp() {
   const view = useAppStore((s) => s.view);
   const viewParams = useAppStore((s) => s.viewParams);
   const hydrateToolsConfig = useAppStore((s) => s.hydrateToolsConfig);
+  const hydrateSubscription = useAppStore((s) => s.hydrateSubscription);
 
   // v5: hydrate tool config from localStorage once on mount (matches the
   // manual localStorage convention used elsewhere — no persist middleware).
+  // Also hydrate the subscription so coordinator billing edits persist.
   React.useEffect(() => {
     hydrateToolsConfig();
-  }, [hydrateToolsConfig]);
+    hydrateSubscription();
+  }, [hydrateToolsConfig, hydrateSubscription]);
 
   // Public route.
   if (!currentUser || view === "login") {
