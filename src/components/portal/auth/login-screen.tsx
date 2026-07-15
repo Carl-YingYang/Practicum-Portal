@@ -68,11 +68,11 @@ const roleAccent: Record<Role, string> = {
 };
 
 // ============================================================
-// Login-page default theme — Practo Blue
+// Login-page default theme — Azure Blue (default palette)
 // ----------------------------------------
 // The login page must NOT be affected by the coordinator-configured
 // school theme (which SchoolThemeProvider writes onto :root). We
-// re-assert the default Practo Blue palette as inline CSS variables
+// re-assert the default Azure Blue palette as inline CSS variables
 // on the login wrapper. CSS custom properties cascade, so an inline
 // style on the login container overrides :root for everything inside
 // the login screen — while the authenticated portal still reads the

@@ -36,7 +36,7 @@ export const defaultSchoolIdentity: SchoolIdentity = {
   shortName: "Practo",
   tagline: "Practicum Management",
   address: "",
-  themePreset: "practo-blue",
+  themePreset: "azure-blue",
 };
 
 export const supervisors: Supervisor[] = [

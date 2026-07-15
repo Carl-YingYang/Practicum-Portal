@@ -35,44 +35,44 @@ export interface SchoolThemePresetMeta {
 
 export const SCHOOL_THEME_PRESETS: SchoolThemePresetMeta[] = [
   {
-    key: "practo-blue",
-    label: "Practo Blue",
-    description: "Default — vibrant blue chrome.",
+    key: "azure-blue",
+    label: "Azure Blue",
+    description: "Default — vibrant sky-blue chrome.",
     colors: { primary: "#266ca9", deep: "#0f2573", light: "#ade1fb" },
   },
   {
-    key: "ust-gold",
-    label: "UST Gold",
-    description: "Gold + black — University of Santo Tomas.",
+    key: "onyx-gold",
+    label: "Onyx Gold",
+    description: "Black + gold — bold and luxurious.",
     colors: { primary: "#1a1a1a", deep: "#000000", light: "#f2c14e" },
   },
   {
-    key: "dlsu-green",
-    label: "DLSU Green",
-    description: "Forest green — De La Salle University.",
+    key: "forest-green",
+    label: "Forest Green",
+    description: "Deep forest green — calm and grounded.",
     colors: { primary: "#016f3c", deep: "#013220", light: "#a7d8b6" },
   },
   {
-    key: "up-maroon",
-    label: "UP Maroon",
-    description: "Maroon + forest — University of the Philippines.",
+    key: "crimson-maroon",
+    label: "Crimson Maroon",
+    description: "Maroon + rose — rich and warm.",
     colors: { primary: "#7b1113", deep: "#3d0608", light: "#f3c6c7" },
   },
   {
-    key: "admu-blue",
-    label: "Ateneo Blue",
-    description: "Royal blue — Ateneo de Manila.",
+    key: "royal-navy",
+    label: "Royal Navy",
+    description: "Deep navy blue — authoritative and crisp.",
     colors: { primary: "#003a70", deep: "#001f3d", light: "#a9c6e8" },
   },
   {
-    key: "pup-orange",
-    label: "PUP Orange",
-    description: "Bold orange — Polytechnic University of the Philippines.",
+    key: "burnt-orange",
+    label: "Burnt Orange",
+    description: "Bold orange — energetic and earthy.",
     colors: { primary: "#e87722", deep: "#8a3d0a", light: "#fcd9b6" },
   },
 ];
 
-/** Default preset (Practo Blue) — used as the fallback. */
+/** Default preset (Azure Blue) — used as the fallback. */
 export const DEFAULT_SCHOOL_THEME: SchoolThemePresetMeta = SCHOOL_THEME_PRESETS[0];
 
 /**

@@ -170,7 +170,7 @@ export function SchoolIdentitySettings() {
           {/* ---- Section 1: Identity ---- */}
           <SectionCard
             title="School Identity"
-            description="Shown in the sidebar, login page, and dashboard header."
+            description="Shown in the sidebar and dashboard header."
           >
             <div className="space-y-4">
               <div className="grid gap-4 sm:grid-cols-2">
@@ -178,7 +178,7 @@ export function SchoolIdentitySettings() {
                   <Input
                     value={draft.name}
                     onChange={(e) => set("name", e.target.value)}
-                    placeholder="University of Santo Tomas"
+                    placeholder="Your institution name"
                     aria-invalid={!!errors.name}
                   />
                 </Field>
@@ -191,7 +191,7 @@ export function SchoolIdentitySettings() {
                   <Input
                     value={draft.shortName}
                     onChange={(e) => set("shortName", e.target.value)}
-                    placeholder="UST"
+                    placeholder="ABC"
                     maxLength={8}
                     aria-invalid={!!errors.shortName}
                   />
@@ -209,7 +209,7 @@ export function SchoolIdentitySettings() {
                 <Textarea
                   value={draft.address}
                   onChange={(e) => set("address", e.target.value)}
-                  placeholder="España Blvd, Manila, Metro Manila"
+                  placeholder="Your institution address"
                   rows={2}
                 />
               </Field>
@@ -219,7 +219,7 @@ export function SchoolIdentitySettings() {
           {/* ---- Section 2: Logo ---- */}
           <SectionCard
             title="School Logo"
-            description="Square image, optimized to 128×128 PNG. Shown in the sidebar and login brand panel."
+            description="Square image, optimized to 128×128 PNG. Shown in the sidebar brand block."
           >
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
               {/* Preview */}
@@ -260,8 +260,8 @@ export function SchoolIdentitySettings() {
 
           {/* ---- Section 3: Banner ---- */}
           <SectionCard
-            title="Login Banner"
-            description="Wide hero image on the login page's brand panel. Optimized to 1600×auto JPEG, ≤ 200 KB."
+            title="Banner"
+            description="Wide hero image shown in the brand preview below. Optimized to 1600×auto JPEG, ≤ 200 KB."
           >
             <div className="space-y-3">
               {/* Preview */}
@@ -442,7 +442,7 @@ export function SchoolIdentitySettings() {
         <div className="lg:sticky lg:top-4 lg:self-start">
           <SectionCard
             title="Live Preview"
-            description="How the login page and sidebar will look."
+            description="Preview of the sidebar brand area."
           >
             <LivePreview identity={draft} />
           </SectionCard>
@@ -625,13 +625,13 @@ function Field({
 }
 
 // ============================================================
-// Live preview — mini login panel + sidebar mockup
+// Live preview — brand panel + sidebar mockup
 // ============================================================
 function LivePreview({ identity }: { identity: SchoolIdentity }) {
   const colors = resolveSchoolTheme(identity);
   return (
     <div className="space-y-3">
-      {/* Mini login panel */}
+      {/* Brand panel preview */}
       <div
         className="relative overflow-hidden rounded-lg p-4 text-white"
         style={{

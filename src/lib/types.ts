@@ -14,18 +14,18 @@ export type Role = "student" | "supervisor" | "coordinator";
 
 /** A built-in theme preset key, or "custom" for coordinator-picked colors. */
 export type SchoolThemePreset =
-  | "practo-blue"
-  | "ust-gold"
-  | "dlsu-green"
-  | "up-maroon"
-  | "admu-blue"
-  | "pup-orange"
+  | "azure-blue"
+  | "onyx-gold"
+  | "forest-green"
+  | "crimson-maroon"
+  | "royal-navy"
+  | "burnt-orange"
   | "custom";
 
 export interface SchoolIdentity {
-  /** Full institution name, e.g. "University of Santo Tomas". */
+  /** Full institution name, e.g. "Your University Name". */
   name: string;
-  /** Short abbreviation shown in collapsed sidebar, e.g. "UST". */
+  /** Short abbreviation shown in collapsed sidebar, e.g. "ABC". */
   shortName: string;
   /** A one-line descriptor under the name. */
   tagline: string;
