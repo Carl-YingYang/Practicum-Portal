@@ -4,6 +4,7 @@ import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as SonnerToaster } from "@/components/ui/sonner";
 import { ThemeProvider } from "@/components/theme-provider";
+import { SchoolThemeProvider } from "@/components/portal/shared/school-theme-provider";
 
 // ICI College uses 'Helvetica Neue', Helvetica, Arial, sans-serif.
 // We load Inter as a high-quality web-font fallback for systems that
@@ -61,9 +62,11 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          {children}
-          <Toaster />
-          <SonnerToaster position="top-right" richColors closeButton />
+          <SchoolThemeProvider>
+            {children}
+            <Toaster />
+            <SonnerToaster position="top-right" richColors closeButton />
+          </SchoolThemeProvider>
         </ThemeProvider>
       </body>
     </html>

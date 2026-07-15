@@ -6,6 +6,7 @@ import type {
   FormDocument,
   Journal,
   Role,
+  SchoolIdentity,
   Student,
   Supervisor,
   TimeLog,
@@ -25,6 +26,18 @@ export const companies: Company[] = [
   { id: "c4", name: "Stark Industries" },
   { id: "c5", name: "Wayne Enterprises" },
 ];
+
+// ============================================================
+// Default school identity — Practo default (blue chrome).
+// Coordinators can override every field from School Settings.
+// ============================================================
+export const defaultSchoolIdentity: SchoolIdentity = {
+  name: "Practo",
+  shortName: "Practo",
+  tagline: "Practicum Management",
+  address: "",
+  themePreset: "practo-blue",
+};
 
 export const supervisors: Supervisor[] = [
   {

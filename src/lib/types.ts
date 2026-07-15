@@ -5,6 +5,49 @@
 
 export type Role = "student" | "supervisor" | "coordinator";
 
+// ============================================================
+// School Identity & Branding
+// Coordinator-configured per-school theming. Reflects across all
+// roles' views (login page, sidebar, dashboard). Stored as data URLs
+// in the MVP store (persisted to localStorage).
+// ============================================================
+
+/** A built-in theme preset key, or "custom" for coordinator-picked colors. */
+export type SchoolThemePreset =
+  | "practo-blue"
+  | "ust-gold"
+  | "dlsu-green"
+  | "up-maroon"
+  | "admu-blue"
+  | "pup-orange"
+  | "custom";
+
+export interface SchoolIdentity {
+  /** Full institution name, e.g. "University of Santo Tomas". */
+  name: string;
+  /** Short abbreviation shown in collapsed sidebar, e.g. "UST". */
+  shortName: string;
+  /** A one-line descriptor under the name. */
+  tagline: string;
+  /** Physical address line. */
+  address: string;
+  /** Optional logo as a data URL (PNG/JPEG, ≤ 30KB after compression). */
+  logoDataUrl?: string;
+  /** Optional hero banner as a data URL (JPEG, ≤ 200KB). */
+  bannerDataUrl?: string;
+  /** Which preset palette to use, or "custom". */
+  themePreset: SchoolThemePreset;
+  /** When themePreset === "custom", the coordinator's picked colors. */
+  customColors?: {
+    /** Primary brand color (sidebar + buttons), hex. */
+    primary: string;
+    /** Deep accent for gradients/dark-mode chrome, hex. */
+    deep: string;
+    /** Pale accent for highlights, hex. */
+    light: string;
+  };
+}
+
 export interface User {
   id: string;
   name: string;
@@ -376,6 +419,7 @@ export type ViewKey =
   | "coordinator.user-management"
   | "coordinator.bulk-create"
   | "coordinator.coordinator-new"
+  | "coordinator.settings-school"
   | "coordinator.profile";
 
 export interface NavItem {

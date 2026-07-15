@@ -12,6 +12,7 @@ import {
   Radar,
   FilePlus2,
   UserCircle,
+  Settings,
   type LucideIcon,
 } from "lucide-react";
 import type { NavItem, Role, ViewKey } from "./types";
@@ -32,6 +33,7 @@ const iconMap: Record<string, LucideIcon> = {
   timeMonitor: Radar,
   forms: FilePlus2,
   profile: UserCircle,
+  settings: Settings,
 };
 
 export function getNavIcon(name: string): LucideIcon {
@@ -93,6 +95,7 @@ export const navConfig: Record<Role, NavItem[]> = {
     { key: "evaluations", label: "Evaluations", shortLabel: "Evals", view: "coordinator.evaluations", icon: "allEvaluations", section: "Workflow" },
     { key: "journals", label: "Journals", shortLabel: "Journals", view: "coordinator.journals", icon: "allJournals", section: "Workflow" },
     { key: "reports", label: "Reports", shortLabel: "Reports", view: "coordinator.reports", icon: "reports", section: "Insights" },
+    { key: "settings", label: "School Settings", shortLabel: "Settings", view: "coordinator.settings-school", icon: "settings", section: "Configuration" },
   ],
 };
 
@@ -148,6 +151,7 @@ export const viewTitles: Record<ViewKey, string> = {
   "coordinator.user-management": "User Management",
   "coordinator.bulk-create": "Bulk Create Users",
   "coordinator.coordinator-new": "Add Coordinator",
+  "coordinator.settings-school": "School Settings",
   "coordinator.profile": "My Profile",
 };
 

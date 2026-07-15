@@ -58,6 +58,8 @@ export function Sidebar({ collapsed, onToggleCollapse }: SidebarProps) {
   const students = useAppStore((s) => s.students);
   const evaluations = useAppStore((s) => s.evaluations);
   const journals = useAppStore((s) => s.journals);
+  const schoolIdentity = useAppStore((s) => s.schoolIdentity);
+  const hasLogo = !!schoolIdentity.logoDataUrl;
 
   if (!role || !currentUser) return null;
 
@@ -116,16 +118,25 @@ export function Sidebar({ collapsed, onToggleCollapse }: SidebarProps) {
         aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
         title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
       >
-        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[5px] bg-white/15 ring-1 ring-white/20 transition-transform duration-200 group-hover:scale-[1.04]">
-          <GraduationCap className="h-[16px] w-[16px] text-sidebar-primary" strokeWidth={2.4} />
+        <div className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-[5px] bg-white/15 ring-1 ring-white/20 transition-transform duration-200 group-hover:scale-[1.04]">
+          {hasLogo ? (
+             
+            <img
+              src={schoolIdentity.logoDataUrl}
+              alt={`${schoolIdentity.name} logo`}
+              className="h-full w-full rounded-[5px] object-contain p-0.5"
+            />
+          ) : (
+            <GraduationCap className="h-[16px] w-[16px] text-sidebar-primary" strokeWidth={2.4} />
+          )}
         </div>
         {!collapsed && (
           <div className="min-w-0 flex-1 text-left">
             <p className="truncate text-[14px] font-bold leading-tight tracking-[-0.01em] text-sidebar-foreground">
-              Practo
+              {schoolIdentity.name}
             </p>
             <p className="truncate text-[9.5px] font-semibold uppercase tracking-[0.12em] text-sidebar-foreground/40">
-              Practicum Management
+              {schoolIdentity.tagline}
             </p>
           </div>
         )}

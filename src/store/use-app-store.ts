@@ -6,6 +6,7 @@ import {
   activityLog as seedActivity,
   companies as seedCompanies,
   coordinators as seedCoordinators,
+  defaultSchoolIdentity,
   defaultToolsConfig,
   evaluations as seedEvaluations,
   formDocuments as seedFormDocuments,
@@ -29,6 +30,7 @@ import {
   type Journal,
   type JournalStatus,
   type Role,
+  type SchoolIdentity,
   type Student,
   type Supervisor,
   type TimeLog,
@@ -67,6 +69,15 @@ interface AppState {
   toolsConfig: ToolsConfig;
   setToolsConfig: (input: Partial<ToolsConfig>) => void;
   hydrateToolsConfig: () => void;
+
+  // --- school identity & branding (coordinator-configured) ---
+  schoolIdentity: SchoolIdentity;
+  /** Patch the school identity (merges). Persists to localStorage. */
+  updateSchoolIdentity: (input: Partial<SchoolIdentity>) => void;
+  /** Reset to the Practo default. */
+  resetSchoolIdentity: () => void;
+  /** Load school identity from localStorage (called once on mount). */
+  hydrateSchoolIdentity: () => void;
 
   // --- auth actions ---
   login: (role: Role) => void;
@@ -284,6 +295,40 @@ export const useAppStore = create<AppState>((set, get) => ({
       if (!raw) return;
       const parsed = JSON.parse(raw) as Partial<ToolsConfig>;
       set((s) => ({ toolsConfig: { ...s.toolsConfig, ...parsed } }));
+    } catch {
+      // Corrupt JSON — ignore and keep defaults.
+    }
+  },
+
+  // ===========================================================
+  // School identity & branding
+  // ===========================================================
+  schoolIdentity: defaultSchoolIdentity,
+  updateSchoolIdentity: (input) => {
+    set((s) => {
+      const next = { ...s.schoolIdentity, ...input };
+      try {
+        localStorage.setItem("pp:school-identity", JSON.stringify(next));
+      } catch {
+        // Private mode / quota — fail silently.
+      }
+      return { schoolIdentity: next };
+    });
+  },
+  resetSchoolIdentity: () => {
+    try {
+      localStorage.removeItem("pp:school-identity");
+    } catch {
+      // ignore
+    }
+    set({ schoolIdentity: defaultSchoolIdentity });
+  },
+  hydrateSchoolIdentity: () => {
+    try {
+      const raw = localStorage.getItem("pp:school-identity");
+      if (!raw) return;
+      const parsed = JSON.parse(raw) as Partial<SchoolIdentity>;
+      set((s) => ({ schoolIdentity: { ...s.schoolIdentity, ...parsed } }));
     } catch {
       // Corrupt JSON — ignore and keep defaults.
     }

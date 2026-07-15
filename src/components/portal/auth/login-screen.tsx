@@ -133,38 +133,74 @@ function RoleCarousel() {
 // Left brand panel — shared by sign-in and register modes
 // ============================================================
 function BrandPanel() {
+  const schoolIdentity = useAppStore((s) => s.schoolIdentity);
+  const hasBanner = !!schoolIdentity.bannerDataUrl;
+  const hasLogo = !!schoolIdentity.logoDataUrl;
+
   return (
-    <div className="bg-ici-navy-gradient relative hidden w-1/2 flex-col justify-between overflow-hidden p-12 text-white lg:flex">
+    <div className="relative hidden w-1/2 flex-col justify-between overflow-hidden p-12 text-white lg:flex">
+      {/* Background — either the school banner or the default navy gradient */}
+      {hasBanner ? (
+        <div className="absolute inset-0">
+          { }
+          <img
+            src={schoolIdentity.bannerDataUrl}
+            alt=""
+            className="h-full w-full object-cover"
+          />
+          {/* Dark gradient overlay so white text stays readable */}
+          <div
+            className="absolute inset-0"
+            style={{
+              background:
+                "linear-gradient(135deg, rgba(4,29,86,0.92) 0%, rgba(15,37,115,0.82) 50%, rgba(38,108,169,0.72) 100%)",
+            }}
+          />
+        </div>
+      ) : (
+        <div className="bg-ici-navy-gradient absolute inset-0" />
+      )}
       <div className="bg-grid-texture pointer-events-none absolute inset-0 opacity-30" />
       <div className="bg-ici-dots pointer-events-none absolute left-8 top-8 h-24 w-24 opacity-40" />
       <div className="bg-ici-dots pointer-events-none absolute right-8 top-8 h-24 w-24 opacity-40" />
-      <div className="pointer-events-none absolute -left-24 top-1/3 h-72 w-72 rounded-full bg-[#ADE1FB]/15 blur-3xl" />
+      <div className="pointer-events-none absolute -left-24 top-1/3 h-72 w-72 rounded-full bg-[var(--blue-lightest)]/15 blur-3xl" />
       <div className="pointer-events-none absolute -right-20 bottom-1/4 h-64 w-64 rounded-full bg-sky-400/10 blur-3xl" />
 
-      {/* Hero image with LQIP blur-up loading */}
-      <div className="pointer-events-none absolute inset-0 opacity-25">
-        <BlurImage
-          src="/hero-students.png"
-          alt=""
-          darkPlaceholder
-          eager
-          wrapperClassName="absolute inset-0 h-full w-full"
-          className="h-full w-full object-cover"
-        />
-      </div>
+      {/* Default hero image only when no custom banner */}
+      {!hasBanner && (
+        <div className="pointer-events-none absolute inset-0 opacity-25">
+          <BlurImage
+            src="/hero-students.png"
+            alt=""
+            darkPlaceholder
+            eager
+            wrapperClassName="absolute inset-0 h-full w-full"
+            className="h-full w-full object-cover"
+          />
+        </div>
+      )}
 
       {/* Brand */}
       <div className="relative">
         <div className="flex items-center gap-3">
           <div className="flex h-11 w-11 items-center justify-center rounded-md bg-white/15 ring-1 ring-white/25 backdrop-blur-sm">
-            <GraduationCap className="h-6 w-6 text-[#ADE1FB]" strokeWidth={2.4} />
+            {hasLogo ? (
+               
+              <img
+                src={schoolIdentity.logoDataUrl}
+                alt={`${schoolIdentity.name} logo`}
+                className="h-full w-full rounded-md object-contain p-1"
+              />
+            ) : (
+              <GraduationCap className="h-6 w-6 text-[var(--blue-lightest)]" strokeWidth={2.4} />
+            )}
           </div>
-          <div>
-            <p className="text-base font-bold leading-tight">
-              Practo
+          <div className="min-w-0">
+            <p className="truncate text-base font-bold leading-tight">
+              {schoolIdentity.name}
             </p>
-            <p className="text-xs text-white/70">
-              Practicum Management
+            <p className="truncate text-xs text-white/70">
+              {schoolIdentity.tagline}
             </p>
           </div>
         </div>
@@ -173,19 +209,25 @@ function BrandPanel() {
       {/* Motto + auto-scrolling role carousel */}
       <div className="relative max-w-md space-y-7">
         <div className="space-y-3">
-          {/* Department / school motto — clean, professional */}
+          {/* School motto */}
           <h1 className="text-[2.25rem] font-extrabold leading-[1.08] tracking-tight">
             Practicum management,{" "}
-            <span className="text-[#ADE1FB]">simplified.</span>
+            <span className="text-[var(--blue-lightest)]">simplified.</span>
           </h1>
           <p className="text-[15px] font-medium leading-relaxed text-white/85">
             One focused platform to evaluate interns, approve weekly journals,
             and export practicum accreditation reports.
           </p>
+          {schoolIdentity.address && (
+            <p className="flex items-center gap-1.5 pt-1 text-[13px] font-medium text-white/70">
+              <span className="opacity-60">📍</span>
+              <span className="truncate">{schoolIdentity.address}</span>
+            </p>
+          )}
         </div>
 
-        {/* Pale-blue accent divider */}
-        <div className="h-1 w-16 rounded-full bg-[#ADE1FB]" />
+        {/* Pale accent divider */}
+        <div className="h-1 w-16 rounded-full bg-[var(--blue-lightest)]" />
 
         {/* Auto-scrolling role carousel */}
         <div className="space-y-3">
@@ -205,6 +247,38 @@ function BrandPanel() {
         >
           User Agreement
         </a>
+      </div>
+    </div>
+  );
+}
+
+// ============================================================
+// Mobile brand — shown on small screens (top of the right panel)
+// ============================================================
+function MobileBrand() {
+  const schoolIdentity = useAppStore((s) => s.schoolIdentity);
+  const hasLogo = !!schoolIdentity.logoDataUrl;
+  return (
+    <div className="mb-8 flex items-center gap-3 lg:hidden">
+      <div className="flex h-11 w-11 items-center justify-center overflow-hidden rounded-md bg-primary text-primary-foreground elev-sm">
+        {hasLogo ? (
+           
+          <img
+            src={schoolIdentity.logoDataUrl}
+            alt={`${schoolIdentity.name} logo`}
+            className="h-full w-full object-contain p-1"
+          />
+        ) : (
+          <GraduationCap className="h-6 w-6" strokeWidth={2.4} />
+        )}
+      </div>
+      <div className="min-w-0">
+        <p className="truncate text-base font-bold leading-tight text-foreground">
+          {schoolIdentity.name}
+        </p>
+        <p className="truncate text-xs text-muted-foreground">
+          {schoolIdentity.tagline}
+        </p>
       </div>
     </div>
   );
@@ -290,20 +364,7 @@ function CoordinatorRegisterForm({
 
   return (
     <div className="w-full max-w-[400px]">
-      {/* Mobile brand */}
-      <div className="mb-8 flex items-center gap-3 lg:hidden">
-        <div className="flex h-11 w-11 items-center justify-center rounded-md bg-primary text-primary-foreground elev-sm">
-          <GraduationCap className="h-6 w-6" strokeWidth={2.4} />
-        </div>
-        <div>
-          <p className="text-base font-bold leading-tight text-foreground">
-            Practo
-          </p>
-          <p className="text-xs text-muted-foreground">
-            Practicum Management
-          </p>
-        </div>
-      </div>
+      <MobileBrand />
 
       <button
         onClick={onBackToSignIn}
@@ -577,20 +638,7 @@ export function LoginScreen() {
       {/* Right form panel — clean flat white */}
       <div className="flex w-full flex-col items-center justify-center px-4 py-10 lg:w-1/2">
         <div className="w-full max-w-[400px]">
-          {/* Mobile brand */}
-          <div className="mb-8 flex items-center gap-3 lg:hidden">
-            <div className="flex h-11 w-11 items-center justify-center rounded-md bg-primary text-primary-foreground elev-sm">
-              <GraduationCap className="h-6 w-6" strokeWidth={2.4} />
-            </div>
-            <div>
-              <p className="text-base font-bold leading-tight text-foreground">
-                Practo
-              </p>
-              <p className="text-xs text-muted-foreground">
-                Practicum Management
-              </p>
-            </div>
-          </div>
+          <MobileBrand />
 
           <div className="mb-7">
             <h2 className="text-[1.625rem] font-bold tracking-tight text-foreground">
