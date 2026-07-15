@@ -253,8 +253,9 @@ export function SchoolIdentitySettings() {
             contentClassName="p-4"
           >
             <div className="space-y-3">
-              {/* Preset grid */}
-              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+              {/* Preset grid — responsive: 1 col on mobile, 2 on sm, 3 on lg.
+                  Descriptions wrap with line-clamp-2 so they never overflow. */}
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
                 {SCHOOL_THEME_PRESETS.map((preset) => {
                   const active = draft.themePreset === preset.key;
                   return (
@@ -289,11 +290,11 @@ export function SchoolIdentitySettings() {
                           </span>
                         )}
                       </div>
-                      <div className="min-w-0">
-                        <p className="text-[13px] font-semibold text-foreground">
+                      <div className="min-w-0 w-full">
+                        <p className="text-[13px] font-semibold leading-tight text-foreground">
                           {preset.label}
                         </p>
-                        <p className="truncate text-[11px] text-muted-foreground">
+                        <p className="line-clamp-2 break-words text-[11px] leading-snug text-muted-foreground">
                           {preset.description}
                         </p>
                       </div>
@@ -320,9 +321,9 @@ export function SchoolIdentitySettings() {
                       </span>
                     )}
                   </div>
-                  <div className="min-w-0">
-                    <p className="text-[13px] font-semibold text-foreground">Custom</p>
-                    <p className="truncate text-[11px] text-muted-foreground">
+                  <div className="min-w-0 w-full">
+                    <p className="text-[13px] font-semibold leading-tight text-foreground">Custom</p>
+                    <p className="line-clamp-2 break-words text-[11px] leading-snug text-muted-foreground">
                       Pick your own colors
                     </p>
                   </div>

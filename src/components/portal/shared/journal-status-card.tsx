@@ -5,6 +5,13 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import {
   FileText,
   ExternalLink,
   Check,
@@ -14,6 +21,11 @@ import {
   CheckCircle2,
   XCircle,
   Loader2,
+  Eye,
+  NotebookText,
+  Lightbulb,
+  Hourglass,
+  CalendarDays,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useAppStore } from "@/store/use-app-store";
@@ -51,6 +63,8 @@ export function JournalStatusCard({
 
   const [returning, setReturning] = React.useState(false);
   const [reason, setReason] = React.useState("");
+  // Read-only journal preview modal (supervisor can read before approving).
+  const [reading, setReading] = React.useState(false);
 
   const status = journal?.status ?? "none";
   const docUrl = journal?.docUrl;
@@ -95,11 +109,28 @@ export function JournalStatusCard({
         compact ? "p-3" : "p-4",
       )}
     >
-      {/* Header row: student (if supervisor) + status pill */}
+      {/* Header row: student (if supervisor) + status pill.
+          For supervisors with a pending journal, the header is clickable to
+          open the read-only preview modal so they can read the content
+          before deciding. */}
       <div className="mb-2.5 flex items-start justify-between gap-2">
         <div className="min-w-0 flex-1">
           {studentName && (
-            <p className="truncate text-sm font-semibold text-foreground">{studentName}</p>
+            <p
+              className={cn(
+                "truncate text-sm font-semibold text-foreground",
+                role === "supervisor" &&
+                  journal?.status === "pending" &&
+                  "cursor-pointer hover:text-primary hover:underline underline-offset-2",
+              )}
+              onClick={
+                role === "supervisor" && journal?.status === "pending"
+                  ? () => setReading(true)
+                  : undefined
+              }
+            >
+              {studentName}
+            </p>
           )}
           <p className="text-xs text-muted-foreground">
             {journal
@@ -157,26 +188,39 @@ export function JournalStatusCard({
         )}
 
         {role === "supervisor" && journal?.status === "pending" && !returning && (
-          <div className="flex gap-2">
+          <div className="space-y-2">
+            {/* Read journal first — opens a preview modal with the content. */}
             <Button
-              onClick={handleApprove}
+              onClick={() => setReading(true)}
+              variant="secondary"
               size="sm"
-              className="h-9 flex-1"
+              className="h-9 w-full"
               type="button"
             >
-              <Check className="h-3.5 w-3.5" />
-              Approve
+              <Eye className="h-3.5 w-3.5" />
+              Read journal
             </Button>
-            <Button
-              onClick={() => setReturning(true)}
-              variant="outline"
-              size="sm"
-              className="h-9 flex-1"
-              type="button"
-            >
-              <RotateCcw className="h-3.5 w-3.5" />
-              Return
-            </Button>
+            <div className="flex gap-2">
+              <Button
+                onClick={handleApprove}
+                size="sm"
+                className="h-9 flex-1"
+                type="button"
+              >
+                <Check className="h-3.5 w-3.5" />
+                Approve
+              </Button>
+              <Button
+                onClick={() => setReturning(true)}
+                variant="outline"
+                size="sm"
+                className="h-9 flex-1"
+                type="button"
+              >
+                <RotateCcw className="h-3.5 w-3.5" />
+                Return
+              </Button>
+            </div>
           </div>
         )}
 
@@ -235,6 +279,120 @@ export function JournalStatusCard({
           </p>
         )}
       </div>
+
+      {/* Read-only journal preview modal — lets the supervisor read the
+          journal content (tasks, learnings, hours) before approving or
+          returning. Responsive: full-width on mobile, centered on desktop. */}
+      {role === "supervisor" && journal && (
+        <Dialog open={reading} onOpenChange={setReading}>
+          <DialogContent className="max-h-[90vh] overflow-hidden p-0 sm:max-w-lg">
+            <DialogHeader className="border-b border-border/60 px-5 py-4">
+              <DialogTitle className="flex items-center gap-2 text-base">
+                <NotebookText className="h-4 w-4 text-primary" />
+                Journal preview
+              </DialogTitle>
+              <DialogDescription className="sr-only">
+                Read the journal content before approving or returning.
+              </DialogDescription>
+              <div className="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                {studentName && (
+                  <span className="font-medium text-foreground">{studentName}</span>
+                )}
+                <span className="inline-flex items-center gap-1">
+                  <CalendarDays className="h-3.5 w-3.5" />
+                  Week of {formatDate(journal.date)}
+                </span>
+                <span className="inline-flex items-center gap-1">
+                  <Hourglass className="h-3.5 w-3.5" />
+                  {journal.hours} hour{journal.hours === 1 ? "" : "s"}
+                </span>
+              </div>
+            </DialogHeader>
+
+            <div className="max-h-[60vh] space-y-4 overflow-y-auto px-5 py-4">
+              {/* Tasks */}
+              <div>
+                <p className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  <NotebookText className="h-3.5 w-3.5" />
+                  Tasks Performed
+                </p>
+                {journal.tasks?.trim() ? (
+                  <p className="whitespace-pre-wrap break-words text-sm leading-relaxed text-foreground">
+                    {journal.tasks}
+                  </p>
+                ) : (
+                  <p className="text-sm italic text-muted-foreground">
+                    No tasks recorded.
+                  </p>
+                )}
+              </div>
+
+              {/* Learnings */}
+              <div>
+                <p className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  <Lightbulb className="h-3.5 w-3.5" />
+                  Learnings
+                </p>
+                {journal.learnings?.trim() ? (
+                  <p className="whitespace-pre-wrap break-words text-sm leading-relaxed text-foreground">
+                    {journal.learnings}
+                  </p>
+                ) : (
+                  <p className="text-sm italic text-muted-foreground">
+                    No learnings recorded.
+                  </p>
+                )}
+              </div>
+
+              {/* External doc link if present */}
+              {docUrl && (
+                <div className="rounded-lg border border-border/60 bg-muted/30 p-2.5">
+                  <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                    Attached document
+                  </p>
+                  <ExternalLinkBtn
+                    href={docUrl}
+                    label="Open full journal Doc"
+                    icon={ExternalLink}
+                    variant="link"
+                  />
+                </div>
+              )}
+            </div>
+
+            {/* Inline actions so the supervisor can decide without leaving
+                the modal. */}
+            {journal.status === "pending" && !returning && (
+              <div className="flex gap-2 border-t border-border/60 px-5 py-3">
+                <Button
+                  onClick={() => {
+                    handleApprove();
+                    setReading(false);
+                  }}
+                  size="sm"
+                  className="h-9 flex-1"
+                  type="button"
+                >
+                  <Check className="h-3.5 w-3.5" />
+                  Approve
+                </Button>
+                <Button
+                  onClick={() => {
+                    setReturning(true);
+                  }}
+                  variant="outline"
+                  size="sm"
+                  className="h-9 flex-1"
+                  type="button"
+                >
+                  <RotateCcw className="h-3.5 w-3.5" />
+                  Return
+                </Button>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 }
