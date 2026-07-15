@@ -27,6 +27,7 @@ import {
 } from "@/components/portal/shared/badges";
 import { Avatar } from "@/components/portal/shared/avatar";
 import { EmptyState } from "@/components/portal/shared/empty-state";
+import { SchoolIdentityCard } from "@/components/portal/shared/school-identity-card";
 import { StatCardSkeleton, TableSkeleton } from "@/components/portal/shared/skeletons";
 import { useInitialLoading } from "@/components/portal/shared/page-transition";
 import { Button } from "@/components/ui/button";
@@ -321,6 +322,9 @@ export function CoordinatorDashboard() {
             className="col-span-2 sm:col-span-1"
           />
         </div>
+
+        {/* Your school — tappable branded strip; opens the school identity modal. */}
+        <SchoolIdentityCard variant="compact" interactive />
 
         {/* v5: Cohort journal status — at-a-glance counts + at-risk students. */}
         <CohortJournalStatus students={students} journals={journals} navigate={navigate} />

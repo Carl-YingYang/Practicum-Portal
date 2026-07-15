@@ -14,6 +14,8 @@ import {
   todayISODate,
   weekLabel,
   formatDate,
+  getCompany,
+  getSupervisor,
 } from "@/lib/selectors";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -30,6 +32,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Journal } from "@/lib/types";
+import { exportJournalToDocx } from "@/lib/docx-export";
 
 interface FormState {
   date: string;
@@ -59,6 +62,9 @@ export function JournalForm() {
   const currentUser = useAppStore((s) => s.currentUser);
   const students = useAppStore((s) => s.students);
   const journals = useAppStore((s) => s.journals);
+  const companies = useAppStore((s) => s.companies);
+  const supervisors = useAppStore((s) => s.supervisors);
+  const schoolIdentity = useAppStore((s) => s.schoolIdentity);
   const toolsConfig = useAppStore((s) => s.toolsConfig);
   const viewParams = useAppStore((s) => s.viewParams);
   const navigate = useAppStore((s) => s.navigate);
@@ -239,6 +245,26 @@ export function JournalForm() {
   const connectedDocUrl =
     existingJournal?.docUrl || toolsConfig.journalTemplateUrl || undefined;
 
+  // Build the Word export handler — captures the current draft content +
+  // student/school context so the .docx is self-contained.
+  const handleDownloadWord = async () => {
+    const company = getCompany(companies, student.companyId);
+    const supervisor = getSupervisor(supervisors, student.supervisorId);
+    await exportJournalToDocx({
+      studentName: student.name,
+      studentNumber: student.studentNumber,
+      course: student.course,
+      companyName: company?.name ?? "",
+      supervisorName: supervisor?.name ?? "",
+      weekLabel: weekStr,
+      dateLabel: formatDate(form.date),
+      tasks: form.tasks,
+      learnings: form.learnings,
+      status: existingJournal?.status,
+      schoolName: schoolIdentity.name,
+    });
+  };
+
   return (
     <>
       <PageHeader
@@ -340,6 +366,7 @@ export function JournalForm() {
             onChangeTasks={(v) => update({ tasks: v })}
             onChangeLearnings={(v) => update({ learnings: v })}
             saveState={saveState}
+            onDownloadWord={handleDownloadWord}
             className="min-h-[560px]"
           />
         </div>
@@ -432,7 +459,7 @@ function JournalListRail({
       <div className="mb-1 px-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
         My Journals · {journals.length}
       </div>
-      <div className="flex-1 space-y-1.5 overflow-y-auto pr-1">
+      <div className="max-h-[70vh] flex-1 space-y-1.5 overflow-y-auto pr-1 scroll-area-custom">
         {journals.length === 0 ? (
           <p className="rounded-lg border border-dashed border-border p-4 text-center text-xs text-muted-foreground">
             No journals yet. Click “New Journal” to start.

@@ -180,8 +180,8 @@ export function StudentDashboard() {
           />
         </div>
 
-        {/* Your school — branded identity strip, cross-platform. */}
-        <SchoolIdentityCard variant="compact" />
+        {/* Your school — tappable branded strip; opens the school identity modal. */}
+        <SchoolIdentityCard variant="compact" interactive />
 
         {/* Weekly goal + action needed — 2-col */}
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">

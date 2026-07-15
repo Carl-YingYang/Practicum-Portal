@@ -138,8 +138,8 @@ export function SupervisorDashboard() {
           />
         </div>
 
-        {/* The school your interns are affiliated with — branded strip. */}
-        <SchoolIdentityCard variant="compact" />
+        {/* The school your interns are affiliated with — tappable strip; opens modal. */}
+        <SchoolIdentityCard variant="compact" interactive />
 
         {/* Pending my review — inline Approve / Return (no navigation). */}
         <SectionCard

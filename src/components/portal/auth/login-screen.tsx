@@ -576,8 +576,7 @@ function CoordinatorRegisterForm({
 // Main login screen
 // ============================================================
 export function LoginScreen() {
-  const login = useAppStore((s) => s.login);
-  const loginByEmail = useAppStore((s) => s.loginByEmail);
+  const loginByCredentials = useAppStore((s) => s.loginByCredentials);
   const [email, setEmail] = React.useState("");
   const [password, setPassword] = React.useState("");
   const [showPass, setShowPass] = React.useState(false);
@@ -592,36 +591,39 @@ export function LoginScreen() {
     }
   }, [mode]);
 
-  const detectRole = (value: string): Role => {
-    const v = value.toLowerCase();
-    if (v.includes("supervisor") || v.includes("santos")) return "supervisor";
-    if (v.includes("prof") || v.includes("coord") || v.includes("patricia")) return "coordinator";
-    if (v.includes("student") || v.includes("juan")) return "student";
-    return "coordinator";
-  };
-
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!email.trim()) {
       setError("Please enter your email.");
       return;
     }
-    // First, try to match a real account (demo or created in-app) by email.
-    const found = loginByEmail(email);
-    if (found) {
+    if (!password.trim()) {
+      setError("Please enter your password (your User ID).");
+      return;
+    }
+    // Validate email (username) + idNumber (password).
+    const result = loginByCredentials(email, password);
+    if (result === "ok") {
       toast.success("Welcome back");
       return;
     }
-    // Fall back to role detection for the demo flow.
-    const role = detectRole(email);
-    login(role);
-    toast.success(`Signed in as ${ROLE_LABELS[role]}`);
+    if (result === "no-user") {
+      setError("No account found with that email. Please check and try again.");
+      return;
+    }
+    if (result === "inactive") {
+      setError("This account has been deactivated. Contact your coordinator.");
+      return;
+    }
+    // bad-pw
+    setError("Incorrect password. Your password is your User ID (e.g. student number or EMP ID).");
   };
 
   const quickFill = (role: Role) => {
     const u = mockUsers.find((m) => m.role === role)!;
     setEmail(u.email);
-    setPassword("demo-password");
+    // Pre-fill the password with the user's idNumber (their login ID).
+    setPassword(u.idNumber ?? "demo-password");
     setError("");
     setSelectedRole(role);
   };
@@ -665,14 +667,15 @@ export function LoginScreen() {
               Sign in to your account
             </h2>
             <p className="mt-1.5 text-sm text-muted-foreground">
-              Your role is detected automatically after sign in.
+              Use your <span className="font-medium text-foreground">email</span> as username and your{" "}
+              <span className="font-medium text-foreground">User ID</span> as password.
             </p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-1.5">
               <Label htmlFor="email" className="text-[13px] font-semibold">
-                Email
+                Email <span className="font-normal text-muted-foreground">(username)</span>
               </Label>
               <Input
                 id="email"
@@ -691,7 +694,7 @@ export function LoginScreen() {
             <div className="space-y-1.5">
               <div className="flex items-center justify-between">
                 <Label htmlFor="password" className="text-[13px] font-semibold">
-                  Password
+                  Password <span className="font-normal text-muted-foreground">(your User ID)</span>
                 </Label>
                 <a
                   href="#"
@@ -705,7 +708,7 @@ export function LoginScreen() {
                 <Input
                   id="password"
                   type={showPass ? "text" : "password"}
-                  placeholder="••••••••"
+                  placeholder="e.g. 2021-00123, EMP-001, COORD-001"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="h-11 pr-11"
@@ -724,6 +727,9 @@ export function LoginScreen() {
                   )}
                 </button>
               </div>
+              <p className="text-[11px] text-muted-foreground">
+                Students: your student number · Supervisors: your EMP ID · Coordinators: your COORD ID
+              </p>
             </div>
 
             {error && (
@@ -797,6 +803,10 @@ export function LoginScreen() {
                       <p className="truncate text-xs text-muted-foreground">
                         {ROLE_LABELS[u.role]}
                       </p>
+                      {/* Show the User ID (password) so the demo is explorable. */}
+                      <p className="mt-0.5 truncate text-[10.5px] font-medium text-muted-foreground/70">
+                        ID: <span className="font-mono text-foreground/80">{u.idNumber ?? "—"}</span>
+                      </p>
                     </div>
                     {isSelected ? (
                       <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-primary-foreground">
@@ -810,8 +820,7 @@ export function LoginScreen() {
               })}
             </div>
             <p className="mt-3 text-center text-xs text-muted-foreground">
-              Pick an account to autofill, then press{" "}
-              <span className="font-medium text-foreground">Sign in</span>.
+              Pick an account to autofill — the User ID is filled in as your password.
             </p>
           </div>
 

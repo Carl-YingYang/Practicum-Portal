@@ -90,6 +90,17 @@ interface AppState {
    * Returns true if a matching account was found and signed in.
    */
   loginByEmail: (email: string) => boolean;
+  /**
+   * Validate email + password (idNumber). Returns:
+   *   - "ok"       → login succeeded
+   *   - "no-user"  → email not found
+   *   - "bad-pw"   → password mismatch
+   *   - "inactive" → account deactivated
+   */
+  loginByCredentials: (
+    email: string,
+    password: string
+  ) => "ok" | "no-user" | "bad-pw" | "inactive";
   logout: () => void;
 
   // --- navigation actions ---
@@ -143,7 +154,7 @@ interface AppState {
     startDate?: string | null;
     endDate?: string | null;
     workMode?: Student["workMode"];
-  }) => { studentId: string; tempPassword: string };
+  }) => { studentId: string; tempPassword: string; idNumber: string };
   updateStudent: (
     id: string,
     input: Partial<Pick<Student, "name" | "email" | "course" | "requiredHours" | "companyId" | "supervisorId" | "status" | "position" | "department" | "startDate" | "endDate" | "workMode">>
@@ -155,17 +166,19 @@ interface AppState {
     title?: string;
     department?: Supervisor["department"];
     capacity?: number;
-  }) => { supervisorId: string; tempPassword: string };
+    idNumber?: string;
+  }) => { supervisorId: string; tempPassword: string; idNumber: string };
   updateSupervisor: (
     id: string,
-    input: Partial<Pick<Supervisor, "name" | "email" | "companyId" | "status" | "title" | "department" | "capacity">>
+    input: Partial<Pick<Supervisor, "name" | "email" | "companyId" | "status" | "title" | "department" | "capacity" | "idNumber">>
   ) => void;
   createCoordinator: (input: {
     name: string;
     email: string;
     title?: string;
     department?: string;
-  }) => { coordinatorId: string; tempPassword: string };
+    idNumber?: string;
+  }) => { coordinatorId: string; tempPassword: string; idNumber: string };
   updateCoordinator: (
     id: string,
     input: Partial<Pick<Coordinator, "name" | "email" | "status" | "title" | "department">>
@@ -175,6 +188,18 @@ interface AppState {
   clockIn: (userId: string, role: Role, note?: string) => string;
   clockOut: (userId: string, note?: string) => void;
   deleteTimeLog: (id: string) => void;
+  /**
+   * Add a manual (back-dated) time entry — used by the Jibble-style timesheet
+   * calendar's "Add entry" affordance. Lets users fill in gaps in their
+   * timesheet without needing to clock in/out live.
+   */
+  addManualTimeLog: (input: {
+    userId: string;
+    role: Role;
+    clockInAt: string; // ISO
+    clockOutAt: string; // ISO
+    note?: string;
+  }) => string;
 
   // --- form documents (coordinator-authored templates) ---
   createFormDocument: (input: {
@@ -382,6 +407,7 @@ export const useAppStore = create<AppState>((set, get) => ({
         email: coord.email,
         role: "coordinator",
         coordinatorId: coord.id,
+        idNumber: coord.idNumber ?? `COORD-${coord.id.slice(-4).toUpperCase()}`,
         avatarColor: coord.avatarColor,
       };
       set({
@@ -402,6 +428,8 @@ export const useAppStore = create<AppState>((set, get) => ({
         email: stu.email,
         role: "student",
         studentId: stu.id,
+        // For students, their login ID IS their student number.
+        idNumber: stu.studentNumber,
         avatarColor: "#0f766e",
       };
       set({
@@ -422,6 +450,7 @@ export const useAppStore = create<AppState>((set, get) => ({
         email: sup.email,
         role: "supervisor",
         supervisorId: sup.id,
+        idNumber: sup.idNumber ?? `EMP-${sup.id.slice(-4).toUpperCase()}`,
         avatarColor: "#d97706",
       };
       set({
@@ -434,6 +463,125 @@ export const useAppStore = create<AppState>((set, get) => ({
     }
 
     return false;
+  },
+
+  /**
+   * loginByCredentials — validates BOTH email (username) and idNumber
+   * (password). Returns one of:
+   *   - "ok"      → login succeeded, currentUser set
+   *   - "no-user" → no account with that email
+   *   - "bad-pw"  → email found, but password didn't match
+   *   - "inactive"→ account exists but is deactivated
+   *
+   * The "user ID = password" model: students use their studentNumber,
+   * supervisors/coordinators use their assigned idNumber. Demo accounts
+   * use the idNumber field on the mock User.
+   */
+  loginByCredentials: (email, password) => {
+    const lower = email.trim().toLowerCase();
+    if (!lower || !password) return "no-user";
+    const pw = password.trim();
+
+    // Helper: case-insensitive password compare (IDs like "EMP-001" should
+    // match regardless of case the user typed).
+    const pwMatch = (a?: string, b?: string) =>
+      !!a && !!b && a.toLowerCase() === b.toLowerCase();
+
+    // 1. Seed demo accounts.
+    const mockMatch = mockUsers.find((u) => u.email.toLowerCase() === lower);
+    if (mockMatch) {
+      if (pwMatch(mockMatch.idNumber, pw)) {
+        set({
+          currentUser: mockMatch,
+          view: roleHomeView[mockMatch.role],
+          viewParams: {},
+          history: [],
+        });
+        return "ok";
+      }
+      return "bad-pw";
+    }
+
+    // 2. Coordinators.
+    const coord = get().coordinators.find(
+      (c) => c.email.toLowerCase() === lower
+    );
+    if (coord) {
+      if (coord.status !== "active") return "inactive";
+      const expected = coord.idNumber ?? `COORD-${coord.id.slice(-4).toUpperCase()}`;
+      if (pwMatch(expected, pw)) {
+        const user: User = {
+          id: `u-coord-${coord.id}`,
+          name: coord.name,
+          email: coord.email,
+          role: "coordinator",
+          coordinatorId: coord.id,
+          idNumber: expected,
+          avatarColor: coord.avatarColor,
+        };
+        set({
+          currentUser: user,
+          view: roleHomeView["coordinator"],
+          viewParams: {},
+          history: [],
+        });
+        return "ok";
+      }
+      return "bad-pw";
+    }
+
+    // 3. Students.
+    const stu = get().students.find((s) => s.email.toLowerCase() === lower);
+    if (stu) {
+      if (stu.status !== "active") return "inactive";
+      if (pwMatch(stu.studentNumber, pw)) {
+        const user: User = {
+          id: `u-stu-${stu.id}`,
+          name: stu.name,
+          email: stu.email,
+          role: "student",
+          studentId: stu.id,
+          idNumber: stu.studentNumber,
+          avatarColor: "#0f766e",
+        };
+        set({
+          currentUser: user,
+          view: roleHomeView["student"],
+          viewParams: {},
+          history: [],
+        });
+        return "ok";
+      }
+      return "bad-pw";
+    }
+
+    // 4. Supervisors.
+    const sup = get().supervisors.find((s) => s.email.toLowerCase() === lower);
+    if (sup) {
+      if (sup.status !== "active") return "inactive";
+      const expected = sup.idNumber ?? `EMP-${sup.id.slice(-4).toUpperCase()}`;
+      if (pwMatch(expected, pw)) {
+        const user: User = {
+          id: `u-sup-${sup.id}`,
+          name: sup.name,
+          email: sup.email,
+          role: "supervisor",
+          supervisorId: sup.id,
+          idNumber: expected,
+          avatarColor: "#d97706",
+        };
+        set({
+          currentUser: user,
+          view: roleHomeView["supervisor"],
+          viewParams: {},
+          history: [],
+        });
+        return "ok";
+      }
+      return "bad-pw";
+    }
+
+    return "no-user";
   },
 
   logout: () =>
@@ -664,7 +812,8 @@ export const useAppStore = create<AppState>((set, get) => ({
         s.currentUser?.id ?? ""
       ),
     }));
-    return { studentId: id, tempPassword };
+    // For students, the login password IS their student number.
+    return { studentId: id, tempPassword, idNumber: input.studentNumber };
   },
 
   updateStudent: (id, input) =>
@@ -678,6 +827,10 @@ export const useAppStore = create<AppState>((set, get) => ({
     const id = uuid();
     const now = new Date().toISOString();
     const tempPassword = genTempPassword();
+    // Auto-generate an employee ID like "EMP-007" if not provided.
+    const idNumber =
+      input.idNumber?.trim() ||
+      `EMP-${String(get().supervisors.length + 1).padStart(3, "0")}`;
     const supervisor: Supervisor = {
       id,
       name: input.name,
@@ -687,6 +840,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       title: input.title ?? "Supervisor",
       department: input.department ?? "Other",
       capacity: input.capacity ?? 5,
+      idNumber,
       createdAt: now,
     };
     set((s) => ({
@@ -698,7 +852,7 @@ export const useAppStore = create<AppState>((set, get) => ({
         s.currentUser?.id ?? ""
       ),
     }));
-    return { supervisorId: id, tempPassword };
+    return { supervisorId: id, tempPassword, idNumber };
   },
 
   updateSupervisor: (id, input) =>
@@ -715,6 +869,10 @@ export const useAppStore = create<AppState>((set, get) => ({
     // Pick a deterministic avatar color from a small professional palette.
     const palette = ["#475569", "#0f766e", "#7c3aed", "#b45309", "#be185d", "#1e40af"];
     const avatarColor = palette[get().coordinators.length % palette.length];
+    // Auto-generate a coordinator ID like "COORD-002" if not provided.
+    const idNumber =
+      input.idNumber?.trim() ||
+      `COORD-${String(get().coordinators.length + 1).padStart(3, "0")}`;
     const coordinator: Coordinator = {
       id,
       name: input.name,
@@ -723,6 +881,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       department: input.department ?? "Computer Studies",
       status: "active",
       avatarColor,
+      idNumber,
       createdAt: now,
     };
     set((s) => ({
@@ -734,7 +893,7 @@ export const useAppStore = create<AppState>((set, get) => ({
         s.currentUser?.id ?? ""
       ),
     }));
-    return { coordinatorId: id, tempPassword };
+    return { coordinatorId: id, tempPassword, idNumber };
   },
 
   updateCoordinator: (id, input) =>
@@ -851,6 +1010,53 @@ export const useAppStore = create<AppState>((set, get) => ({
             : s.students,
       };
     }),
+
+  addManualTimeLog: ({ userId, role, clockInAt, clockOutAt, note }) => {
+    const id = uuid();
+    const inD = new Date(clockInAt);
+    const outD = new Date(clockOutAt);
+    const durationMs = Math.max(0, outD.getTime() - inD.getTime());
+    const hours = durationMs / 3600_000;
+    const log: TimeLog = {
+      id,
+      userId,
+      role,
+      clockInAt: inD.toISOString(),
+      clockOutAt: outD.toISOString(),
+      durationMs,
+      note,
+      createdAt: new Date().toISOString(),
+    };
+    set((s) => {
+      // Accumulate hours for students only (mirrors clockOut logic).
+      const isStudent = role === "student";
+      const actorName = isStudent
+        ? s.students.find((x) => x.id === userId)?.name
+        : role === "supervisor"
+          ? s.supervisors.find((x) => x.id === userId)?.name
+          : s.currentUser?.name;
+      return {
+        timeLogs: [log, ...s.timeLogs],
+        students: isStudent
+          ? s.students.map((stu) =>
+              stu.id === userId
+                ? {
+                    ...stu,
+                    loggedHours: stu.loggedHours + Math.round(hours * 100) / 100,
+                  }
+                : stu
+            )
+          : s.students,
+        activity: logActivity(
+          s.activity,
+          "time_clock_out",
+          `${actorName ?? "Someone"} added a manual ${hours.toFixed(1)}h entry`,
+          s.currentUser?.id ?? ""
+        ),
+      };
+    });
+    return id;
+  },
 
   // ---------------- Form documents ----------------
   createFormDocument: ({ title, description, category }) => {

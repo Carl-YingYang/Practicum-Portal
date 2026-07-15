@@ -33,6 +33,7 @@ import {
   Users,
   UserPlus,
   Download,
+  Upload,
   Search,
   MoreHorizontal,
   Eye,
@@ -45,6 +46,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { exportToCsv } from "@/lib/csv-export";
+import { ImportUsersSheet } from "@/components/portal/coordinator/import-users-sheet";
 
 /**
  * Unified User Management page for the coordinator. Shows every student +
@@ -135,6 +137,7 @@ export function UserManagement() {
   const [statusFilter, setStatusFilter] = React.useState<string>("all");
   const [deactivateTarget, setDeactivateTarget] =
     React.useState<UnifiedUser | null>(null);
+  const [importOpen, setImportOpen] = React.useState(false);
 
   const allRows = React.useMemo(
     () => buildUserList(students, supervisors, coordinators, companies),
@@ -358,7 +361,16 @@ export function UserManagement() {
               <Download className="h-4 w-4" />
               Export to Excel
             </Button>
-            {/* Add User dropdown — prominent, single entry point for all account creation */}
+            <Button
+              variant="outline"
+              onClick={() => setImportOpen(true)}
+              className="w-full sm:w-auto"
+            >
+              <Upload className="h-4 w-4" />
+              Import from Excel
+            </Button>
+            {/* Add User dropdown — students + supervisors only.
+                Coordinators self-register via the login screen. */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button className="w-full sm:w-auto">
@@ -391,16 +403,6 @@ export function UserManagement() {
                     <span className="truncate text-xs text-muted-foreground">Single supervisor account</span>
                   </div>
                 </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={() => navigate("coordinator.coordinator-new")}
-                  className="gap-2.5 rounded-md py-2"
-                >
-                  <ShieldCheck className="h-4 w-4 text-muted-foreground" />
-                  <div className="flex min-w-0 flex-col">
-                    <span className="text-sm font-medium">Add Coordinator</span>
-                    <span className="truncate text-xs text-muted-foreground">Full program-management access</span>
-                  </div>
-                </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
                   onClick={() => navigate("coordinator.bulk-create")}
@@ -409,7 +411,7 @@ export function UserManagement() {
                   <Layers className="h-4 w-4 text-muted-foreground" />
                   <div className="flex min-w-0 flex-col">
                     <span className="text-sm font-medium">Bulk Create</span>
-                    <span className="truncate text-xs text-muted-foreground">Many users + CSV export</span>
+                    <span className="truncate text-xs text-muted-foreground">Paste rows + CSV export</span>
                   </div>
                 </DropdownMenuItem>
               </DropdownMenuContent>
@@ -523,6 +525,8 @@ export function UserManagement() {
         destructive
         onConfirm={handleDeactivate}
       />
+
+      <ImportUsersSheet open={importOpen} onOpenChange={setImportOpen} />
     </div>
   );
 }

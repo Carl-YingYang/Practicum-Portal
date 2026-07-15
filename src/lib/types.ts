@@ -57,6 +57,13 @@ export interface User {
   studentId?: string;
   supervisorId?: string;
   coordinatorId?: string;
+  /**
+   * User-facing login ID. Used as the password on the login screen
+   * (email = username, idNumber = password). For students this is their
+   * studentNumber; for supervisors/coordinators it's an assigned employee
+   * ID; for seed demo accounts it's a readable slug.
+   */
+  idNumber?: string;
   /** initials avatar background */
   avatarColor: string;
 }
@@ -141,6 +148,12 @@ export interface Supervisor {
   department: Department;
   /** Max interns they will take. */
   capacity: number;
+  /**
+   * User-facing login ID (used as password). Auto-generated like "EMP-001"
+   * if not provided. Displayed in the coordinator's user-management list
+   * and shared with the supervisor as their login credential.
+   */
+  idNumber?: string;
   createdAt: string;
 }
 
@@ -167,6 +180,11 @@ export interface Coordinator {
   /** Academic department (e.g. "Computer Studies"). */
   department: string;
   status: CoordinatorStatus;
+  /**
+   * User-facing login ID (used as password). Auto-generated like "COORD-001"
+   * if not provided. Coordinators also self-register and may pick their own.
+   */
+  idNumber?: string;
   /** initials avatar background */
   avatarColor: string;
   createdAt: string;

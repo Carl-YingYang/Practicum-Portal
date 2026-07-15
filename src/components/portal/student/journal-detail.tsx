@@ -6,7 +6,6 @@ import { SectionCard } from "@/components/portal/shared/section-card";
 import { EmptyState } from "@/components/portal/shared/empty-state";
 import { JournalStatusBadge } from "@/components/portal/shared/badges";
 import { ConfirmDialog } from "@/components/portal/shared/confirm-dialog";
-import { PdfPreviewModal } from "@/components/portal/shared/pdf-preview-modal";
 import { useAppStore } from "@/store/use-app-store";
 import {
   formatDate,
@@ -20,11 +19,12 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import {
   AlertTriangle,
-  Download,
   Edit3,
   FileText,
+  FileDown,
   Send,
 } from "lucide-react";
+import { exportJournalToDocx } from "@/lib/docx-export";
 
 export function JournalDetail() {
   const currentUser = useAppStore((s) => s.currentUser);
@@ -32,12 +32,13 @@ export function JournalDetail() {
   const journals = useAppStore((s) => s.journals);
   const companies = useAppStore((s) => s.companies);
   const supervisors = useAppStore((s) => s.supervisors);
+  const schoolIdentity = useAppStore((s) => s.schoolIdentity);
   const viewParams = useAppStore((s) => s.viewParams);
   const navigate = useAppStore((s) => s.navigate);
   const submitJournal = useAppStore((s) => s.submitJournal);
 
   const [submitOpen, setSubmitOpen] = React.useState(false);
-  const [pdfOpen, setPdfOpen] = React.useState(false);
+  const [downloading, setDownloading] = React.useState(false);
 
   const student = getStudent(students, currentUser?.studentId);
   const journal = getJournal(journals, viewParams.journalId);
@@ -61,6 +62,7 @@ export function JournalDetail() {
 
   const company = getCompany(companies, student.companyId);
   const reviewer = getSupervisor(supervisors, journal.reviewedBy);
+  const supervisor = getSupervisor(supervisors, student.supervisorId);
   const isDraft = journal.status === "draft";
   const isRejected = journal.status === "rejected";
 
@@ -71,6 +73,31 @@ export function JournalDetail() {
       description: "Your supervisor will review it shortly.",
     });
     navigate("student.journals");
+  };
+
+  const handleDownloadWord = async () => {
+    setDownloading(true);
+    try {
+      await exportJournalToDocx({
+        studentName: student.name,
+        studentNumber: student.studentNumber,
+        course: student.course,
+        companyName: company?.name ?? "",
+        supervisorName: supervisor?.name ?? "",
+        weekLabel: weekLabel(journal.date),
+        dateLabel: formatDate(journal.date),
+        tasks: journal.tasks,
+        learnings: journal.learnings,
+        status: journal.status,
+        schoolName: schoolIdentity.name,
+      });
+      toast.success("Word document downloaded");
+    } catch (e) {
+      console.error(e);
+      toast.error("Couldn't generate the Word document.");
+    } finally {
+      setDownloading(false);
+    }
   };
 
   return (
@@ -86,8 +113,13 @@ export function JournalDetail() {
               <Send className="h-4 w-4" /> Submit for Approval
             </Button>
           ) : (
-            <Button variant="outline" onClick={() => setPdfOpen(true)}>
-              <Download className="h-4 w-4" /> Download PDF
+            <Button
+              variant="outline"
+              onClick={handleDownloadWord}
+              disabled={downloading}
+            >
+              <FileDown className="h-4 w-4" />
+              {downloading ? "Generating…" : "Download Word"}
             </Button>
           )
         }
@@ -230,25 +262,6 @@ export function JournalDetail() {
         confirmLabel="Submit for approval"
         onConfirm={handleSubmitConfirm}
       />
-
-      <PdfPreviewModal
-        open={pdfOpen}
-        onOpenChange={setPdfOpen}
-        title="Weekly Journal"
-        subtitle={`${student.name} · ${formatDate(journal.date)}`}
-      >
-        <JournalDocument
-          studentName={student.name}
-          studentNumber={student.studentNumber}
-          course={student.course}
-          companyName={company?.name}
-          date={journal.date}
-          hours={journal.hours}
-          tasks={journal.tasks}
-          learnings={journal.learnings}
-          status={journal.status}
-        />
-      </PdfPreviewModal>
     </>
   );
 }

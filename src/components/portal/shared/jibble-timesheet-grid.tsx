@@ -1,10 +1,33 @@
 "use client";
 
 import * as React from "react";
-import { CalendarDays, ChevronLeft, ChevronRight, Clock, TrendingUp } from "lucide-react";
+import {
+  CalendarDays,
+  ChevronLeft,
+  ChevronRight,
+  Clock,
+  TrendingUp,
+  Plus,
+  Download,
+  Trash2,
+  X,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import type { TimeLog } from "@/lib/types";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import { toast } from "sonner";
+import * as XLSX from "xlsx";
+import { saveAs } from "file-saver";
+import type { TimeLog, Role } from "@/lib/types";
+import { useAppStore } from "@/store/use-app-store";
 
 /**
  * JibbleTimesheetGrid — a native monthly timesheet rendered inside the portal,
@@ -15,6 +38,10 @@ import type { TimeLog } from "@/lib/types";
  *   - A grid where each row is a week, columns are Mon–Sun, the last column is
  *     the weekly total. Empty days show "—".
  *   - A "Monthly total" footer in the bottom-right.
+ *   - Day cells are CLICKABLE: tapping a day with sessions opens a detail
+ *     dialog (clock-in/out times + durations + notes + delete).
+ *   - An "Add entry" button opens a manual-entry form (back-dated session).
+ *   - An "Export" button downloads the current month's sessions as .xlsx.
  *
  * Data comes from the portal's TimeLog store (mock clock-in/out sessions), so
  * the grid stays in sync with the clock widget without needing a real Jibble
@@ -30,6 +57,12 @@ export interface JibbleTimesheetGridProps {
   /** External Jibble URL — shown as "Open in Jibble" link. */
   jibbleUrl?: string;
   className?: string;
+  /**
+   * The user this timesheet belongs to (for manual entry creation).
+   * If omitted, manual entry + delete are disabled (read-only view).
+   */
+  ownerUserId?: string;
+  ownerRole?: Role;
 }
 
 const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] as const;
@@ -48,15 +81,17 @@ function dayKey(d: Date): string {
   return `${y}-${m}-${day}`;
 }
 
+/** Sessions whose clockIn falls on the given day key. */
+function sessionsForDay(sessions: TimeLog[], key: string): TimeLog[] {
+  return sessions.filter((s) => dayKey(new Date(s.clockInAt)) === key);
+}
+
 /** Sum durations for sessions whose clockIn falls on the given day key. */
 function hoursForDay(sessions: TimeLog[], key: string): number {
-  return sessions.reduce((sum, s) => {
-    const d = new Date(s.clockInAt);
-    if (dayKey(d) === key) {
-      return sum + (s.durationMs ?? 0);
-    }
-    return sum;
-  }, 0);
+  return sessionsForDay(sessions, key).reduce(
+    (sum, s) => sum + (s.durationMs ?? 0),
+    0,
+  );
 }
 
 function formatHours(ms: number): string {
@@ -67,16 +102,28 @@ function formatHours(ms: number): string {
   return `${h}h ${String(m).padStart(2, "0")}m`;
 }
 
+function formatTime(iso: string): string {
+  return new Date(iso).toLocaleTimeString("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  });
+}
+
 export function JibbleTimesheetGrid({
   sessions,
   initialMonth,
   entityLabel,
   jibbleUrl,
   className,
+  ownerUserId,
+  ownerRole,
 }: JibbleTimesheetGridProps) {
   const [cursor, setCursor] = React.useState<Date>(
     initialMonth ? monthStart(initialMonth) : new Date(new Date().getFullYear(), new Date().getMonth(), 1),
   );
+  const [selectedDay, setSelectedDay] = React.useState<Date | null>(null);
+  const [addOpen, setAddOpen] = React.useState(false);
 
   const year = cursor.getFullYear();
   const month = cursor.getMonth();
@@ -85,13 +132,10 @@ export function JibbleTimesheetGrid({
     year: "numeric",
   });
 
-  // Build week rows: each row starts on Monday. We find the Monday on/before
-  // the 1st of the month, then step forward in 7-day chunks until we pass the
-  // last day of the month.
+  // Build week rows: each row starts on Monday.
   const weeks: Date[][] = React.useMemo(() => {
     const first = new Date(year, month, 1);
     const last = new Date(year, month + 1, 0);
-    // day: 0=Sun..6=Sat → convert to Mon-first offset
     const firstDow = (first.getDay() + 6) % 7;
     const gridStart = new Date(year, month, 1 - firstDow);
     const rows: Date[][] = [];
@@ -124,6 +168,61 @@ export function JibbleTimesheetGrid({
   const goToday = () =>
     setCursor(new Date(new Date().getFullYear(), new Date().getMonth(), 1));
 
+  // ---- Export this month's sessions to Excel ----
+  const handleExportMonth = () => {
+    const monthSessions = sessions
+      .filter((s) => {
+        const d = new Date(s.clockInAt);
+        return d.getFullYear() === year && d.getMonth() === month;
+      })
+      .sort((a, b) => a.clockInAt.localeCompare(b.clockInAt));
+    if (monthSessions.length === 0) {
+      toast.error("No sessions to export for this month.");
+      return;
+    }
+    const headers = ["Date", "Day", "Clock In", "Clock Out", "Duration", "Note"];
+    const data = monthSessions.map((s) => {
+      const d = new Date(s.clockInAt);
+      return [
+        dayKey(d),
+        d.toLocaleDateString("en-US", { weekday: "short" }),
+        formatTime(s.clockInAt),
+        s.clockOutAt ? formatTime(s.clockOutAt) : "— (active)",
+        formatHours(s.durationMs ?? 0),
+        s.note ?? "",
+      ];
+    });
+    // Add a total row.
+    data.push(["", "", "", "", "TOTAL", formatHours(monthMs)]);
+    const ws = XLSX.utils.aoa_to_sheet([
+      [`Timesheet · ${monthLabel}`],
+      entityLabel ? [entityLabel] : [],
+      [],
+      headers,
+      ...data,
+    ]);
+    ws["!cols"] = [
+      { wch: 12 },
+      { wch: 6 },
+      { wch: 10 },
+      { wch: 10 },
+      { wch: 12 },
+      { wch: 30 },
+    ];
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, monthLabel.slice(0, 31));
+    const out = XLSX.write(wb, { bookType: "xlsx", type: "array" });
+    saveAs(
+      new Blob([out], { type: "application/octet-stream" }),
+      `timesheet-${year}-${String(month + 1).padStart(2, "0")}.xlsx`,
+    );
+    toast.success(`Exported ${monthSessions.length} session${monthSessions.length === 1 ? "" : "s"}`, {
+      description: monthLabel,
+    });
+  };
+
+  const canMutate = !!ownerUserId && !!ownerRole;
+
   return (
     <div
       className={cn(
@@ -139,7 +238,25 @@ export function JibbleTimesheetGrid({
             Monthly view
           </span>
         </div>
-        <div className="ml-auto flex items-center gap-2">
+        <div className="ml-auto flex flex-wrap items-center gap-2">
+          {canMutate && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setAddOpen(true)}
+              className="h-8"
+            >
+              <Plus className="h-3.5 w-3.5" /> Add entry
+            </Button>
+          )}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleExportMonth}
+            className="h-8"
+          >
+            <Download className="h-3.5 w-3.5" /> Export
+          </Button>
           <Button variant="outline" size="sm" onClick={goToday} className="h-8">
             <CalendarDays className="h-3.5 w-3.5" /> Today
           </Button>
@@ -211,18 +328,40 @@ export function JibbleTimesheetGrid({
                     {weekStart.getDate()}
                   </td>
                   {week.map((d) => {
-                    const ms = hoursForDay(sessions, dayKey(d));
+                    const dayMs = hoursForDay(sessions, dayKey(d));
+                    const daySessions = sessionsForDay(sessions, dayKey(d));
                     const isToday = dayKey(d) === dayKey(new Date());
                     const dim = !inMonth(d);
+                    const hasSessions = daySessions.length > 0;
                     return (
                       <td
                         key={dayKey(d)}
                         className={cn(
-                          "border-b border-border px-2 py-2 text-center align-top",
+                          "border-b border-border px-1 py-1 text-center align-top transition-colors",
                           dim && "bg-muted/20",
+                          hasSessions && !dim && "hover:bg-teal-50/60 dark:hover:bg-teal-950/20",
+                          hasSessions && "cursor-pointer",
                         )}
+                        onClick={hasSessions ? () => setSelectedDay(d) : undefined}
+                        role={hasSessions ? "button" : undefined}
+                        tabIndex={hasSessions ? 0 : undefined}
+                        onKeyDown={
+                          hasSessions
+                            ? (e) => {
+                                if (e.key === "Enter" || e.key === " ") {
+                                  e.preventDefault();
+                                  setSelectedDay(d);
+                                }
+                              }
+                            : undefined
+                        }
+                        title={
+                          hasSessions
+                            ? `${daySessions.length} session${daySessions.length === 1 ? "" : "s"} · click to view`
+                            : undefined
+                        }
                       >
-                        <div className="flex flex-col items-center gap-0.5">
+                        <div className="flex flex-col items-center gap-0.5 px-1 py-1">
                           <span
                             className={cn(
                               "text-[10px]",
@@ -234,15 +373,25 @@ export function JibbleTimesheetGrid({
                           </span>
                           <span
                             className={cn(
-                              "font-mono text-[12px] tabular-nums",
-                              ms > 0
-                                ? "font-semibold text-foreground"
+                              "rounded px-1.5 py-0.5 font-mono text-[11px] tabular-nums",
+                              dayMs > 0
+                                ? "font-semibold text-foreground bg-teal-50 dark:bg-teal-950/40"
                                 : "text-muted-foreground/40",
-                              isToday && ms > 0 && "text-teal-700 dark:text-teal-300",
+                              isToday && dayMs > 0 && "text-teal-700 dark:text-teal-300 ring-1 ring-teal-300/50",
                             )}
                           >
-                            {formatHours(ms)}
+                            {formatHours(dayMs)}
                           </span>
+                          {hasSessions && (
+                            <span className="mt-0.5 flex gap-0.5" aria-hidden>
+                              {daySessions.slice(0, 3).map((_, i) => (
+                                <span
+                                  key={i}
+                                  className="h-1 w-1 rounded-full bg-teal-500"
+                                />
+                              ))}
+                            </span>
+                          )}
                         </div>
                       </td>
                     );
@@ -313,8 +462,284 @@ export function JibbleTimesheetGrid({
           )}
         />
       </div>
+
+      {/* Day detail dialog */}
+      <DayDetailDialog
+        day={selectedDay}
+        sessions={selectedDay ? sessionsForDay(sessions, dayKey(selectedDay)) : []}
+        onClose={() => setSelectedDay(null)}
+        canDelete={canMutate}
+      />
+
+      {/* Manual entry dialog */}
+      {canMutate && (
+        <AddEntryDialog
+          open={addOpen}
+          onOpenChange={setAddOpen}
+          defaultDate={selectedDay ?? new Date()}
+          ownerUserId={ownerUserId!}
+          ownerRole={ownerRole!}
+        />
+      )}
     </div>
   );
+}
+
+// ============================================================
+// Day detail dialog — shows all sessions for a clicked day
+// ============================================================
+
+function DayDetailDialog({
+  day,
+  sessions,
+  onClose,
+  canDelete,
+}: {
+  day: Date | null;
+  sessions: TimeLog[];
+  onClose: () => void;
+  canDelete: boolean;
+}) {
+  const deleteTimeLog = useAppStoreDeleteTimeLog();
+  const dayLabel = day
+    ? day.toLocaleDateString("en-US", {
+        weekday: "long",
+        month: "long",
+        day: "numeric",
+        year: "numeric",
+      })
+    : "";
+
+  const totalMs = sessions.reduce((sum, s) => sum + (s.durationMs ?? 0), 0);
+
+  const handleDelete = (id: string) => {
+    deleteTimeLog(id);
+    toast.success("Session deleted");
+  };
+
+  return (
+    <Dialog open={!!day} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <CalendarDays className="h-4 w-4 text-teal-600" />
+            {dayLabel}
+          </DialogTitle>
+          <DialogDescription>
+            {sessions.length} session{sessions.length === 1 ? "" : "s"} ·{" "}
+            <span className="font-mono font-semibold text-foreground">
+              {formatHours(totalMs)}
+            </span>{" "}
+            total
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="max-h-[50vh] space-y-2 overflow-y-auto">
+          {sessions.length === 0 ? (
+            <p className="rounded-md border border-dashed border-border p-4 text-center text-sm text-muted-foreground">
+              No sessions on this day.
+            </p>
+          ) : (
+            sessions.map((s) => (
+              <div
+                key={s.id}
+                className="rounded-lg border border-border bg-card p-3 text-sm"
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 font-mono text-xs">
+                    <span className="rounded bg-muted px-1.5 py-0.5">
+                      {formatTime(s.clockInAt)}
+                    </span>
+                    <span className="text-muted-foreground">→</span>
+                    <span className="rounded bg-muted px-1.5 py-0.5">
+                      {s.clockOutAt ? formatTime(s.clockOutAt) : "active"}
+                    </span>
+                  </div>
+                  <span className="font-mono text-xs font-semibold text-foreground">
+                    {formatHours(s.durationMs ?? 0)}
+                  </span>
+                </div>
+                {s.note && (
+                  <p className="mt-2 text-xs text-muted-foreground">{s.note}</p>
+                )}
+                {canDelete && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="mt-2 h-7 px-2 text-xs text-destructive hover:bg-destructive/10"
+                    onClick={() => handleDelete(s.id)}
+                  >
+                    <Trash2 className="h-3 w-3" /> Delete
+                  </Button>
+                )}
+              </div>
+            ))
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ============================================================
+// Add entry dialog — manual back-dated session
+// ============================================================
+
+function AddEntryDialog({
+  open,
+  onOpenChange,
+  defaultDate,
+  ownerUserId,
+  ownerRole,
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  defaultDate: Date;
+  ownerUserId: string;
+  ownerRole: Role;
+}) {
+  const addManualTimeLog = useAppStoreAddManualTimeLog();
+  const [date, setDate] = React.useState(dayKey(defaultDate));
+  const [clockIn, setClockIn] = React.useState("09:00");
+  const [clockOut, setClockOut] = React.useState("17:00");
+  const [note, setNote] = React.useState("");
+  const [error, setError] = React.useState("");
+
+  // Reset when opened with a new default date.
+  React.useEffect(() => {
+    if (open) {
+      setDate(dayKey(defaultDate));
+      setClockIn("09:00");
+      setClockOut("17:00");
+      setNote("");
+      setError("");
+    }
+  }, [open, defaultDate]);
+
+  const handleSubmit = () => {
+    if (!date || !clockIn || !clockOut) {
+      setError("Please fill in date, clock-in, and clock-out times.");
+      return;
+    }
+    const inD = new Date(`${date}T${clockIn}:00`);
+    const outD = new Date(`${date}T${clockOut}:00`);
+    if (isNaN(inD.getTime()) || isNaN(outD.getTime())) {
+      setError("Invalid date or time format.");
+      return;
+    }
+    if (outD <= inD) {
+      setError("Clock-out must be after clock-in.");
+      return;
+    }
+    addManualTimeLog({
+      userId: ownerUserId,
+      role: ownerRole,
+      clockInAt: inD.toISOString(),
+      clockOutAt: outD.toISOString(),
+      note: note.trim() || undefined,
+    });
+    toast.success("Manual entry added", {
+      description: `${formatHours(outD.getTime() - inD.getTime())} on ${date}`,
+    });
+    onOpenChange(false);
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Plus className="h-4 w-4 text-teal-600" />
+            Add manual time entry
+          </DialogTitle>
+          <DialogDescription>
+            Back-fill a missed clock-in. Hours count toward the student&apos;s total.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-3">
+          <div className="space-y-1.5">
+            <Label htmlFor="entry-date" className="text-xs font-semibold">
+              Date
+            </Label>
+            <Input
+              id="entry-date"
+              type="date"
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+              className="h-10"
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label htmlFor="entry-in" className="text-xs font-semibold">
+                Clock in
+              </Label>
+              <Input
+                id="entry-in"
+                type="time"
+                value={clockIn}
+                onChange={(e) => setClockIn(e.target.value)}
+                className="h-10"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="entry-out" className="text-xs font-semibold">
+                Clock out
+              </Label>
+              <Input
+                id="entry-out"
+                type="time"
+                value={clockOut}
+                onChange={(e) => setClockOut(e.target.value)}
+                className="h-10"
+              />
+            </div>
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="entry-note" className="text-xs font-semibold">
+              Note <span className="font-normal text-muted-foreground">(optional)</span>
+            </Label>
+            <Input
+              id="entry-note"
+              type="text"
+              placeholder="e.g. Made up hours for missed clock-in"
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              className="h-10"
+            />
+          </div>
+          {error && (
+            <p className="text-xs text-destructive" role="alert">
+              {error}
+            </p>
+          )}
+        </div>
+
+        <div className="flex justify-end gap-2 pt-2">
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            <X className="h-3.5 w-3.5" /> Cancel
+          </Button>
+          <Button onClick={handleSubmit}>
+            <Plus className="h-3.5 w-3.5" /> Add entry
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ============================================================
+// Tiny store-binding helpers — keep the main component free of
+// useAppStore boilerplate so it stays presentational.
+// ============================================================
+
+function useAppStoreDeleteTimeLog() {
+  return useAppStore((s) => s.deleteTimeLog);
+}
+
+function useAppStoreAddManualTimeLog() {
+  return useAppStore((s) => s.addManualTimeLog);
 }
 
 function SummaryChip({

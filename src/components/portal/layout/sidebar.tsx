@@ -6,7 +6,6 @@ import { useAppStore } from "@/store/use-app-store";
 import { navConfig, getNavIcon, secondaryNavItems } from "@/lib/nav";
 import { ROLE_LABELS, type Role, type NavItem, type ViewKey } from "@/lib/types";
 import { Avatar } from "@/components/portal/shared/avatar";
-import { SchoolIdentityModal } from "@/components/portal/shared/school-identity-modal";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Sheet,
@@ -18,7 +17,6 @@ import {
   GraduationCap,
   PanelLeftClose,
   ChevronRight,
-  Info,
 } from "lucide-react";
 
 interface SidebarProps {
@@ -47,7 +45,9 @@ function groupBySection(items: NavItem[]): { section: string | undefined; items:
  * Sidebar — desktop left navigation.
  *
  * Professional, Untitled-UI-inspired layout:
- *   - Brand block (clickable = collapse toggle)
+ *   - Brand block (logo + shortName; no longer tappable — the dashboard's
+ *     SchoolIdentityCard banner is the primary entry point to school info)
+ *   - Collapse toggle chevron
  *   - Grouped nav with uppercase section labels
  *   - Subtle active state (white tint + left accent bar)
  *   - Compact user row at the bottom
@@ -62,9 +62,6 @@ export function Sidebar({ collapsed, onToggleCollapse }: SidebarProps) {
   const journals = useAppStore((s) => s.journals);
   const schoolIdentity = useAppStore((s) => s.schoolIdentity);
   const hasLogo = !!schoolIdentity.logoDataUrl;
-
-  // School identity modal — opened by tapping the brand block.
-  const [identityOpen, setIdentityOpen] = React.useState(false);
 
   if (!role || !currentUser) return null;
 
@@ -115,58 +112,44 @@ export function Sidebar({ collapsed, onToggleCollapse }: SidebarProps) {
         collapsed ? "w-[68px]" : "w-[248px]"
       )}
     >
-      {/* Brand block — split: tappable identity area opens the school info
-          modal; the chevron toggles collapse. Uses shortName so it never
-          overflows the narrow sidebar. */}
-      <div className="relative flex h-14 w-full shrink-0 items-center gap-2.5 border-b border-sidebar-border px-3.5">
-        <button
-          onClick={() => setIdentityOpen(true)}
-          className="group flex min-w-0 flex-1 items-center gap-2.5 rounded-md py-1 text-left transition-colors hover:bg-white/[0.06] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-primary/40"
-          aria-label={`View ${schoolIdentity.name} details`}
-          title={collapsed ? schoolIdentity.name : "View school details"}
-        >
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-[5px] bg-white/15 ring-1 ring-white/20 transition-transform duration-200 group-hover:scale-[1.04]">
-            {hasLogo ? (
-              <img
-                src={schoolIdentity.logoDataUrl}
-                alt={`${schoolIdentity.name} logo`}
-                className="h-full w-full rounded-[5px] object-contain p-0.5"
-              />
-            ) : (
-              <GraduationCap className="h-[16px] w-[16px] text-sidebar-primary" strokeWidth={2.4} />
-            )}
+      {/* Brand block — logo + shortName. The whole block toggles collapse;
+          school details are now surfaced via the dashboard's tappable
+          SchoolIdentityCard banner instead. */}
+      <button
+        onClick={onToggleCollapse}
+        className="group relative flex h-14 w-full shrink-0 items-center gap-2.5 border-b border-sidebar-border px-3.5 text-left transition-colors hover:bg-white/[0.04] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-primary/40"
+        aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+        title={collapsed ? schoolIdentity.name : "Toggle sidebar"}
+      >
+        <div className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-[5px] bg-white/15 ring-1 ring-white/20 transition-transform duration-200 group-hover:scale-[1.04]">
+          {hasLogo ? (
+            <img
+              src={schoolIdentity.logoDataUrl}
+              alt={`${schoolIdentity.name} logo`}
+              className="h-full w-full rounded-[5px] object-contain p-0.5"
+            />
+          ) : (
+            <GraduationCap className="h-[16px] w-[16px] text-sidebar-primary" strokeWidth={2.4} />
+          )}
+        </div>
+        {!collapsed && (
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-[14px] font-bold leading-tight tracking-[-0.01em] text-sidebar-foreground">
+              {schoolIdentity.shortName || schoolIdentity.name}
+            </p>
+            <p className="truncate text-[9.5px] font-semibold uppercase tracking-[0.12em] text-sidebar-foreground/40">
+              {schoolIdentity.tagline}
+            </p>
           </div>
-          {!collapsed && (
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-[14px] font-bold leading-tight tracking-[-0.01em] text-sidebar-foreground">
-                {schoolIdentity.shortName || schoolIdentity.name}
-              </p>
-              <p className="truncate text-[9.5px] font-semibold uppercase tracking-[0.12em] text-sidebar-foreground/40">
-                {schoolIdentity.tagline}
-              </p>
-            </div>
+        )}
+        <PanelLeftClose
+          className={cn(
+            "h-[15px] w-[15px] shrink-0 text-sidebar-foreground/50 transition-transform hover:text-sidebar-foreground/80",
+            collapsed && "rotate-180"
           )}
-          {!collapsed && (
-            <Info className="h-[13px] w-[13px] shrink-0 text-sidebar-foreground/30 transition-colors group-hover:text-sidebar-foreground/60" />
-          )}
-        </button>
-        <button
-          onClick={onToggleCollapse}
-          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-sidebar-foreground/50 transition-colors hover:bg-white/[0.06] hover:text-sidebar-foreground/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-primary/40"
-          aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-          title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-        >
-          <PanelLeftClose
-            className={cn(
-              "h-[15px] w-[15px] transition-transform",
-              collapsed && "rotate-180"
-            )}
-            strokeWidth={2.2}
-          />
-        </button>
-      </div>
-
-      <SchoolIdentityModal open={identityOpen} onOpenChange={setIdentityOpen} />
+          strokeWidth={2.2}
+        />
+      </button>
 
       {/* Grouped nav — section labels + crisper active states. */}
       <ScrollArea className="flex-1">
@@ -288,8 +271,6 @@ export function MobileSidebar({
   const evaluations = useAppStore((s) => s.evaluations);
   const journals = useAppStore((s) => s.journals);
   const schoolIdentity = useAppStore((s) => s.schoolIdentity);
-  // School identity modal — opened by tapping the brand block in the header.
-  const [identityOpen, setIdentityOpen] = React.useState(false);
   if (!role || !currentUser) return null;
 
   const allItems = navConfig[role];
@@ -392,38 +373,27 @@ export function MobileSidebar({
       >
         <SheetHeader className="space-y-0 border-b border-sidebar-border px-4 py-4">
           <SheetTitle className="flex items-center gap-2.5">
-            <button
-              onClick={() => {
-                setIdentityOpen(true);
-              }}
-              className="group flex min-w-0 flex-1 items-center gap-2.5 rounded-md text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-primary/40"
-              aria-label={`View ${schoolIdentity.name} details`}
-            >
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-md bg-white/15 ring-1 ring-white/20 transition-transform group-hover:scale-[1.04]">
-                {schoolIdentity.logoDataUrl ? (
-                  <img
-                    src={schoolIdentity.logoDataUrl}
-                    alt={`${schoolIdentity.name} logo`}
-                    className="h-full w-full rounded-md object-contain p-0.5"
-                  />
-                ) : (
-                  <GraduationCap className="h-[18px] w-[18px] text-sidebar-primary" strokeWidth={2.2} />
-                )}
-              </div>
-              <div className="min-w-0 flex-1">
-                <span className="block truncate font-heading text-base font-bold leading-tight text-sidebar-foreground">
-                  {schoolIdentity.shortName || schoolIdentity.name}
-                </span>
-                <span className="block truncate text-xs font-normal text-sidebar-foreground/55">
-                  {ROLE_LABELS[role]} workspace
-                </span>
-              </div>
-              <Info className="h-3.5 w-3.5 shrink-0 text-sidebar-foreground/40 transition-colors group-hover:text-sidebar-foreground/70" />
-            </button>
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-md bg-white/15 ring-1 ring-white/20">
+              {schoolIdentity.logoDataUrl ? (
+                <img
+                  src={schoolIdentity.logoDataUrl}
+                  alt={`${schoolIdentity.name} logo`}
+                  className="h-full w-full rounded-md object-contain p-0.5"
+                />
+              ) : (
+                <GraduationCap className="h-[18px] w-[18px] text-sidebar-primary" strokeWidth={2.2} />
+              )}
+            </div>
+            <div className="min-w-0 flex-1">
+              <span className="block truncate font-heading text-base font-bold leading-tight text-sidebar-foreground">
+                {schoolIdentity.shortName || schoolIdentity.name}
+              </span>
+              <span className="block truncate text-xs font-normal text-sidebar-foreground/55">
+                {ROLE_LABELS[role]} workspace
+              </span>
+            </div>
           </SheetTitle>
         </SheetHeader>
-
-        <SchoolIdentityModal open={identityOpen} onOpenChange={setIdentityOpen} />
 
         <ScrollArea className="flex-1">
           <div className="px-2.5 py-3">

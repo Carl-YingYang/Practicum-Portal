@@ -252,6 +252,8 @@ export function TimeClockView({ breadcrumb, description }: TimeClockViewProps) {
                 : `${roleLabel} time tracking`
             }
             jibbleUrl={toolsConfig.jibbleInviteUrl || undefined}
+            ownerUserId={userId}
+            ownerRole={role}
           />
           <p className="rounded-lg border border-dashed border-border bg-muted/20 p-3 text-xs text-muted-foreground">
             <Clock className="mr-1 inline h-3 w-3" />

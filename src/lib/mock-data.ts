@@ -49,6 +49,7 @@ export const supervisors: Supervisor[] = [
     title: "Senior Frontend Engineer",
     department: "Engineering",
     capacity: 5,
+    idNumber: "EMP-001",
     createdAt: "2025-01-15T08:00:00.000Z",
   },
   {
@@ -60,6 +61,7 @@ export const supervisors: Supervisor[] = [
     title: "QA Lead",
     department: "QA",
     capacity: 4,
+    idNumber: "EMP-002",
     createdAt: "2025-01-20T08:00:00.000Z",
   },
   {
@@ -71,6 +73,7 @@ export const supervisors: Supervisor[] = [
     title: "Backend Engineering Manager",
     department: "Engineering",
     capacity: 5,
+    idNumber: "EMP-003",
     createdAt: "2025-02-01T08:00:00.000Z",
   },
   {
@@ -82,6 +85,7 @@ export const supervisors: Supervisor[] = [
     title: "Design Director",
     department: "Design",
     capacity: 3,
+    idNumber: "EMP-004",
     createdAt: "2025-02-10T08:00:00.000Z",
   },
   {
@@ -93,6 +97,7 @@ export const supervisors: Supervisor[] = [
     title: "Marketing Manager",
     department: "Marketing",
     capacity: 4,
+    idNumber: "EMP-005",
     createdAt: "2025-02-15T08:00:00.000Z",
   },
   {
@@ -104,6 +109,7 @@ export const supervisors: Supervisor[] = [
     title: "Operations Lead",
     department: "Operations",
     capacity: 5,
+    idNumber: "EMP-006",
     createdAt: "2025-01-18T08:00:00.000Z",
   },
 ];
@@ -931,6 +937,7 @@ export const coordinators: Coordinator[] = [
     department: "Computer Studies",
     status: "active",
     avatarColor: "#475569",
+    idNumber: "COORD-001",
     createdAt: "2025-01-10T08:00:00.000Z",
   },
 ];
@@ -946,6 +953,7 @@ export const mockUsers: User[] = [
     email: "juan.delacruz@university.edu",
     role: "student",
     studentId: "s1",
+    idNumber: "2021-00123",
     avatarColor: "#0f766e",
   },
   {
@@ -954,6 +962,7 @@ export const mockUsers: User[] = [
     email: "maria.santos@acmecorp.com",
     role: "supervisor",
     supervisorId: "sup1",
+    idNumber: "EMP-001",
     avatarColor: "#d97706",
   },
   {
@@ -962,6 +971,7 @@ export const mockUsers: User[] = [
     email: "patricia.lim@university.edu",
     role: "coordinator",
     coordinatorId: "coord1",
+    idNumber: "COORD-001",
     avatarColor: "#475569",
   },
 ];

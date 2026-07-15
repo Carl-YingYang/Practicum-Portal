@@ -19,9 +19,11 @@ import {
   Heading1,
   Heading2,
   Share2,
-  Printer,
+  FileDown,
+  Loader2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 
 /**
  * GoogleDocEditor — a Docs-style embedded writing surface rendered INSIDE the
@@ -35,6 +37,10 @@ import { cn } from "@/lib/utils";
  * The editor keeps two labelled sections (tasks / learnings) so the existing
  * data model is preserved, but visually they read as one continuous document
  * page — exactly like editing a Google Doc inline.
+ *
+ * The toolbar's download button exports the current document as a Word (.docx)
+ * file when `onDownloadWord` is provided. Parents pass a handler that calls
+ * `exportJournalToDocx` / `exportFormToDocx` with full context.
  */
 export interface GoogleDocEditorProps {
   /** Document title shown in the Docs title bar. */
@@ -55,6 +61,12 @@ export interface GoogleDocEditorProps {
   saveState?: "idle" | "saving" | "saved";
   /** Optional left rail height sync — the editor fills available height. */
   className?: string;
+  /**
+   * When provided, the toolbar shows an enabled "Download as Word" button.
+   * The parent owns the actual export logic (calls `exportJournalToDocx`
+   * with full student/supervisor context).
+   */
+  onDownloadWord?: () => void | Promise<void>;
 }
 
 export function GoogleDocEditor({
@@ -68,12 +80,14 @@ export function GoogleDocEditor({
   readOnly = false,
   saveState = "idle",
   className,
+  onDownloadWord,
 }: GoogleDocEditorProps) {
   const [activeFmt, setActiveFmt] = React.useState({
     bold: false,
     italic: false,
     underline: false,
   });
+  const [downloading, setDownloading] = React.useState(false);
 
   // Word count for the footer (tasks + learnings).
   const wordCount = React.useMemo(() => {
@@ -85,6 +99,22 @@ export function GoogleDocEditor({
   const toggleFmt = (key: "bold" | "italic" | "underline") => {
     if (readOnly) return;
     setActiveFmt((f) => ({ ...f, [key]: !f[key] }));
+  };
+
+  const handleDownloadWord = async () => {
+    if (!onDownloadWord || downloading) return;
+    setDownloading(true);
+    try {
+      await onDownloadWord();
+      toast.success("Word document downloaded", {
+        description: "Check your downloads folder.",
+      });
+    } catch (e) {
+      console.error(e);
+      toast.error("Couldn't generate the Word document.");
+    } finally {
+      setDownloading(false);
+    }
   };
 
   return (
@@ -175,7 +205,13 @@ export function GoogleDocEditor({
         <ToolbarBtn icon={List} label="Bullet list" disabled={readOnly} />
         <ToolbarBtn icon={ListOrdered} label="Numbered list" disabled={readOnly} />
         <div className="ml-auto flex items-center gap-0.5">
-          <ToolbarBtn icon={Printer} label="Print" disabled={readOnly} />
+          <ToolbarBtn
+            icon={downloading ? Loader2 : FileDown}
+            label={downloading ? "Generating…" : "Download as Word"}
+            disabled={!onDownloadWord || downloading}
+            spinning={downloading}
+            onClick={onDownloadWord ? handleDownloadWord : undefined}
+          />
           <ToolbarBtn icon={Share2} label="Share" disabled={readOnly} />
         </div>
       </div>
@@ -295,12 +331,14 @@ function ToolbarBtn({
   active,
   disabled,
   onClick,
+  spinning,
 }: {
   icon: typeof Bold;
   label: string;
   active?: boolean;
   disabled?: boolean;
   onClick?: () => void;
+  spinning?: boolean;
 }) {
   return (
     <button
@@ -316,7 +354,7 @@ function ToolbarBtn({
         active && "bg-teal-50 text-teal-700 dark:bg-teal-950/40 dark:text-teal-300",
       )}
     >
-      <Icon className="h-4 w-4" />
+      <Icon className={cn("h-4 w-4", spinning && "animate-spin")} />
     </button>
   );
 }
