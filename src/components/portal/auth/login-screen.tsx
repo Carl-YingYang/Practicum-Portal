@@ -29,7 +29,10 @@ import {
   Check,
   AlertCircle,
   UserPlus,
+  Sun,
+  Moon,
 } from "lucide-react";
+import { useTheme } from "next-themes";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
@@ -63,6 +66,66 @@ const roleAccent: Record<Role, string> = {
   supervisor: "from-amber-300/30 to-amber-500/20",
   coordinator: "from-emerald-300/30 to-emerald-500/20",
 };
+
+// ============================================================
+// Login-page default theme — Practo Blue
+// ----------------------------------------
+// The login page must NOT be affected by the coordinator-configured
+// school theme (which SchoolThemeProvider writes onto :root). We
+// re-assert the default Practo Blue palette as inline CSS variables
+// on the login wrapper. CSS custom properties cascade, so an inline
+// style on the login container overrides :root for everything inside
+// the login screen — while the authenticated portal still reads the
+// school theme from :root.
+// ============================================================
+const LOGIN_DEFAULT_THEME_VARS = {
+  "--primary": "#266ca9",
+  "--ring": "#266ca9",
+  "--info": "#266ca9",
+  "--sidebar": "#266ca9",
+  "--sidebar-primary": "#ade1fb",
+  "--sidebar-primary-foreground": "#0f2573",
+  "--sidebar-ring": "#ade1fb",
+  "--topbar": "#266ca9",
+  "--accent": "#ade1fb",
+  "--accent-foreground": "#266ca9",
+  "--blue-lightest": "#ade1fb",
+  "--blue": "#266ca9",
+  "--blue-deep": "#0f2573",
+  "--blue-darker": "#041d56",
+  "--chart-1": "#266ca9",
+  "--chart-2": "#ade1fb",
+  "--chart-3": "#0f2573",
+  "--navy": "#266ca9",
+  "--navy-deep": "#0f2573",
+  "--navy-darker": "#041d56",
+  "--navy-light": "#ade1fb",
+  "--gold": "#ade1fb",
+  "--gold-light": "#ade1fb",
+} as React.CSSProperties;
+
+// ============================================================
+// Light / dark mode toggle — floating, top-right of login page
+// ============================================================
+function LoginThemeToggle() {
+  const { theme, setTheme } = useTheme();
+  const [mounted, setMounted] = React.useState(false);
+  React.useEffect(() => setMounted(true), []);
+  return (
+    <button
+      type="button"
+      onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+      aria-label="Toggle light or dark mode"
+      className="fixed right-4 top-4 z-50 flex h-10 w-10 items-center justify-center rounded-full border border-border/60 bg-background/80 text-foreground shadow-sm backdrop-blur-md transition-colors hover:bg-muted supports-[backdrop-filter]:bg-background/65"
+    >
+      {mounted && theme === "dark" ? (
+        <Sun className="h-[18px] w-[18px]" strokeWidth={2.1} />
+      ) : (
+        <Moon className="h-[18px] w-[18px]" strokeWidth={2.1} />
+      )}
+    </button>
+  );
+}
 
 // ============================================================
 // Auto-scrolling role carousel
@@ -133,104 +196,63 @@ function RoleCarousel() {
 // Left brand panel — shared by sign-in and register modes
 // ============================================================
 function BrandPanel() {
-  const schoolIdentity = useAppStore((s) => s.schoolIdentity);
-  const hasBanner = !!schoolIdentity.bannerDataUrl;
-  const hasLogo = !!schoolIdentity.logoDataUrl;
-
   return (
     <div className="relative hidden w-1/2 flex-col justify-between overflow-hidden p-12 text-white lg:flex">
-      {/* Background — either the school banner or the default navy gradient */}
-      {hasBanner ? (
-        <div className="absolute inset-0">
-          { }
-          <img
-            src={schoolIdentity.bannerDataUrl}
-            alt=""
-            className="h-full w-full object-cover"
-          />
-          {/* Dark gradient overlay so white text stays readable */}
-          <div
-            className="absolute inset-0"
-            style={{
-              background:
-                "linear-gradient(135deg, rgba(4,29,86,0.92) 0%, rgba(15,37,115,0.82) 50%, rgba(38,108,169,0.72) 100%)",
-            }}
-          />
-        </div>
-      ) : (
-        <div className="bg-ici-navy-gradient absolute inset-0" />
-      )}
+      {/* Background — default navy gradient (login is never school-branded) */}
+      <div className="bg-ici-navy-gradient absolute inset-0" />
       <div className="bg-grid-texture pointer-events-none absolute inset-0 opacity-30" />
       <div className="bg-ici-dots pointer-events-none absolute left-8 top-8 h-24 w-24 opacity-40" />
       <div className="bg-ici-dots pointer-events-none absolute right-8 top-8 h-24 w-24 opacity-40" />
       <div className="pointer-events-none absolute -left-24 top-1/3 h-72 w-72 rounded-full bg-[var(--blue-lightest)]/15 blur-3xl" />
       <div className="pointer-events-none absolute -right-20 bottom-1/4 h-64 w-64 rounded-full bg-sky-400/10 blur-3xl" />
 
-      {/* Default hero image only when no custom banner */}
-      {!hasBanner && (
-        <div className="pointer-events-none absolute inset-0 opacity-25">
-          <BlurImage
-            src="/hero-students.png"
-            alt=""
-            darkPlaceholder
-            eager
-            wrapperClassName="absolute inset-0 h-full w-full"
-            className="h-full w-full object-cover"
-          />
-        </div>
-      )}
+      {/* Default hero image (login is never school-branded) */}
+      <div className="pointer-events-none absolute inset-0 opacity-25">
+        <BlurImage
+          src="/hero-students.png"
+          alt=""
+          darkPlaceholder
+          eager
+          wrapperClassName="absolute inset-0 h-full w-full"
+          className="h-full w-full object-cover"
+        />
+      </div>
 
-      {/* Brand */}
+      {/* Brand — compact product mark (no school name on login) */}
       <div className="relative">
-        <div className="flex items-center gap-3">
-          <div className="flex h-11 w-11 items-center justify-center rounded-md bg-white/15 ring-1 ring-white/25 backdrop-blur-sm">
-            {hasLogo ? (
-               
-              <img
-                src={schoolIdentity.logoDataUrl}
-                alt={`${schoolIdentity.name} logo`}
-                className="h-full w-full rounded-md object-contain p-1"
-              />
-            ) : (
-              <GraduationCap className="h-6 w-6 text-[var(--blue-lightest)]" strokeWidth={2.4} />
-            )}
+        <div className="flex items-center gap-2.5">
+          <div className="flex h-9 w-9 items-center justify-center rounded-md bg-white/15 ring-1 ring-white/25 backdrop-blur-sm">
+            <GraduationCap className="h-5 w-5 text-[var(--blue-lightest)]" strokeWidth={2.4} />
           </div>
           <div className="min-w-0">
-            <p className="truncate text-base font-bold leading-tight">
-              {schoolIdentity.name}
+            <p className="text-sm font-bold leading-tight tracking-tight">
+              Practicum Management
             </p>
-            <p className="truncate text-xs text-white/70">
-              {schoolIdentity.tagline}
+            <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-white/55">
+              Practo Portal
             </p>
           </div>
         </div>
       </div>
 
       {/* Motto + auto-scrolling role carousel */}
-      <div className="relative max-w-md space-y-7">
-        <div className="space-y-3">
-          {/* School motto */}
-          <h1 className="text-[2.25rem] font-extrabold leading-[1.08] tracking-tight">
+      <div className="relative max-w-md space-y-6">
+        <div className="space-y-2.5">
+          <h1 className="text-[2rem] font-extrabold leading-[1.1] tracking-tight">
             Practicum management,{" "}
             <span className="text-[var(--blue-lightest)]">simplified.</span>
           </h1>
-          <p className="text-[15px] font-medium leading-relaxed text-white/85">
+          <p className="text-[14.5px] font-medium leading-relaxed text-white/85">
             One focused platform to evaluate interns, approve weekly journals,
             and export practicum accreditation reports.
           </p>
-          {schoolIdentity.address && (
-            <p className="flex items-center gap-1.5 pt-1 text-[13px] font-medium text-white/70">
-              <span className="opacity-60">📍</span>
-              <span className="truncate">{schoolIdentity.address}</span>
-            </p>
-          )}
         </div>
 
         {/* Pale accent divider */}
-        <div className="h-1 w-16 rounded-full bg-[var(--blue-lightest)]" />
+        <div className="h-1 w-14 rounded-full bg-[var(--blue-lightest)]" />
 
         {/* Auto-scrolling role carousel */}
-        <div className="space-y-3">
+        <div className="space-y-2.5">
           <p className="text-[11px] font-semibold uppercase tracking-wider text-white/50">
             Built for
           </p>
@@ -256,28 +278,17 @@ function BrandPanel() {
 // Mobile brand — shown on small screens (top of the right panel)
 // ============================================================
 function MobileBrand() {
-  const schoolIdentity = useAppStore((s) => s.schoolIdentity);
-  const hasLogo = !!schoolIdentity.logoDataUrl;
   return (
-    <div className="mb-8 flex items-center gap-3 lg:hidden">
-      <div className="flex h-11 w-11 items-center justify-center overflow-hidden rounded-md bg-primary text-primary-foreground elev-sm">
-        {hasLogo ? (
-           
-          <img
-            src={schoolIdentity.logoDataUrl}
-            alt={`${schoolIdentity.name} logo`}
-            className="h-full w-full object-contain p-1"
-          />
-        ) : (
-          <GraduationCap className="h-6 w-6" strokeWidth={2.4} />
-        )}
+    <div className="mb-7 flex items-center gap-2.5 lg:hidden">
+      <div className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-md bg-primary text-primary-foreground elev-sm">
+        <GraduationCap className="h-5 w-5" strokeWidth={2.4} />
       </div>
       <div className="min-w-0">
-        <p className="truncate text-base font-bold leading-tight text-foreground">
-          {schoolIdentity.name}
+        <p className="truncate text-sm font-bold leading-tight text-foreground">
+          Practicum Management
         </p>
-        <p className="truncate text-xs text-muted-foreground">
-          {schoolIdentity.tagline}
+        <p className="truncate text-[11px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
+          Practo Portal
         </p>
       </div>
     </div>
@@ -618,7 +629,11 @@ export function LoginScreen() {
   // ---- Coordinator self-registration mode ----
   if (mode === "register") {
     return (
-      <div className="flex min-h-screen bg-background">
+      <div
+        className="flex min-h-screen bg-background"
+        style={LOGIN_DEFAULT_THEME_VARS}
+      >
+        <LoginThemeToggle />
         <BrandPanel />
         <div className="flex w-full flex-col items-center justify-center px-4 py-10 lg:w-1/2">
           <CoordinatorRegisterForm
@@ -631,7 +646,12 @@ export function LoginScreen() {
 
   // ---- Default sign-in mode ----
   return (
-    <div className="flex min-h-screen bg-background">
+    <div
+      className="flex min-h-screen bg-background"
+      style={LOGIN_DEFAULT_THEME_VARS}
+    >
+      <LoginThemeToggle />
+
       {/* Left brand panel */}
       <BrandPanel />
 
