@@ -129,6 +129,7 @@ export function NotificationsDropdown() {
           onOpenChange={setOpen}
           maxHeight={88}
           className="max-w-full"
+          ariaLabel="Notifications"
         >
           <NotificationsListHeader
             unreadCount={unreadCount}

@@ -19,6 +19,12 @@ interface BottomSheetProps {
   /** Max height as a vh percentage. Default 85. */
   maxHeight?: number;
   className?: string;
+  /**
+   * Accessible label used for the SheetTitle when no visible `title` is
+   * rendered. Required by Radix's Sheet primitive for screen-reader support.
+   * Falls back to "Dialog" if omitted.
+   */
+  ariaLabel?: string;
 }
 
 /**
@@ -30,6 +36,12 @@ interface BottomSheetProps {
  * to feel like a centered dialog.
  *
  * The content area scrolls; the header (title + description) stays pinned.
+ *
+ * Accessibility: Radix's Sheet requires a SheetTitle for screen readers. When
+ * a visible `title` is passed it renders in the header; when callers supply
+ * their own custom header (no `title`), a visually-hidden SheetTitle is
+ * rendered using `ariaLabel` so the warning is suppressed and the sheet is
+ * still announced correctly.
  */
 export function BottomSheet({
   open,
@@ -39,6 +51,7 @@ export function BottomSheet({
   children,
   maxHeight = 85,
   className,
+  ariaLabel = "Dialog",
 }: BottomSheetProps) {
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -66,6 +79,23 @@ export function BottomSheet({
               </SheetDescription>
             )}
           </SheetHeader>
+        )}
+        {/* Always render a SheetTitle for screen readers. When a visible
+            title is shown above, this duplicates the label semantically — but
+            Radix only requires ONE SheetTitle in the tree, and the visible
+            one already satisfies it. When no visible title is rendered, this
+            sr-only SheetTitle fills the accessibility gap. We render it with
+            `sr-only` so it never affects the visual layout. */}
+        {!title && (
+          <SheetTitle className="sr-only">{ariaLabel}</SheetTitle>
+        )}
+        {/* Radix also requires a SheetDescription (or aria-describedby) to
+            avoid a console warning. Render a visually-hidden description when
+            the caller doesn't supply a visible one. */}
+        {!description && (
+          <SheetDescription className="sr-only">
+            {ariaLabel}
+          </SheetDescription>
         )}
         {/* Drag handle for affordance */}
         <div className="mx-auto mt-2 h-1 w-10 shrink-0 rounded-full bg-border" aria-hidden />
