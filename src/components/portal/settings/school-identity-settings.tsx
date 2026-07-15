@@ -23,7 +23,6 @@ import {
 import {
   School,
   Upload,
-  Image as ImageIcon,
   Palette,
   Check,
   RotateCcw,
@@ -44,8 +43,6 @@ import type { SchoolIdentity, SchoolThemePreset } from "@/lib/types";
 
 const LOGO_MAX = 128; // px
 const LOGO_MAX_BYTES = 30 * 1024; // 30 KB
-const BANNER_MAX_W = 1600; // px
-const BANNER_MAX_BYTES = 200 * 1024; // 200 KB
 
 export function SchoolIdentitySettings() {
   const schoolIdentity = useAppStore((s) => s.schoolIdentity);
@@ -55,7 +52,7 @@ export function SchoolIdentitySettings() {
   // Local draft so changes can be saved/cancelled as a unit.
   const [draft, setDraft] = React.useState<SchoolIdentity>(schoolIdentity);
   const [errors, setErrors] = React.useState<Record<string, string>>({});
-  const [busy, setBusy] = React.useState<"logo" | "banner" | null>(null);
+  const [busy, setBusy] = React.useState<"logo" | null>(null);
   const dirty = JSON.stringify(draft) !== JSON.stringify(schoolIdentity);
 
   React.useEffect(() => {
@@ -93,7 +90,7 @@ export function SchoolIdentitySettings() {
       tagline: draft.tagline.trim(),
       address: draft.address.trim(),
       logoDataUrl: draft.logoDataUrl,
-      bannerDataUrl: draft.bannerDataUrl,
+      bannerDataUrl: undefined,
       themePreset: draft.themePreset,
       customColors: draft.customColors,
     });
@@ -132,48 +129,38 @@ export function SchoolIdentitySettings() {
     }
   };
 
-  const handleBannerUpload = async (file: File) => {
-    setBusy("banner");
-    try {
-      const out = await resizeAndCompress(file, {
-        maxDim: BANNER_MAX_W,
-        quality: 0.8,
-        mime: "image/jpeg",
-        maxBytes: BANNER_MAX_BYTES,
-      });
-      set("bannerDataUrl", out.dataUrl);
-      toast.success("Banner ready", {
-        description: `${out.width}×${out.height} · ${formatBytes(out.bytes)}`,
-      });
-    } catch (e) {
-      toast.error("Banner upload failed", {
-        description: e instanceof Error ? e.message : "Unknown error.",
-      });
-    } finally {
-      setBusy(null);
-    }
-  };
-
   const themeColors = resolveSchoolTheme(draft);
 
   return (
     <div>
       <PageHeader
         title="School Settings"
-        description="Brand every student and supervisor's view with your school's identity, colors, and banner."
+        description="Brand every student and supervisor's view with your school's identity and colors."
         breadcrumb="School Settings"
       />
 
-      <div className="grid gap-4 pb-8 lg:grid-cols-[1fr_360px]">
-        {/* ============ LEFT: form ============ */}
-        <div className="space-y-4">
+      <div className="flex flex-col gap-3 pb-8 lg:grid lg:grid-cols-[1fr_320px] lg:gap-4">
+        {/* ============ LIVE PREVIEW (first on mobile, right on desktop) ============ */}
+        <div className="order-1 mb-1 lg:order-2 lg:sticky lg:top-4 lg:self-start lg:mb-0">
+          <SectionCard
+            title="Live Preview"
+            description="Updates as you edit."
+            contentClassName="p-3.5"
+          >
+            <LivePreview identity={draft} />
+          </SectionCard>
+        </div>
+
+        {/* ============ FORM (second on mobile, left on desktop) ============ */}
+        <div className="order-2 space-y-3 lg:order-1">
           {/* ---- Section 1: Identity ---- */}
           <SectionCard
             title="School Identity"
             description="Shown in the sidebar and dashboard header."
+            contentClassName="p-4"
           >
-            <div className="space-y-4">
-              <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-3">
+              <div className="grid gap-3 sm:grid-cols-2">
                 <Field label="School Name" required error={errors.name}>
                   <Input
                     value={draft.name}
@@ -219,11 +206,12 @@ export function SchoolIdentitySettings() {
           {/* ---- Section 2: Logo ---- */}
           <SectionCard
             title="School Logo"
-            description="Square image, optimized to 128×128 PNG. Shown in the sidebar brand block."
+            description="Square image, optimized to 128×128 PNG."
+            contentClassName="p-4"
           >
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
               {/* Preview */}
-              <div className="flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-border bg-muted/30">
+              <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-border bg-muted/30">
                 {draft.logoDataUrl ? (
                    
                   <img
@@ -258,63 +246,15 @@ export function SchoolIdentitySettings() {
             </div>
           </SectionCard>
 
-          {/* ---- Section 3: Banner ---- */}
-          <SectionCard
-            title="Banner"
-            description="Wide hero image shown in the brand preview below. Optimized to 1600×auto JPEG, ≤ 200 KB."
-          >
-            <div className="space-y-3">
-              {/* Preview */}
-              <div className="relative aspect-[16/6] w-full overflow-hidden rounded-lg border border-border bg-muted/30">
-                {draft.bannerDataUrl ? (
-                   
-                  <img
-                    src={draft.bannerDataUrl}
-                    alt="Banner preview"
-                    className="h-full w-full object-cover"
-                  />
-                ) : (
-                  <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-[var(--blue)]/20 to-[var(--blue-deep)]/30">
-                    <div className="text-center">
-                      <ImageIcon className="mx-auto h-8 w-8 text-muted-foreground/50" />
-                      <p className="mt-1 text-xs text-muted-foreground">
-                        No banner — gradient fallback used
-                      </p>
-                    </div>
-                  </div>
-                )}
-              </div>
-              <div className="flex flex-wrap items-center gap-2">
-                <UploadButton
-                  accept="image/png,image/jpeg"
-                  onFile={handleBannerUpload}
-                  busy={busy === "banner"}
-                  label="Upload banner"
-                  hint="PNG or JPG, landscape preferred."
-                />
-                {draft.bannerDataUrl && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="text-destructive hover:text-destructive"
-                    onClick={() => set("bannerDataUrl", undefined)}
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                    Remove banner
-                  </Button>
-                )}
-              </div>
-            </div>
-          </SectionCard>
-
-          {/* ---- Section 4: Theme ---- */}
+          {/* ---- Section 3: Theme ---- */}
           <SectionCard
             title="Color Theme"
-            description="Drives the sidebar, buttons, and accents across the entire portal. Students and supervisors see this instantly."
+            description="Drives the sidebar, buttons, and accents across the entire portal."
+            contentClassName="p-4"
           >
-            <div className="space-y-4">
+            <div className="space-y-3">
               {/* Preset grid */}
-              <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
                 {SCHOOL_THEME_PRESETS.map((preset) => {
                   const active = draft.themePreset === preset.key;
                   return (
@@ -323,37 +263,37 @@ export function SchoolIdentitySettings() {
                       type="button"
                       onClick={() => set("themePreset", preset.key as SchoolThemePreset)}
                       className={cn(
-                        "group relative flex flex-col items-start gap-2 rounded-lg border p-3 text-left transition-all",
+                        "group relative flex flex-col items-start gap-1.5 rounded-lg border p-2.5 text-left transition-all",
                         active
                           ? "border-primary ring-1 ring-primary/30 bg-primary/5"
                           : "border-border hover:border-border/80 hover:bg-muted/30"
                       )}
                     >
                       {/* Color swatches */}
-                      <div className="flex w-full items-center gap-1.5">
+                      <div className="flex w-full items-center gap-1">
                         <span
-                          className="h-6 w-6 rounded-md ring-1 ring-black/5"
+                          className="h-5 w-5 rounded ring-1 ring-black/5"
                           style={{ backgroundColor: preset.colors.primary }}
                         />
                         <span
-                          className="h-6 w-6 rounded-md ring-1 ring-black/5"
+                          className="h-5 w-5 rounded ring-1 ring-black/5"
                           style={{ backgroundColor: preset.colors.deep }}
                         />
                         <span
-                          className="h-6 w-6 rounded-md ring-1 ring-black/5"
+                          className="h-5 w-5 rounded ring-1 ring-black/5"
                           style={{ backgroundColor: preset.colors.light }}
                         />
                         {active && (
-                          <span className="ml-auto flex h-5 w-5 items-center justify-center rounded-full bg-primary text-primary-foreground">
-                            <Check className="h-3 w-3" strokeWidth={3} />
+                          <span className="ml-auto flex h-4 w-4 items-center justify-center rounded-full bg-primary text-primary-foreground">
+                            <Check className="h-2.5 w-2.5" strokeWidth={3} />
                           </span>
                         )}
                       </div>
                       <div className="min-w-0">
-                        <p className="text-sm font-semibold text-foreground">
+                        <p className="text-[13px] font-semibold text-foreground">
                           {preset.label}
                         </p>
-                        <p className="truncate text-xs text-muted-foreground">
+                        <p className="truncate text-[11px] text-muted-foreground">
                           {preset.description}
                         </p>
                       </div>
@@ -366,23 +306,23 @@ export function SchoolIdentitySettings() {
                   type="button"
                   onClick={() => set("themePreset", "custom")}
                   className={cn(
-                    "group relative flex flex-col items-start gap-2 rounded-lg border p-3 text-left transition-all",
+                    "group relative flex flex-col items-start gap-1.5 rounded-lg border p-2.5 text-left transition-all",
                     draft.themePreset === "custom"
                       ? "border-primary ring-1 ring-primary/30 bg-primary/5"
                       : "border-border hover:border-border/80 hover:bg-muted/30"
                   )}
                 >
-                  <div className="flex w-full items-center gap-1.5">
-                    <Palette className="h-6 w-6 text-muted-foreground" />
+                  <div className="flex w-full items-center gap-1">
+                    <Palette className="h-5 w-5 text-muted-foreground" />
                     {draft.themePreset === "custom" && (
-                      <span className="ml-auto flex h-5 w-5 items-center justify-center rounded-full bg-primary text-primary-foreground">
-                        <Check className="h-3 w-3" strokeWidth={3} />
+                      <span className="ml-auto flex h-4 w-4 items-center justify-center rounded-full bg-primary text-primary-foreground">
+                        <Check className="h-2.5 w-2.5" strokeWidth={3} />
                       </span>
                     )}
                   </div>
                   <div className="min-w-0">
-                    <p className="text-sm font-semibold text-foreground">Custom</p>
-                    <p className="truncate text-xs text-muted-foreground">
+                    <p className="text-[13px] font-semibold text-foreground">Custom</p>
+                    <p className="truncate text-[11px] text-muted-foreground">
                       Pick your own colors
                     </p>
                   </div>
@@ -398,7 +338,7 @@ export function SchoolIdentitySettings() {
 
               {/* Custom color pickers */}
               {draft.themePreset === "custom" && (
-                <div className="grid gap-3 rounded-lg border border-border bg-muted/20 p-3.5 sm:grid-cols-3">
+                <div className="grid gap-2.5 rounded-lg border border-border bg-muted/20 p-3 sm:grid-cols-3">
                   <ColorPicker
                     label="Primary"
                     hint="Sidebar + buttons"
@@ -437,16 +377,6 @@ export function SchoolIdentitySettings() {
             </div>
           </SectionCard>
         </div>
-
-        {/* ============ RIGHT: live preview ============ */}
-        <div className="lg:sticky lg:top-4 lg:self-start">
-          <SectionCard
-            title="Live Preview"
-            description="Preview of the sidebar brand area."
-          >
-            <LivePreview identity={draft} />
-          </SectionCard>
-        </div>
       </div>
 
       <ActionBar>
@@ -461,8 +391,8 @@ export function SchoolIdentitySettings() {
             <AlertDialogHeader>
               <AlertDialogTitle>Reset all branding?</AlertDialogTitle>
               <AlertDialogDescription>
-                This clears the school name, logo, banner, and color theme, returning to
-                the default Practo look. This cannot be undone.
+                This clears the school name, logo, and color theme, returning to
+                the default look. This cannot be undone.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
@@ -630,39 +560,31 @@ function Field({
 function LivePreview({ identity }: { identity: SchoolIdentity }) {
   const colors = resolveSchoolTheme(identity);
   return (
-    <div className="space-y-3">
+    <div className="space-y-2.5">
       {/* Brand panel preview */}
       <div
-        className="relative overflow-hidden rounded-lg p-4 text-white"
+        className="relative overflow-hidden rounded-lg p-3 text-white"
         style={{
           background: `linear-gradient(135deg, ${colors.primary} 0%, ${colors.deep} 100%)`,
         }}
       >
-        {identity.bannerDataUrl && (
-           
-          <img
-            src={identity.bannerDataUrl}
-            alt=""
-            className="absolute inset-0 h-full w-full object-cover opacity-25"
-          />
-        )}
-        <div className="relative flex items-center gap-2.5">
+        <div className="relative flex items-center gap-2">
           <div
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-white/15 ring-1 ring-white/25"
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-white/15 ring-1 ring-white/25"
           >
             {identity.logoDataUrl ? (
-               
+              
               <img
                 src={identity.logoDataUrl}
                 alt=""
-                className="h-full w-full rounded-md object-contain p-1"
+                className="h-full w-full rounded-md object-contain p-0.5"
               />
             ) : (
-              <School className="h-4 w-4" style={{ color: colors.light }} strokeWidth={2.2} />
+              <School className="h-3.5 w-3.5" style={{ color: colors.light }} strokeWidth={2.2} />
             )}
           </div>
           <div className="min-w-0">
-            <p className="truncate text-sm font-bold leading-tight">
+            <p className="truncate text-[13px] font-bold leading-tight">
               {identity.name || "School Name"}
             </p>
             <p className="truncate text-[10px] text-white/70">
@@ -671,8 +593,8 @@ function LivePreview({ identity }: { identity: SchoolIdentity }) {
           </div>
         </div>
         {identity.address && (
-          <p className="relative mt-2 flex items-center gap-1 text-[10px] text-white/60">
-            <MapPin className="h-2.5 w-2.5" />
+          <p className="relative mt-1.5 flex items-center gap-1 text-[10px] text-white/60">
+            <MapPin className="h-2.5 w-2.5 shrink-0" />
             <span className="truncate">{identity.address}</span>
           </p>
         )}
@@ -683,18 +605,18 @@ function LivePreview({ identity }: { identity: SchoolIdentity }) {
         className="overflow-hidden rounded-lg border"
         style={{ backgroundColor: colors.primary }}
       >
-        <div className="flex items-center gap-2 border-b border-white/15 px-3 py-2.5">
-          <div className="flex h-6 w-6 items-center justify-center rounded-[4px] bg-white/15 ring-1 ring-white/20">
+        <div className="flex items-center gap-2 border-b border-white/15 px-2.5 py-2">
+          <div className="flex h-5 w-5 items-center justify-center rounded-[3px] bg-white/15 ring-1 ring-white/20">
             {identity.logoDataUrl ? (
-               
+              
               <img
                 src={identity.logoDataUrl}
                 alt=""
-                className="h-full w-full rounded-[4px] object-contain p-0.5"
+                className="h-full w-full rounded-[3px] object-contain p-0.5"
               />
             ) : (
               <GraduationCap
-                className="h-3 w-3"
+                className="h-2.5 w-2.5"
                 style={{ color: colors.light }}
                 strokeWidth={2.4}
               />
@@ -704,17 +626,17 @@ function LivePreview({ identity }: { identity: SchoolIdentity }) {
             {identity.shortName || "School"}
           </p>
         </div>
-        <div className="space-y-1 p-2">
+        <div className="space-y-0.5 p-1.5">
           {["Dashboard", "Students", "Reports"].map((item, i) => (
             <div
               key={item}
               className={cn(
-                "flex items-center gap-2 rounded-[4px] px-2 py-1.5 text-[10px] font-medium",
+                "flex items-center gap-2 rounded-[3px] px-2 py-1 text-[10px] font-medium",
                 i === 0 ? "bg-white/15 text-white" : "text-white/60"
               )}
             >
               <span
-                className="h-2 w-2 rounded-full"
+                className="h-1.5 w-1.5 rounded-full"
                 style={{ backgroundColor: i === 0 ? colors.light : "currentColor" }}
               />
               {item}
@@ -724,15 +646,15 @@ function LivePreview({ identity }: { identity: SchoolIdentity }) {
       </div>
 
       {/* Primary button preview */}
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center gap-1.5">
         <div
-          className="rounded-md px-3 py-1.5 text-[11px] font-semibold text-white"
+          className="rounded-md px-2.5 py-1 text-[11px] font-semibold text-white"
           style={{ backgroundColor: colors.primary }}
         >
           Primary button
         </div>
         <div
-          className="rounded-md border px-3 py-1.5 text-[11px] font-semibold"
+          className="rounded-md border px-2.5 py-1 text-[11px] font-semibold"
           style={{ borderColor: colors.primary, color: colors.primary }}
         >
           Outline
