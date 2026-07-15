@@ -29,7 +29,6 @@ import {
   UserSquare2,
   Users,
   Building2,
-  MessageSquare,
 } from "lucide-react";
 
 interface Row {
@@ -152,14 +151,6 @@ export function SupervisorsList() {
             >
               <Eye className="h-4 w-4" />
               View
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={() =>
-                navigate("coordinator.messages", { supervisorId: r.id })
-              }
-            >
-              <MessageSquare className="h-4 w-4" />
-              Message
             </DropdownMenuItem>
             <DropdownMenuItem
               onClick={() =>

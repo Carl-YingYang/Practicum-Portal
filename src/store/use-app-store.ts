@@ -5,7 +5,6 @@ import { v4 as uuid } from "uuid";
 import {
   activityLog as seedActivity,
   companies as seedCompanies,
-  conversations as seedConversations,
   coordinators as seedCoordinators,
   defaultToolsConfig,
   evaluations as seedEvaluations,
@@ -20,7 +19,6 @@ import {
   type ActivityLog,
   type ActivityType,
   type Company,
-  type Conversation,
   type Coordinator,
   type Evaluation,
   type FormBlock,
@@ -30,7 +28,6 @@ import {
   type FormStatus,
   type Journal,
   type JournalStatus,
-  type Message,
   type Role,
   type Student,
   type Supervisor,
@@ -57,7 +54,6 @@ interface AppState {
   journals: Journal[];
   timeLogs: TimeLog[];
   activity: ActivityLog[];
-  conversations: Conversation[];
   formDocuments: FormDocument[];
 
   // --- auth + navigation ---
@@ -66,8 +62,6 @@ interface AppState {
   viewParams: ViewParams;
   history: HistoryEntry[];
   notificationsOpen: boolean;
-  /** conversation ids the current user has marked as read (in-memory) */
-  readConversationIds: string[];
 
   // --- v5: free-first tool integration (Phase 1) ---
   toolsConfig: ToolsConfig;
@@ -163,20 +157,6 @@ interface AppState {
   clockOut: (userId: string, note?: string) => void;
   deleteTimeLog: (id: string) => void;
 
-  // --- messaging actions (supervisor ↔ coordinator) ---
-  sendMessage: (conversationId: string, body: string) => void;
-  startConversation: (input: {
-    participantId: string;
-    topic: Conversation["topic"];
-    title: string;
-    studentId?: string;
-    body: string;
-  }) => string;
-  markConversationRead: (conversationId: string) => void;
-  archiveConversation: (conversationId: string) => void;
-  unarchiveConversation: (conversationId: string) => void;
-  deleteConversation: (conversationId: string) => void;
-
   // --- form documents (coordinator-authored templates) ---
   createFormDocument: (input: {
     title: string;
@@ -267,7 +247,6 @@ export const useAppStore = create<AppState>((set, get) => ({
   journals: seedJournals,
   timeLogs: seedTimeLogs,
   activity: seedActivity,
-  conversations: seedConversations,
   formDocuments: seedFormDocuments,
 
   currentUser: null,
@@ -275,7 +254,6 @@ export const useAppStore = create<AppState>((set, get) => ({
   viewParams: {},
   history: [],
   notificationsOpen: false,
-  readConversationIds: [],
 
   // v5: free-first tool integration
   toolsConfig: defaultToolsConfig,
@@ -310,7 +288,6 @@ export const useAppStore = create<AppState>((set, get) => ({
       view: roleHomeView[role],
       viewParams: {},
       history: [],
-      readConversationIds: [],
     });
   },
 
@@ -322,12 +299,11 @@ export const useAppStore = create<AppState>((set, get) => ({
       view: roleHomeView[user.role],
       viewParams: {},
       history: [],
-      readConversationIds: [],
     });
   },
 
   logout: () =>
-    set({ currentUser: null, view: "login", viewParams: {}, history: [], readConversationIds: [] }),
+    set({ currentUser: null, view: "login", viewParams: {}, history: [] }),
 
   navigate: (view, params = {}) => {
     const { view: curView, viewParams: curParams, history } = get();
@@ -741,88 +717,6 @@ export const useAppStore = create<AppState>((set, get) => ({
             : s.students,
       };
     }),
-
-  // --- messaging ---
-  sendMessage: (conversationId, body) => {
-    const user = get().currentUser;
-    if (!user || !body.trim()) return;
-    const now = new Date().toISOString();
-    const msg: Message = {
-      id: uuid(),
-      conversationId,
-      senderId: user.id,
-      body: body.trim(),
-      createdAt: now,
-    };
-    set((s) => ({
-      conversations: s.conversations.map((c) =>
-        c.id === conversationId
-          ? { ...c, messages: [...c.messages, msg], lastMessageAt: now }
-          : c
-      ),
-    }));
-  },
-
-  startConversation: ({ participantId, topic, title, studentId, body }) => {
-    const user = get().currentUser;
-    if (!user || !body.trim()) return "";
-    const now = new Date().toISOString();
-    const id = uuid();
-    const msg: Message = {
-      id: uuid(),
-      conversationId: id,
-      senderId: user.id,
-      body: body.trim(),
-      createdAt: now,
-    };
-    const conv: Conversation = {
-      id,
-      participantIds: [user.id, participantId],
-      topic,
-      title,
-      studentId,
-      lastMessageAt: now,
-      messages: [msg],
-    };
-    set((s) => ({ conversations: [conv, ...s.conversations] }));
-    return id;
-  },
-
-  markConversationRead: (conversationId) => {
-    const user = get().currentUser;
-    if (!user) return;
-    set((s) =>
-      s.readConversationIds.includes(conversationId)
-        ? s
-        : { readConversationIds: [...s.readConversationIds, conversationId] }
-    );
-  },
-
-  archiveConversation: (conversationId) => {
-    const now = new Date().toISOString();
-    set((s) => ({
-      conversations: s.conversations.map((c) =>
-        c.id === conversationId ? { ...c, archivedAt: now } : c
-      ),
-    }));
-  },
-
-  unarchiveConversation: (conversationId) => {
-    set((s) => ({
-      conversations: s.conversations.map((c) =>
-        c.id === conversationId ? { ...c, archivedAt: null } : c
-      ),
-    }));
-  },
-
-  deleteConversation: (conversationId) => {
-    set((s) => ({
-      conversations: s.conversations.filter((c) => c.id !== conversationId),
-      readConversationIds: s.readConversationIds.filter(
-        (id) => id !== conversationId
-      ),
-    }));
-  },
 
   // ---------------- Form documents ----------------
   createFormDocument: ({ title, description, category }) => {

@@ -34,16 +34,12 @@ const SHORTCUT_GROUPS: ShortcutGroup[] = [
       { keys: ["G", "D"], description: "Go to dashboard" },
       { keys: ["G", "J"], description: "Go to journals" },
       { keys: ["G", "E"], description: "Go to evaluations" },
-      { keys: ["G", "M"], description: "Go to messages" },
     ],
   },
   {
     label: "Actions",
     icon: Keyboard,
     shortcuts: [
-      { keys: ["⌘", "Enter"], description: "Send message (in compose)" },
-      { keys: ["Enter"], description: "Send message (in thread)" },
-      { keys: ["Shift", "Enter"], description: "New line in message" },
       { keys: ["⌘", "P"], description: "Print / export current view" },
     ],
   },

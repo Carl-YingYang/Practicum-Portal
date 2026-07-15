@@ -1,7 +1,6 @@
 import type {
   ActivityLog,
   Company,
-  Conversation,
   Coordinator,
   Evaluation,
   FormDocument,
@@ -954,136 +953,7 @@ export const mockUsers: User[] = [
   },
 ];
 
-// ============================================================
-// Conversations — direct supervisor ↔ coordinator messaging
-// Pre-seeded with realistic practicum-related threads.
-// ============================================================
-export const conversations: Conversation[] = [
-  {
-    id: "conv1",
-    participantIds: ["u-supervisor", "u-coord"],
-    topic: "evaluation",
-    title: "Juan Dela Cruz — Mid-term evaluation",
-    studentId: "s1",
-    lastMessageAt: "2025-06-18T09:30:00.000Z",
-    messages: [
-      {
-        id: "m1",
-        conversationId: "conv1",
-        senderId: "u-supervisor",
-        body: "Hi Prof. Lim, I'm preparing Juan's mid-term evaluation. He's been consistent but I'd like to discuss his dependability rating — he was late twice last week.",
-        createdAt: "2025-06-18T08:45:00.000Z",
-      },
-      {
-        id: "m2",
-        conversationId: "conv1",
-        senderId: "u-coord",
-        body: "Thanks for the heads-up, Maria. Please document the incidents in the evaluation comments. Has he improved since?",
-        createdAt: "2025-06-18T09:05:00.000Z",
-      },
-      {
-        id: "m3",
-        conversationId: "conv1",
-        senderId: "u-supervisor",
-        body: "Yes, the last two days were on time. I'll rate him 3/5 on dependability with a note about the improvement. Submitting the evaluation today.",
-        createdAt: "2025-06-18T09:30:00.000Z",
-      },
-    ],
-  },
-  {
-    id: "conv2",
-    participantIds: ["u-supervisor", "u-coord"],
-    topic: "journal",
-    title: "Journal submissions — Week of Jun 16",
-    lastMessageAt: "2025-06-17T14:20:00.000Z",
-    messages: [
-      {
-        id: "m4",
-        conversationId: "conv2",
-        senderId: "u-coord",
-        body: "Maria, I noticed Juan's journal for this week is still pending your review. Could you approve it before Friday so it counts toward his hours?",
-        createdAt: "2025-06-17T13:50:00.000Z",
-      },
-      {
-        id: "m5",
-        conversationId: "conv2",
-        senderId: "u-supervisor",
-        body: "Got it — I'll review it this afternoon. The tasks section looks thorough, just verifying the hours match his time logs.",
-        createdAt: "2025-06-17T14:20:00.000Z",
-      },
-    ],
-  },
-  {
-    id: "conv3",
-    participantIds: ["u-supervisor", "u-coord"],
-    topic: "concern",
-    title: "Diego Ramos — Hours progress concern",
-    studentId: "s2",
-    lastMessageAt: "2025-06-15T11:00:00.000Z",
-    messages: [
-      {
-        id: "m6",
-        conversationId: "conv3",
-        senderId: "u-supervisor",
-        body: "Prof. Lim, Diego is at 38% of required hours with 6 weeks left. He's been clocking shorter sessions. Wanted to flag this early.",
-        createdAt: "2025-06-15T10:30:00.000Z",
-      },
-      {
-        id: "m7",
-        conversationId: "conv3",
-        senderId: "u-coord",
-        body: "Appreciate the early flag. Let's give him a 2-week extension and adjust the schedule. I'll email the academic office to formalize it.",
-        createdAt: "2025-06-15T11:00:00.000Z",
-      },
-    ],
-  },
-  {
-    id: "conv4",
-    participantIds: ["u-supervisor", "u-coord"],
-    topic: "practicum",
-    title: "Site visit scheduling — Term review",
-    lastMessageAt: "2025-06-12T16:00:00.000Z",
-    messages: [
-      {
-        id: "m8",
-        conversationId: "conv4",
-        senderId: "u-coord",
-        body: "I'd like to schedule a site visit to Acme Corp next month to observe the interns and meet with you. Does the week of Jul 7 work?",
-        createdAt: "2025-06-12T15:30:00.000Z",
-      },
-      {
-        id: "m9",
-        conversationId: "conv4",
-        senderId: "u-supervisor",
-        body: "That works for me. I'll arrange a brief tour and introduce you to the team. Send me the exact dates when confirmed.",
-        createdAt: "2025-06-12T16:00:00.000Z",
-      },
-    ],
-  },
-  {
-    id: "conv5",
-    participantIds: ["u-supervisor", "u-coord"],
-    topic: "general",
-    title: "Onboarding new intern next term",
-    lastMessageAt: "2025-06-10T10:00:00.000Z",
-    messages: [
-      {
-        id: "m10",
-        conversationId: "conv5",
-        senderId: "u-supervisor",
-        body: "We have capacity to take on one more intern next term. Could you send over candidate profiles from the shortlist?",
-        createdAt: "2025-06-10T09:30:00.000Z",
-      },
-      {
-        id: "m11",
-        conversationId: "conv5",
-        senderId: "u-coord",
-        body: "Great news! I'll send three profiles by end of week. Preference for IT or business track?",
-        createdAt: "2025-06-10T10:00:00.000Z",
-      },
-    ],
-  },
-];
+// (Messaging module removed — no conversations seed.)
 
 // Avatar color palette for generated initials
 export const avatarPalette = [

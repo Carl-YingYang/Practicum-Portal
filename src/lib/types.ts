@@ -246,40 +246,6 @@ export interface ActivityLog {
 }
 
 // ============================================================
-// Messaging — direct supervisor ↔ coordinator communication
-// ============================================================
-
-export type ConversationTopic =
-  | "evaluation"
-  | "journal"
-  | "concern"
-  | "practicum"
-  | "general";
-
-export interface Message {
-  id: string;
-  conversationId: string;
-  /** sender user id (e.g. "u-supervisor" / "u-coord") */
-  senderId: string;
-  body: string;
-  createdAt: string;
-}
-
-export interface Conversation {
-  id: string;
-  /** the two participants — supervisor user id + coordinator user id */
-  participantIds: [string, string];
-  topic: ConversationTopic;
-  title: string;
-  /** optional student this conversation is about */
-  studentId?: string;
-  lastMessageAt: string;
-  messages: Message[];
-  /** ISO timestamp when the conversation was archived by the current user; null/undefined = active */
-  archivedAt?: string | null;
-}
-
-// ============================================================
 // Custom form documents — coordinator-authored templates that
 // supervisors can fill in / view. Block-based, Google-Docs-style.
 // ============================================================
@@ -387,7 +353,6 @@ export type ViewKey =
   | "supervisor.reports"
   | "supervisor.time-monitor"
   | "supervisor.time-clock"
-  | "supervisor.messages"
   | "supervisor.forms"
   | "supervisor.form-view"
   | "supervisor.profile"
@@ -406,7 +371,6 @@ export type ViewKey =
   | "coordinator.reports"
   | "coordinator.time-monitor"
   | "coordinator.time-clock"
-  | "coordinator.messages"
   | "coordinator.forms"
   | "coordinator.form-editor"
   | "coordinator.user-management"
@@ -425,8 +389,7 @@ export interface NavItem {
   badgeKey?:
     | "pendingEvaluations"
     | "pendingJournals"
-    | "unassignedStudents"
-    | "unreadMessages";
+    | "unassignedStudents";
   /** Optional section label for grouping in the sidebar (e.g. "Overview", "People"). */
   section?: string;
 }
@@ -437,7 +400,6 @@ export interface ViewParams {
   coordinatorId?: string;
   evaluationId?: string;
   journalId?: string;
-  conversationId?: string;
   formId?: string;
   /** preselect student when creating an evaluation */
   preselectStudentId?: string;
@@ -477,12 +439,4 @@ export const ROLE_LABELS: Record<Role, string> = {
   student: "Student",
   supervisor: "Company Supervisor",
   coordinator: "Practicum Coordinator",
-};
-
-export const CONVERSATION_TOPIC_LABELS: Record<ConversationTopic, string> = {
-  evaluation: "Evaluation",
-  journal: "Journal",
-  concern: "Concern",
-  practicum: "Practicum",
-  general: "General",
 };

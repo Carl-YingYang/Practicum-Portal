@@ -36,7 +36,6 @@ import { JournalStatusCard } from "@/components/portal/shared/journal-status-car
 import { ToolsStatusBanner } from "@/components/portal/shared/tools-status-banner";
 import { StatCardSkeleton, TableSkeleton } from "@/components/portal/shared/skeletons";
 import { useInitialLoading } from "@/components/portal/shared/page-transition";
-import { QuickComposePopover } from "@/components/portal/shared/quick-compose-popover";
 import { Button } from "@/components/ui/button";
 
 export function SupervisorDashboard() {
@@ -304,13 +303,6 @@ export function SupervisorDashboard() {
             )}
           </div>
         </div>
-
-        {/* Messages CTA — quick-compose to coordinator */}
-        <QuickComposePopover
-          messagesView="supervisor.messages"
-          ctaLabel="Message the Coordinator"
-          counterpartLabel="Coordinator"
-        />
       </div>
     </div>
   );

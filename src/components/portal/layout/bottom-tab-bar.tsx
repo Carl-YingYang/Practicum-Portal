@@ -4,7 +4,6 @@ import * as React from "react";
 import { cn } from "@/lib/utils";
 import { useAppStore } from "@/store/use-app-store";
 import { bottomTabs, getNavIcon } from "@/lib/nav";
-import { unreadConversationCount } from "@/lib/selectors";
 import type { Role } from "@/lib/types";
 
 /**
@@ -26,8 +25,6 @@ export function BottomTabBar() {
   const students = useAppStore((s) => s.students);
   const evaluations = useAppStore((s) => s.evaluations);
   const journals = useAppStore((s) => s.journals);
-  const conversations = useAppStore((s) => s.conversations);
-  const readConversationIds = useAppStore((s) => s.readConversationIds);
 
   if (!role || !currentUser) return null;
   const tabs = bottomTabs[role];
@@ -59,13 +56,6 @@ export function BottomTabBar() {
     }
     if (badgeKey === "unassignedStudents") {
       return students.filter((s) => !s.supervisorId).length;
-    }
-    if (badgeKey === "unreadMessages") {
-      return unreadConversationCount(
-        conversations,
-        currentUser.id,
-        readConversationIds
-      );
     }
     return undefined;
   };

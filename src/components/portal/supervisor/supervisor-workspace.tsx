@@ -11,7 +11,6 @@ import { JournalApprovalQueue } from "./journal-approval-queue";
 import { JournalReview } from "./journal-review";
 import { SupervisorReports } from "./supervisor-reports";
 import { SupervisorProfile } from "./supervisor-profile";
-import { MessagesView } from "@/components/portal/shared/messages-view";
 import { SupervisorFormsList } from "./supervisor-forms-list";
 import { SupervisorFormViewer } from "./supervisor-form-viewer";
 
@@ -36,8 +35,6 @@ export function SupervisorWorkspace() {
       return <JournalApprovalQueue />;
     case "supervisor.journal-review":
       return <JournalReview />;
-    case "supervisor.messages":
-      return <MessagesView />;
     case "supervisor.forms":
       return <SupervisorFormsList />;
     case "supervisor.form-view":

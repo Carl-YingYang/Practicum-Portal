@@ -28,7 +28,6 @@ import {
   AlertCircle,
   UserSquare2,
   Eye,
-  MessageSquare,
 } from "lucide-react";
 
 interface Row {
@@ -172,16 +171,6 @@ export function SupervisorDetail({
         showBack
         actions={
           <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
-            <Button
-              variant="outline"
-              className="flex-1 sm:flex-none"
-              onClick={() =>
-                navigate("coordinator.messages", { supervisorId: supervisor.id })
-              }
-            >
-              <MessageSquare className="h-4 w-4" />
-              Message
-            </Button>
             <Button
               variant="outline"
               className="flex-1 sm:flex-none"

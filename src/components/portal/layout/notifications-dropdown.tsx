@@ -46,7 +46,6 @@ export function NotificationsDropdown() {
     const order: NotificationCategory[] = [
       "urgent",
       "approval",
-      "message",
       "info",
       "success",
       "clock",

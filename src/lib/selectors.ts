@@ -1,9 +1,7 @@
 import type {
   Company,
-  Conversation,
   Evaluation,
   Journal,
-  Message,
   Role,
   Student,
   Supervisor,
@@ -413,95 +411,6 @@ export function formatTimer(ms: number): string {
   return `${h.toString().padStart(2, "0")}:${m
     .toString()
     .padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
-}
-
-// ============================================================
-// Messaging selectors
-// ============================================================
-
-/** Conversations involving the given user, sorted by most recent message. */
-export function conversationsForUser(
-  conversations: Conversation[],
-  userId: string
-): Conversation[] {
-  return conversations
-    .filter((c) => c.participantIds.includes(userId))
-    .sort((a, b) => (a.lastMessageAt < b.lastMessageAt ? 1 : -1));
-}
-
-/** Active (non-archived) conversations for the user, sorted by most recent. */
-export function activeConversationsForUser(
-  conversations: Conversation[],
-  userId: string
-): Conversation[] {
-  return conversationsForUser(conversations, userId).filter(
-    (c) => !c.archivedAt
-  );
-}
-
-/** Archived conversations for the user, sorted by archive time desc. */
-export function archivedConversationsForUser(
-  conversations: Conversation[],
-  userId: string
-): Conversation[] {
-  return conversationsForUser(conversations, userId).filter((c) => c.archivedAt);
-}
-
-/** The other participant's user id in a conversation. */
-export function otherParticipantId(
-  conversation: Conversation,
-  currentUserId: string
-): string {
-  return conversation.participantIds.find((id) => id !== currentUserId) ?? "";
-}
-
-/** Count unread conversations for a user (messages from the other party after the user's last visit). */
-export function unreadConversationCount(
-  conversations: Conversation[],
-  userId: string,
-  readIds: string[]
-): number {
-  const mine = conversationsForUser(conversations, userId);
-  return mine.filter((c) => {
-    if (c.archivedAt) return false; // archived convs don't count as unread
-    const lastMsg = c.messages[c.messages.length - 1];
-    if (!lastMsg) return false;
-    // unread = last message is from the other party AND conversation not in readIds
-    return lastMsg.senderId !== userId && !readIds.includes(c.id);
-  }).length;
-}
-
-/** Preview text (truncated) for the latest message in a conversation. */
-export function conversationPreview(conversation: Conversation): string {
-  const last = conversation.messages[conversation.messages.length - 1];
-  if (!last) return "No messages yet";
-  return last.body.length > 80 ? last.body.slice(0, 80) + "…" : last.body;
-}
-
-/**
- * Full-text search across a conversation: matches title, preview, OR any
- * message body. Returns true if any match. Case-insensitive.
- */
-export function conversationMatchesSearch(
-  conversation: Conversation,
-  query: string
-): boolean {
-  if (!query.trim()) return true;
-  const q = query.toLowerCase();
-  if (conversation.title.toLowerCase().includes(q)) return true;
-  if (conversationPreview(conversation).toLowerCase().includes(q)) return true;
-  return conversation.messages.some((m) =>
-    m.body.toLowerCase().includes(q)
-  );
-}
-
-/** Get a conversation by id. */
-export function getConversation(
-  conversations: Conversation[],
-  id?: string
-): Conversation | undefined {
-  if (!id) return undefined;
-  return conversations.find((c) => c.id === id);
 }
 
 // ============================================================

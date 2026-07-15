@@ -29,7 +29,6 @@ import { Avatar } from "@/components/portal/shared/avatar";
 import { EmptyState } from "@/components/portal/shared/empty-state";
 import { StatCardSkeleton, TableSkeleton } from "@/components/portal/shared/skeletons";
 import { useInitialLoading } from "@/components/portal/shared/page-transition";
-import { QuickComposePopover } from "@/components/portal/shared/quick-compose-popover";
 import { ToolsStatusBanner } from "@/components/portal/shared/tools-status-banner";
 import { ConnectToolsSheet } from "@/components/portal/coordinator/connect-tools-sheet";
 import { Button } from "@/components/ui/button";
@@ -528,13 +527,6 @@ export function CoordinatorDashboard() {
 
         {/* Cohort by Department — breakdown card */}
         <CohortByDepartment students={students} />
-
-        {/* Messages CTA — quick-compose to supervisor */}
-        <QuickComposePopover
-          messagesView="coordinator.messages"
-          ctaLabel="Messages from Supervisors"
-          counterpartLabel="Supervisor"
-        />
       </div>
 
       {/* v5: Connect Tools sheet — opened from the status banner. */}

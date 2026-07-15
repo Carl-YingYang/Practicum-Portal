@@ -15,7 +15,6 @@ import { AllJournalsList } from "./all-journals-list";
 import { JournalView } from "./journal-view";
 import { CoordinatorReports } from "./coordinator-reports";
 import { CoordinatorProfile } from "./coordinator-profile";
-import { MessagesView } from "@/components/portal/shared/messages-view";
 import { FormsList } from "./forms-list";
 import { FormEditor } from "./form-editor";
 import { UserManagement } from "./user-management";
@@ -53,8 +52,6 @@ export function CoordinatorWorkspace() {
       return <AllJournalsList />;
     case "coordinator.journal-view":
       return <JournalView journalId={viewParams.journalId} />;
-    case "coordinator.messages":
-      return <MessagesView />;
     case "coordinator.forms":
       return <FormsList />;
     case "coordinator.form-editor":

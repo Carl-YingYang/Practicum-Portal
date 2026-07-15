@@ -7,7 +7,6 @@ import {
   ClipboardList,
   Clock,
   FileText,
-  MessageSquare,
   Timer,
   UserPlus,
   Users,
@@ -17,22 +16,18 @@ import { useAppStore } from "@/store/use-app-store";
 import {
   allActiveTimeLogs,
   completedTimeLogsForUser,
-  conversationsForUser,
   evaluationsForStudent,
   evaluationsForSupervisor,
   getStudent,
   getSupervisor,
   hoursPercent,
-  otherParticipantId,
   pendingJournalsForSupervisor,
   relativeTime,
   studentsForSupervisor,
   studentsWithOverdueJournals,
   totalCompletedTimeMs,
   unevaluatedInterns,
-  unreadConversationCount,
 } from "@/lib/selectors";
-import { mockUsers } from "@/lib/mock-data";
 import type { Role, ViewKey, ViewParams } from "@/lib/types";
 
 export type NotificationCategory =
@@ -40,8 +35,7 @@ export type NotificationCategory =
   | "approval" // amber — pending your action
   | "info" // teal — informational (new submissions, assignments)
   | "success" // emerald — positive (approved, completed)
-  | "clock" // slate — time-clock related
-  | "message"; // teal — unread messages from coordinator/supervisor
+  | "clock"; // slate — time-clock related
 
 export interface NotificationItem {
   id: string;
@@ -88,12 +82,6 @@ const CATEGORY_META: Record<
     iconFg: "text-slate-600 dark:text-slate-300",
     label: "Time clock",
   },
-  message: {
-    dot: "bg-teal-500",
-    iconBg: "bg-teal-50 dark:bg-teal-950/50",
-    iconFg: "text-teal-600 dark:text-teal-400",
-    label: "Messages",
-  },
 };
 
 export function getCategoryMeta(c: NotificationCategory) {
@@ -120,43 +108,11 @@ export function useNotifications(): NotificationItem[] {
   const evaluations = useAppStore((s) => s.evaluations);
   const timeLogs = useAppStore((s) => s.timeLogs);
   const activity = useAppStore((s) => s.activity);
-  const conversations = useAppStore((s) => s.conversations);
-  const readConversationIds = useAppStore((s) => s.readConversationIds);
 
   return React.useMemo(() => {
     if (!role || !currentUser) return [];
 
     const items: NotificationItem[] = [];
-
-    // Unread messages notification (supervisor + coordinator only)
-    if (role === "supervisor" || role === "coordinator") {
-      const myConvos = conversationsForUser(conversations, currentUser.id);
-      const unread = myConvos.filter((c) => {
-        const last = c.messages[c.messages.length - 1];
-        return last && last.senderId !== currentUser.id && !readConversationIds.includes(c.id);
-      });
-      if (unread.length > 0) {
-        const latest = unread[0];
-        const otherId = otherParticipantId(latest, currentUser.id);
-        const otherUser = mockUsers.find((u) => u.id === otherId);
-        const otherName = otherUser?.name ?? "Counterpart";
-        const lastMsg = latest.messages[latest.messages.length - 1];
-        items.push({
-          id: "unread-messages",
-          category: "message",
-          icon: MessageSquare,
-          title: `${unread.length} unread message${unread.length === 1 ? "" : "s"} from ${otherName}`,
-          description:
-            lastMsg.body.length > 80 ? lastMsg.body.slice(0, 80) + "…" : lastMsg.body,
-          timestamp: latest.lastMessageAt,
-          action: {
-            label: "Open messages",
-            view: role === "supervisor" ? "supervisor.messages" : "coordinator.messages",
-            params: { conversationId: latest.id },
-          },
-        });
-      }
-    }
 
     if (role === "coordinator") {
       // 1. Overdue journals (urgent)
@@ -438,5 +394,5 @@ export function useNotifications(): NotificationItem[] {
 
     // Sort newest first; stable for equal timestamps
     return items.sort((a, b) => (a.timestamp < b.timestamp ? 1 : -1));
-  }, [role, currentUser, students, supervisors, journals, evaluations, timeLogs, activity, conversations, readConversationIds]);
+  }, [role, currentUser, students, supervisors, journals, evaluations, timeLogs, activity]);
 }

@@ -20,7 +20,6 @@ import {
   GraduationCap,
   FileText,
   ExternalLink,
-  Send,
   ClipboardList,
   Hourglass,
 } from "lucide-react";
@@ -255,19 +254,6 @@ export function PersonDetailsSlideOver({
               }}
             >
               <ExternalLink className="h-3.5 w-3.5" /> Open full record
-            </Button>
-          )}
-          {(studentSupervisor || supervisor) && (
-            <Button
-              variant="ghost"
-              size="sm"
-              className="gap-1.5 text-muted-foreground"
-              onClick={() => {
-                onOpenChange(false);
-                navigate("coordinator.messages");
-              }}
-            >
-              <Send className="h-3.5 w-3.5" /> Message
             </Button>
           )}
         </div>

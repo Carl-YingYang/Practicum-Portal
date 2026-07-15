@@ -18,7 +18,6 @@ import {
   PanelLeftClose,
   ChevronRight,
 } from "lucide-react";
-import { unreadConversationCount } from "@/lib/selectors";
 
 interface SidebarProps {
   collapsed: boolean;
@@ -59,8 +58,6 @@ export function Sidebar({ collapsed, onToggleCollapse }: SidebarProps) {
   const students = useAppStore((s) => s.students);
   const evaluations = useAppStore((s) => s.evaluations);
   const journals = useAppStore((s) => s.journals);
-  const conversations = useAppStore((s) => s.conversations);
-  const readConversationIds = useAppStore((s) => s.readConversationIds);
 
   if (!role || !currentUser) return null;
 
@@ -94,13 +91,6 @@ export function Sidebar({ collapsed, onToggleCollapse }: SidebarProps) {
     }
     if (badgeKey === "unassignedStudents") {
       return students.filter((s) => !s.supervisorId).length;
-    }
-    if (badgeKey === "unreadMessages") {
-      return unreadConversationCount(
-        conversations,
-        currentUser.id,
-        readConversationIds
-      );
     }
     return undefined;
   };
@@ -267,8 +257,6 @@ export function MobileSidebar({
   const students = useAppStore((s) => s.students);
   const evaluations = useAppStore((s) => s.evaluations);
   const journals = useAppStore((s) => s.journals);
-  const conversations = useAppStore((s) => s.conversations);
-  const readConversationIds = useAppStore((s) => s.readConversationIds);
   if (!role || !currentUser) return null;
 
   const allItems = navConfig[role];
@@ -305,13 +293,6 @@ export function MobileSidebar({
     }
     if (badgeKey === "unassignedStudents") {
       return students.filter((s) => !s.supervisorId).length;
-    }
-    if (badgeKey === "unreadMessages") {
-      return unreadConversationCount(
-        conversations,
-        currentUser.id,
-        readConversationIds
-      );
     }
     return undefined;
   };
