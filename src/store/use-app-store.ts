@@ -83,13 +83,15 @@ interface AppState {
   /** Load school identity from localStorage (called once on mount). */
   hydrateSchoolIdentity: () => void;
 
-  // --- subscription & billing (hours-based; coordinator-managed) ---
+  // --- subscription & billing (pay-per-hour; coordinator-managed) ---
   subscription: Subscription;
   /** Patch subscription fields (merges). Persists to localStorage. */
   updateSubscription: (input: Partial<Subscription>) => void;
-  /** Purchase additional intern-hours; appends an invoice + activity log. */
-  purchaseHours: (hours: number) => void;
-  /** Switch to a different plan tier; resets the base pool + invoice. */
+  /** Override the active per-hour billing rate (PHP). */
+  setHourlyRate: (rate: number) => void;
+  /** Generate a usage invoice for the current accrued (logged) hours. */
+  generateUsageInvoice: () => void;
+  /** Switch to a different plan tier; adopts that tier's rate + invoice. */
   changePlan: (tier: PlanTier) => void;
   /** Reset to the seeded default subscription. */
   resetSubscription: () => void;
@@ -377,7 +379,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   // ===========================================================
-  // Subscription & billing (hours-based)
+  // Subscription & billing (pay-per-hour)
   // ===========================================================
   subscription: defaultSubscription,
   updateSubscription: (input) => {
@@ -391,35 +393,52 @@ export const useAppStore = create<AppState>((set, get) => ({
       return { subscription: next };
     });
   },
-  purchaseHours: (hours) => {
-    if (!Number.isFinite(hours) || hours <= 0) return;
-    const hrs = Math.round(hours);
-    const plan = SUBSCRIPTION_PLANS.find(
-      (p) => p.tier === get().subscription.planTier
-    );
-    const rate = plan?.ratePerHourPhp ?? 8;
-    const amount = hrs * rate;
+  setHourlyRate: (rate) => {
+    if (!Number.isFinite(rate) || rate <= 0) return;
+    const rounded = Math.round(rate * 10000) / 10000; // 4 dp
+    set((s) => {
+      const next = { ...s.subscription, hourlyRatePhp: rounded };
+      try {
+        localStorage.setItem("pp:subscription", JSON.stringify(next));
+      } catch {
+        // ignore
+      }
+      return {
+        subscription: next,
+        activity: logActivity(
+          s.activity,
+          "coordinator_action",
+          `Updated billing rate to ₱${rounded}/hr`,
+          s.currentUser?.id ?? ""
+        ),
+      };
+    });
+  },
+  generateUsageInvoice: () => {
+    const sub = get().subscription;
+    const rate = sub.hourlyRatePhp;
+    const usedHours = get().students
+      .filter((s) => s.status === "active")
+      .reduce((sum, s) => sum + (s.loggedHours || 0), 0);
+    if (usedHours <= 0) return;
+    const amount = Math.round(usedHours * rate * 100) / 100;
     const invoiceId = `INV-${new Date().getFullYear()}-${String(
-      get().subscription.invoices.length + 1
+      sub.invoices.length + 1
     ).padStart(3, "0")}`;
     const invoice = {
       id: invoiceId,
       issuedAt: new Date().toISOString(),
-      description: `Top-up — ${hrs.toLocaleString()} intern-hours`,
-      hours: hrs,
+      description: `Usage charge — ${usedHours.toLocaleString()} intern-hours`,
+      hours: usedHours,
       amountPhp: amount,
       status: "paid" as const,
     };
     set((s) => ({
-      subscription: {
-        ...s.subscription,
-        purchasedHours: s.subscription.purchasedHours + hrs,
-        invoices: [invoice, ...s.subscription.invoices],
-      },
+      subscription: { ...s.subscription, invoices: [invoice, ...s.subscription.invoices] },
       activity: logActivity(
         s.activity,
         "coordinator_action",
-        `Purchased ${hrs.toLocaleString()} intern-hours (₱${amount.toLocaleString()})`,
+        `Generated usage invoice ${invoiceId} (₱${amount.toLocaleString()})`,
         s.currentUser?.id ?? ""
       ),
     }));
@@ -435,39 +454,27 @@ export const useAppStore = create<AppState>((set, get) => ({
   changePlan: (tier) => {
     const plan = SUBSCRIPTION_PLANS.find((p) => p.tier === tier);
     if (!plan) return;
-    const invoiceId = `INV-${new Date().getFullYear()}-${String(
-      get().subscription.invoices.length + 1
-    ).padStart(3, "0")}`;
-    const invoice = {
-      id: invoiceId,
-      issuedAt: new Date().toISOString(),
-      description: `Switched to ${plan.label} plan — base pool`,
-      hours: plan.baseHours,
-      amountPhp: plan.basePricePhp,
-      status: "paid" as const,
-    };
-    set((s) => ({
-      subscription: {
+    set((s) => {
+      const next = {
         ...s.subscription,
         planTier: tier,
-        purchasedHours: plan.baseHours,
-        invoices: [invoice, ...s.subscription.invoices],
-      },
-      activity: logActivity(
-        s.activity,
-        "coordinator_action",
-        `Switched subscription to ${plan.label} plan`,
-        s.currentUser?.id ?? ""
-      ),
-    }));
-    try {
-      localStorage.setItem(
-        "pp:subscription",
-        JSON.stringify(get().subscription)
-      );
-    } catch {
-      // ignore
-    }
+        hourlyRatePhp: plan.hourlyRatePhp,
+      };
+      try {
+        localStorage.setItem("pp:subscription", JSON.stringify(next));
+      } catch {
+        // ignore
+      }
+      return {
+        subscription: next,
+        activity: logActivity(
+          s.activity,
+          "coordinator_action",
+          `Switched to ${plan.label} rate plan (₱${plan.hourlyRatePhp}/hr)`,
+          s.currentUser?.id ?? ""
+        ),
+      };
+    });
   },
   resetSubscription: () => {
     try {
@@ -482,7 +489,29 @@ export const useAppStore = create<AppState>((set, get) => ({
       const raw = localStorage.getItem("pp:subscription");
       if (!raw) return;
       const parsed = JSON.parse(raw) as Partial<Subscription>;
-      set((s) => ({ subscription: { ...s.subscription, ...parsed } }));
+      set((s) => {
+        // Migrate old pool-model payloads: drop `purchasedHours` and ensure a
+        // valid `hourlyRatePhp` exists (fall back to the tier rate, then default).
+        const { purchasedHours: _drop, ...rest } = parsed as Record<
+          string,
+          unknown
+        >;
+        void _drop;
+        const tier = (rest.planTier as PlanTier) ?? s.subscription.planTier;
+        const plan = SUBSCRIPTION_PLANS.find((p) => p.tier === tier);
+        const storedRate = rest.hourlyRatePhp as number | undefined;
+        const hourlyRatePhp =
+          Number.isFinite(storedRate) && (storedRate as number) > 0
+            ? (storedRate as number)
+            : plan?.hourlyRatePhp ?? s.subscription.hourlyRatePhp;
+        return {
+          subscription: {
+            ...s.subscription,
+            ...(rest as Partial<Subscription>),
+            hourlyRatePhp,
+          },
+        };
+      });
     } catch {
       // Corrupt JSON — ignore and keep defaults.
     }

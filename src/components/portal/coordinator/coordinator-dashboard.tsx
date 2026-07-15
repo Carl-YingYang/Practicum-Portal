@@ -67,9 +67,9 @@ interface CohortRow {
 type AttentionTab = "unassigned" | "noEval" | "rejected" | "overdue";
 
 /**
- * Subscription KPI tile for the coordinator dashboard. Shows remaining
- * intern-hour credits and links to the Subscription & Billing page. Turns red
- * when over-allocated or low on credits.
+ * Subscription KPI tile for the coordinator dashboard. Shows the committed
+ * billing (Σ requiredHours × hourly rate) and links to the Subscription &
+ * Billing page.
  */
 function SubscriptionKpiCard() {
   const subscription = useAppStore((s) => s.subscription);
@@ -79,20 +79,16 @@ function SubscriptionKpiCard() {
     () => computeSubscriptionMetrics(subscription, students),
     [subscription, students]
   );
-  const danger = metrics.overAllocated || metrics.lowCredits;
   return (
     <StatCard
-      label="Hour Credits"
-      value={metrics.remainingCredits.toLocaleString()}
-      icon={Wallet}
-      tone={danger ? "red" : "slate"}
-      hint={
-        danger
-          ? metrics.overAllocated
-            ? "Over-allocated — top up"
-            : "Low credits — top up"
-          : `of ${subscription.purchasedHours.toLocaleString()} purchased`
+      label="Committed Billing"
+      value={
+        "₱" +
+        Math.round(metrics.committedCostPhp).toLocaleString("en-US")
       }
+      icon={Wallet}
+      tone="teal"
+      hint={`${metrics.totalAssignedHours.toLocaleString()} hrs × ₱${subscription.hourlyRatePhp}/hr`}
       compact
     />
   );

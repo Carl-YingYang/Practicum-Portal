@@ -1288,27 +1288,27 @@ export const defaultToolsConfig: ToolsConfig = {
 };
 
 // ============================================================
-// Subscription & billing seed (hours-based)
+// Subscription & billing seed (pay-per-hour)
 // ============================================================
 
 /**
- * The three subscription tiers the school can choose from. Hours-based billing:
- * each tier includes a base pool of intern-hours per term, plus a per-hour
- * top-up rate for overages. Each student's `requiredHours` draws against the
- * purchased pool.
+ * The three subscription tiers the school can choose from. Pay-per-hour
+ * billing: each tier sets a per-hour rate (PHP) and a max-students cap. The
+ * school is billed `hourlyRatePhp` for every intern-hour — committed from each
+ * student's `requiredHours`, accrued from their `loggedHours`.
+ *
+ * Canonical example (Growth default rate): ₱0.0667/hr ⇒ 15 hours = ₱1.00.
  */
 export const SUBSCRIPTION_PLANS: SubscriptionPlan[] = [
   {
     tier: "starter",
     label: "Starter",
-    baseHours: 3_000,
-    ratePerHourPhp: 8,
-    basePricePhp: 18_000,
+    hourlyRatePhp: 0.1,
     maxStudents: 15,
     blurb: "For small cohorts piloting the practicum portal.",
     features: [
       "Up to 15 active students",
-      "3,000 included intern-hours / term",
+      "₱0.10 per intern-hour",
       "Core journals, evaluations & reports",
       "Email support",
     ],
@@ -1317,14 +1317,12 @@ export const SUBSCRIPTION_PLANS: SubscriptionPlan[] = [
   {
     tier: "growth",
     label: "Growth",
-    baseHours: 10_000,
-    ratePerHourPhp: 6,
-    basePricePhp: 50_000,
+    hourlyRatePhp: 0.0667, // 1/15 → 15 hrs = ₱1.00
     maxStudents: 60,
     blurb: "For departments running a steady internship program.",
     features: [
       "Up to 60 active students",
-      "10,000 included intern-hours / term",
+      "₱0.0667 per intern-hour (15 hrs = ₱1)",
       "Advanced analytics & exports",
       "Priority support",
     ],
@@ -1333,14 +1331,12 @@ export const SUBSCRIPTION_PLANS: SubscriptionPlan[] = [
   {
     tier: "enterprise",
     label: "Enterprise",
-    baseHours: 30_000,
-    ratePerHourPhp: 4,
-    basePricePhp: 120_000,
+    hourlyRatePhp: 0.05,
     maxStudents: 250,
     blurb: "For universities managing multiple programs at scale.",
     features: [
       "Up to 250 active students",
-      "30,000 included intern-hours / term",
+      "₱0.05 per intern-hour",
       "Custom integrations & SSO",
       "Dedicated success manager",
     ],
@@ -1349,13 +1345,14 @@ export const SUBSCRIPTION_PLANS: SubscriptionPlan[] = [
 ];
 
 /**
- * Default (seed) subscription. The school is on the Growth tier with a small
- * top-up already purchased, so the demo shows partial utilization.
+ * Default (seed) subscription. The school is on the Growth tier at the default
+ * ₱0.0667/hr rate. Seed invoices are usage-based (hours logged × rate) so the
+ * demo shows realistic pay-per-hour billing.
  */
 export const defaultSubscription: Subscription = {
   planTier: "growth",
   status: "active",
-  purchasedHours: 12_000, // 10,000 base + 2,000 top-up
+  hourlyRatePhp: 0.0667, // 1/15 → 15 hrs = ₱1.00
   billingCycle: "per-term",
   paymentMethod: "invoice",
   startedAt: "2024-06-02T00:00:00.000Z",
@@ -1364,17 +1361,17 @@ export const defaultSubscription: Subscription = {
     {
       id: "INV-2024-001",
       issuedAt: "2024-06-02T00:00:00.000Z",
-      description: "Growth plan — Term 2024-2025 base",
-      hours: 10_000,
-      amountPhp: 50_000,
+      description: "Term 2024-2025 usage — 1,500 intern-hours",
+      hours: 1_500,
+      amountPhp: 100, // 1,500 × ₱0.0667 ≈ ₱100
       status: "paid",
     },
     {
       id: "INV-2024-002",
       issuedAt: "2024-08-15T00:00:00.000Z",
-      description: "Top-up — 2,000 intern-hours",
-      hours: 2_000,
-      amountPhp: 12_000,
+      description: "Mid-term usage — 737 intern-hours",
+      hours: 737,
+      amountPhp: 49, // 737 × ₱0.0667 ≈ ₱49
       status: "paid",
     },
   ],

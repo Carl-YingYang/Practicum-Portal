@@ -265,14 +265,17 @@ export interface ToolsConfig {
 export type ToolKey = "drive" | "journalTemplate" | "form" | "jibble";
 
 // ============================================================
-// Subscription & billing (hours-based)
+// Subscription & billing (pay-per-hour)
 // ============================================================
 
 /**
- * Subscription tier the school is on. Drives the included hours pool and the
- * top-up rate per intern-hour. Billing is *hours-based*: the school purchases a
- * pool of intern-hours, and each student's `requiredHours` draws against that
- * pool (commitment), while their `loggedHours` consume it (actual usage).
+ * Subscription tier the school is on. Billing is **pay-per-hour**: the school is
+ * charged a configurable `hourlyRatePhp` for every intern-hour. Each student's
+ * `requiredHours` (assigned at creation) drives the *committed* bill, while
+ * their `loggedHours` drive the *accrued* (earned) bill. Each tier sets its own
+ * per-hour rate + max-students cap; the coordinator may override the active rate.
+ *
+ * Canonical example (default Growth rate): ₱0.0667/hr ⇒ 15 hours = ₱1.00.
  */
 export type PlanTier = "starter" | "growth" | "enterprise";
 export type BillingCycle = "monthly" | "per-term" | "annual";
@@ -282,12 +285,8 @@ export type PaymentMethod = "card" | "bank" | "invoice";
 export interface SubscriptionPlan {
   tier: PlanTier;
   label: string;
-  /** Hours included in the base plan per billing cycle. */
-  baseHours: number;
-  /** Price per intern-hour for top-ups beyond the base pool (PHP). */
-  ratePerHourPhp: number;
-  /** Base price per billing cycle (PHP). */
-  basePricePhp: number;
+  /** Per-hour billing rate for this tier (PHP). */
+  hourlyRatePhp: number;
   /** Max enrolled students on this tier. */
   maxStudents: number;
   blurb: string;
@@ -300,7 +299,7 @@ export interface SubscriptionInvoice {
   /** ISO date issued. */
   issuedAt: string;
   description: string;
-  /** Number of intern-hours purchased (0 for non-hour line items). */
+  /** Number of intern-hours billed on this invoice (0 for non-hour line items). */
   hours: number;
   amountPhp: number;
   status: "paid" | "pending" | "failed";
@@ -309,8 +308,12 @@ export interface SubscriptionInvoice {
 export interface Subscription {
   planTier: PlanTier;
   status: SubscriptionStatus;
-  /** Total intern-hours the school has purchased (base pool + top-ups). */
-  purchasedHours: number;
+  /**
+   * Active per-hour billing rate (PHP). Defaults to the current tier's
+   * `hourlyRatePhp` but can be overridden by the coordinator. This is the
+   * single source of truth for all billing math.
+   */
+  hourlyRatePhp: number;
   billingCycle: BillingCycle;
   paymentMethod: PaymentMethod;
   /** ISO date the subscription started. */
@@ -322,19 +325,20 @@ export interface Subscription {
 
 /** Derived billing metrics computed from the subscription + active students. */
 export interface SubscriptionMetrics {
+  /** Σ active students' requiredHours — the committed hour load for the term. */
   totalAssignedHours: number;
+  /** Σ active students' loggedHours — actual hours clocked so far. */
   totalUsedHours: number;
-  remainingCredits: number;
-  /** % of purchased credits consumed by actual logged usage. */
+  /** Active per-hour rate (PHP). */
+  hourlyRatePhp: number;
+  /** Committed bill = totalAssignedHours × hourlyRatePhp. */
+  committedCostPhp: number;
+  /** Accrued (earned) bill = totalUsedHours × hourlyRatePhp. */
+  accruedCostPhp: number;
+  /** Outstanding commitment = committedCostPhp − accruedCostPhp. */
+  outstandingCostPhp: number;
+  /** Progress of logged vs assigned hours, 0–100. */
   utilizationPct: number;
-  /** % of purchased credits committed via student.requiredHours. */
-  coveragePct: number;
-  /** True when assigned hours exceed purchased credits (over-committed). */
-  overAllocated: boolean;
-  /** True when remaining credits are below 10% of purchased. */
-  lowCredits: boolean;
-  /** Estimated cost (PHP) of over-allocation at the current tier's top-up rate. */
-  projectedSpendPhp: number;
   /** Count of active students driving the commitment. */
   activeStudents: number;
 }

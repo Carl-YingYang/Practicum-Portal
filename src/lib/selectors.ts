@@ -171,20 +171,21 @@ export function hoursPercent(s: Student): number {
 }
 
 // ============================================================
-// Subscription & billing metrics (hours-based)
+// Subscription & billing metrics (pay-per-hour)
 // ============================================================
 
 /**
  * Compute billing metrics from the subscription + active students.
  *
- * - `totalAssignedHours` = Σ student.requiredHours (the commitment the school
- *   has made by enrolling interns).
- * - `totalUsedHours` = Σ student.loggedHours (actual consumption).
- * - `remainingCredits` = purchasedHours − totalUsedHours.
- * - `coveragePct` = how much of the purchased pool is *committed* (assigned).
- *   > 100% means the school has over-allocated — they owe a top-up.
- * - `utilizationPct` = how much of the purchased pool has been *consumed*.
- * - `projectedSpendPhp` = cost of the over-allocation at the current tier rate.
+ * Pay-per-hour model: the school is billed `hourlyRatePhp` for every intern-hour.
+ * - `totalAssignedHours` = Σ student.requiredHours (committed hour load).
+ * - `totalUsedHours` = Σ student.loggedHours (actual hours clocked).
+ * - `committedCostPhp` = totalAssignedHours × hourlyRatePhp (full term bill).
+ * - `accruedCostPhp` = totalUsedHours × hourlyRatePhp (earned so far).
+ * - `outstandingCostPhp` = committedCostPhp − accruedCostPhp.
+ * - `utilizationPct` = logged ÷ assigned (progress), 0–100.
+ *
+ * Canonical example at the default ₱0.0667/hr rate: 15 hours = ₱1.00.
  */
 export function computeSubscriptionMetrics(
   subscription: Subscription,
@@ -199,26 +200,28 @@ export function computeSubscriptionMetrics(
     (sum, s) => sum + (s.loggedHours || 0),
     0
   );
-  const purchased = subscription.purchasedHours;
-  const remainingCredits = Math.max(0, purchased - totalUsedHours);
-  const utilizationPct =
-    purchased === 0 ? 0 : Math.round((totalUsedHours / purchased) * 100);
-  const coveragePct =
-    purchased === 0 ? 0 : Math.round((totalAssignedHours / purchased) * 100);
-  const overAllocated = totalAssignedHours > purchased;
-  const lowCredits = purchased > 0 && remainingCredits < purchased * 0.1;
+  // Fall back to the current tier's rate if the stored rate is missing/invalid
+  // (e.g. hydrating an old localStorage payload from the pool model).
   const plan = SUBSCRIPTION_PLANS.find((p) => p.tier === subscription.planTier);
-  const rate = plan?.ratePerHourPhp ?? 8;
-  const projectedSpendPhp = Math.max(0, totalAssignedHours - purchased) * rate;
+  const hourlyRatePhp =
+    Number.isFinite(subscription.hourlyRatePhp) && subscription.hourlyRatePhp > 0
+      ? subscription.hourlyRatePhp
+      : plan?.hourlyRatePhp ?? 0.0667;
+  const committedCostPhp = totalAssignedHours * hourlyRatePhp;
+  const accruedCostPhp = totalUsedHours * hourlyRatePhp;
+  const outstandingCostPhp = Math.max(0, committedCostPhp - accruedCostPhp);
+  const utilizationPct =
+    totalAssignedHours === 0
+      ? 0
+      : Math.min(100, Math.round((totalUsedHours / totalAssignedHours) * 100));
   return {
     totalAssignedHours,
     totalUsedHours,
-    remainingCredits,
+    hourlyRatePhp,
+    committedCostPhp,
+    accruedCostPhp,
+    outstandingCostPhp,
     utilizationPct,
-    coveragePct,
-    overAllocated,
-    lowCredits,
-    projectedSpendPhp,
     activeStudents: active.length,
   };
 }

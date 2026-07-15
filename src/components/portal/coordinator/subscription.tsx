@@ -20,14 +20,13 @@ import {
   Wallet,
   Hourglass,
   Clock,
-  BatteryLow,
-  AlertTriangle,
-  Plus,
-  Check,
   Sparkles,
   CalendarClock,
   Receipt,
   ArrowRight,
+  Calculator,
+  FilePlus2,
+  Check,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -56,12 +55,40 @@ import { cn } from "@/lib/utils";
 // Helpers
 // ============================================================
 
+/** Format a PHP amount, showing up to 2 decimals only when needed. */
 function formatPhp(n: number): string {
-  return "₱" + Math.round(n).toLocaleString("en-US");
+  const rounded = Math.round(n * 100) / 100;
+  const isWhole = Number.isInteger(rounded);
+  return (
+    "₱" +
+    (isWhole
+      ? rounded.toLocaleString("en-US")
+      : rounded.toLocaleString("en-US", {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2,
+        }))
+  );
+}
+
+/** Format a per-hour RATE with up to 4 decimals (e.g. ₱0.0667). */
+function formatRate(n: number): string {
+  const rounded = Math.round(n * 10000) / 10000;
+  return (
+    "₱" +
+    rounded.toLocaleString("en-US", {
+      maximumFractionDigits: 4,
+      minimumFractionDigits: 0,
+    })
+  );
 }
 
 function formatHours(n: number): string {
   return n.toLocaleString("en-US") + " hrs";
+}
+
+/** Worked example for a rate: 15 hours = ₱X. */
+function rateExample(rate: number): string {
+  return `15 hrs = ${formatPhp(15 * rate)}`;
 }
 
 const PLAN_ACCENT_GRADIENT: Record<
@@ -93,6 +120,7 @@ export function SubscriptionPage() {
   const subscription = useAppStore((s) => s.subscription);
   const students = useAppStore((s) => s.students);
   const navigate = useAppStore((s) => s.navigate);
+  const generateUsageInvoice = useAppStore((s) => s.generateUsageInvoice);
 
   const currentPlan = React.useMemo(
     () =>
@@ -106,14 +134,31 @@ export function SubscriptionPage() {
     [subscription, students]
   );
 
-  const [purchaseOpen, setPurchaseOpen] = React.useState(false);
+  const [rateSheetOpen, setRateSheetOpen] = React.useState(false);
   const [planDialogOpen, setPlanDialogOpen] = React.useState(false);
+
+  const handleGenerateInvoice = () => {
+    if (metrics.totalUsedHours <= 0) {
+      toast.info("No logged hours to invoice yet.");
+      return;
+    }
+    generateUsageInvoice();
+    toast.success(
+      `Usage invoice generated for ${formatHours(
+        metrics.totalUsedHours
+      )} (${formatPhp(metrics.accruedCostPhp)}).`
+    );
+  };
 
   return (
     <>
       <PageHeader
         title="Subscription & Billing"
-        description="Hours-based billing — your plan pool is drawn down by each student's required hours and consumed by their logged time."
+        description={`Pay-per-hour billing — you're charged ${formatRate(
+          subscription.hourlyRatePhp
+        )} for every intern-hour, based on each student's required hours. ${rateExample(
+          subscription.hourlyRatePhp
+        )}.`}
         actions={
           <div className="flex flex-wrap gap-2">
             <Button
@@ -125,84 +170,29 @@ export function SubscriptionPage() {
               Compare plans
             </Button>
             <Button
-              onClick={() => setPurchaseOpen(true)}
+              variant="outline"
+              onClick={handleGenerateInvoice}
               className="w-full sm:w-auto"
             >
-              <Plus className="h-4 w-4" />
-              Purchase hours
+              <FilePlus2 className="h-4 w-4" />
+              Generate invoice
+            </Button>
+            <Button
+              onClick={() => setRateSheetOpen(true)}
+              className="w-full sm:w-auto"
+            >
+              <Calculator className="h-4 w-4" />
+              Set rate
             </Button>
           </div>
         }
       />
 
       <div className="space-y-5">
-        {/* ---- Warning banner (over-allocated or low credits) ---- */}
-        {(metrics.overAllocated || metrics.lowCredits) && (
-          <div
-            role="alert"
-            className={cn(
-              "flex flex-col gap-3 rounded-xl border p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5",
-              metrics.overAllocated
-                ? "border-rose-200 bg-rose-50 dark:border-rose-900/50 dark:bg-rose-950/30"
-                : "border-amber-200 bg-amber-50 dark:border-amber-900/50 dark:bg-amber-950/30"
-            )}
-          >
-            <div className="flex items-start gap-3">
-              <span
-                className={cn(
-                  "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg",
-                  metrics.overAllocated
-                    ? "bg-rose-100 text-rose-700 dark:bg-rose-900/50 dark:text-rose-300"
-                    : "bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300"
-                )}
-              >
-                {metrics.overAllocated ? (
-                  <AlertTriangle className="h-5 w-5" />
-                ) : (
-                  <BatteryLow className="h-5 w-5" />
-                )}
-              </span>
-              <div className="min-w-0">
-                <p className="font-semibold text-foreground">
-                  {metrics.overAllocated
-                    ? "Over-allocated — top-up required"
-                    : "Running low on intern-hours"}
-                </p>
-                <p className="mt-0.5 text-sm text-muted-foreground">
-                  {metrics.overAllocated
-                    ? `Your students are committed to ${formatHours(
-                        metrics.totalAssignedHours
-                      )} but you've only purchased ${formatHours(
-                        subscription.purchasedHours
-                      )}. Top up ${formatHours(
-                        metrics.totalAssignedHours -
-                          subscription.purchasedHours
-                      )} to cover the gap (est. ${formatPhp(
-                        metrics.projectedSpendPhp
-                      )} at the ${currentPlan.label} rate).`
-                    : `Only ${formatHours(
-                        metrics.remainingCredits
-                      )} of ${formatHours(
-                        subscription.purchasedHours
-                      )} purchased hours remain. Consider topping up before the term ends.`}
-                </p>
-              </div>
-            </div>
-            <Button
-              variant={metrics.overAllocated ? "default" : "outline"}
-              onClick={() => setPurchaseOpen(true)}
-              className="w-full shrink-0 sm:w-auto"
-            >
-              <Plus className="h-4 w-4" />
-              Top up now
-            </Button>
-          </div>
-        )}
-
-        {/* ---- Current plan hero ---- */}
+        {/* ---- Current plan / rate hero ---- */}
         <SectionCard
-          title="Current plan"
-          description="Your active subscription tier and renewal schedule."
+          title="Billing rate"
+          description="Your active per-hour rate and the committed bill for this term."
           noPadding
           contentClassName="p-0"
         >
@@ -228,7 +218,7 @@ export function SubscriptionPage() {
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
                     <h2 className="text-xl font-bold tracking-tight text-foreground sm:text-2xl">
-                      {currentPlan.label}
+                      {currentPlan.label} plan
                     </h2>
                     <Badge
                       className={cn(
@@ -244,25 +234,38 @@ export function SubscriptionPage() {
                             ? "Past due"
                             : "Canceled"}
                     </Badge>
+                    <Badge variant="outline" className="border-dashed">
+                      Pay-per-hour
+                    </Badge>
                   </div>
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    {currentPlan.blurb}
-                  </p>
+
+                  {/* The rate — the headline number */}
+                  <div className="mt-3 flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                    <span className="text-3xl font-bold tabular-nums text-foreground sm:text-4xl">
+                      {formatRate(subscription.hourlyRatePhp)}
+                    </span>
+                    <span className="text-sm font-medium text-muted-foreground">
+                      / intern-hour
+                    </span>
+                    <span className="rounded-full bg-teal-50 px-2.5 py-0.5 text-xs font-semibold text-teal-700 dark:bg-teal-950/40 dark:text-teal-300">
+                      {rateExample(subscription.hourlyRatePhp)}
+                    </span>
+                  </div>
+
                   <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-1.5 text-xs text-muted-foreground">
                     <span className="inline-flex items-center gap-1.5">
                       <CalendarClock className="h-3.5 w-3.5" />
                       Renews {formatDate(subscription.renewsAt)}
                     </span>
                     <span className="inline-flex items-center gap-1.5">
-                      <Wallet className="h-3.5 w-3.5" />
-                      {formatPhp(currentPlan.basePricePhp)} /{" "}
-                      {subscription.billingCycle === "per-term"
-                        ? "term"
-                        : subscription.billingCycle}
+                      <BadgeCheck className="h-3.5 w-3.5" />
+                      Up to {currentPlan.maxStudents} students
                     </span>
                     <span className="inline-flex items-center gap-1.5">
                       <Receipt className="h-3.5 w-3.5" />
-                      {formatPhp(currentPlan.ratePerHourPhp)} / top-up hour
+                      {subscription.billingCycle === "per-term"
+                        ? "Billed per term"
+                        : `Billed ${subscription.billingCycle}`}
                     </span>
                   </div>
                 </div>
@@ -275,63 +278,65 @@ export function SubscriptionPage() {
                 >
                   Change plan
                 </Button>
+                <Button size="sm" onClick={() => setRateSheetOpen(true)}>
+                  <Calculator className="h-4 w-4" />
+                  Set rate
+                </Button>
               </div>
             </div>
 
-            {/* Utilization bar */}
+            {/* Billing summary strip */}
             <div className="relative border-t border-border/60 bg-card/40 px-5 py-4 sm:px-6">
-              <div className="flex flex-wrap items-end justify-between gap-2">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
                 <div>
                   <p className="text-xs font-medium text-muted-foreground">
-                    Pool utilization
+                    Committed this term
+                  </p>
+                  <p className="mt-0.5 text-sm text-foreground">
+                    <span className="font-semibold tabular-nums">
+                      {formatHours(metrics.totalAssignedHours)}
+                    </span>{" "}
+                    × {formatRate(subscription.hourlyRatePhp)} ={" "}
+                    <span className="font-bold tabular-nums text-teal-700 dark:text-teal-300">
+                      {formatPhp(metrics.committedCostPhp)}
+                    </span>
+                  </p>
+                </div>
+                <div className="sm:border-l sm:border-border/60 sm:pl-4">
+                  <p className="text-xs font-medium text-muted-foreground">
+                    Accrued so far
                   </p>
                   <p className="mt-0.5 text-sm text-foreground">
                     <span className="font-semibold tabular-nums">
                       {formatHours(metrics.totalUsedHours)}
                     </span>{" "}
-                    used of{" "}
-                    <span className="tabular-nums">
-                      {formatHours(subscription.purchasedHours)}
-                    </span>{" "}
-                    purchased
+                    × {formatRate(subscription.hourlyRatePhp)} ={" "}
+                    <span className="font-bold tabular-nums">
+                      {formatPhp(metrics.accruedCostPhp)}
+                    </span>
                   </p>
                 </div>
-                <p className="text-2xl font-bold tabular-nums text-foreground">
-                  {metrics.utilizationPct}%
-                </p>
-              </div>
-              <div className="mt-3 h-2.5 w-full overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
-                <div
-                  className={cn(
-                    "h-full rounded-full transition-all duration-500",
-                    metrics.utilizationPct >= 90
-                      ? "bg-rose-500"
-                      : metrics.utilizationPct >= 70
-                        ? "bg-amber-500"
-                        : "bg-emerald-500"
-                  )}
-                  style={{ width: `${Math.min(100, metrics.utilizationPct)}%` }}
-                />
-              </div>
-              <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
-                <span>
-                  Commitment:{" "}
-                  <span
-                    className={cn(
-                      "font-medium tabular-nums",
-                      metrics.overAllocated && "text-rose-600 dark:text-rose-400"
-                    )}
-                  >
-                    {formatHours(metrics.totalAssignedHours)}
-                  </span>{" "}
-                  ({metrics.coveragePct}% coverage)
-                </span>
-                <span>
-                  Remaining:{" "}
-                  <span className="font-medium tabular-nums">
-                    {formatHours(metrics.remainingCredits)}
-                  </span>
-                </span>
+                <div className="sm:border-l sm:border-border/60 sm:pl-4">
+                  <p className="text-xs font-medium text-muted-foreground">
+                    Outstanding commitment
+                  </p>
+                  <p className="mt-0.5 text-sm text-foreground">
+                    <span className="font-bold tabular-nums">
+                      {formatPhp(metrics.outstandingCostPhp)}
+                    </span>
+                    <span className="ml-1.5 text-xs text-muted-foreground">
+                      ({metrics.utilizationPct}% logged)
+                    </span>
+                  </p>
+                  <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
+                    <div
+                      className="h-full rounded-full bg-teal-500 transition-all duration-500"
+                      style={{
+                        width: `${Math.min(100, metrics.utilizationPct)}%`,
+                      }}
+                    />
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -340,15 +345,15 @@ export function SubscriptionPage() {
         {/* ---- KPI cards ---- */}
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4">
           <StatCard
-            label="Purchased hours"
-            value={formatHours(subscription.purchasedHours)}
+            label="Hourly rate"
+            value={`${formatRate(subscription.hourlyRatePhp)}/hr`}
             icon={Wallet}
             tone="teal"
-            hint={`Base ${formatHours(currentPlan.baseHours)} + top-ups`}
+            hint={rateExample(subscription.hourlyRatePhp)}
             compact
           />
           <StatCard
-            label="Assigned hours"
+            label="Committed hours"
             value={formatHours(metrics.totalAssignedHours)}
             icon={Hourglass}
             tone="amber"
@@ -356,33 +361,33 @@ export function SubscriptionPage() {
             compact
           />
           <StatCard
-            label="Used hours"
-            value={formatHours(metrics.totalUsedHours)}
-            icon={Clock}
+            label="Committed total"
+            value={formatPhp(metrics.committedCostPhp)}
+            icon={Receipt}
             tone="emerald"
-            hint={`${metrics.utilizationPct}% of pool`}
+            hint="assigned × rate"
             compact
           />
           <StatCard
-            label="Remaining credits"
-            value={formatHours(metrics.remainingCredits)}
-            icon={BatteryLow}
-            tone={metrics.lowCredits ? "red" : "slate"}
-            hint={
-              metrics.lowCredits ? "Low — top up soon" : "Healthy buffer"
-            }
+            label="Accrued so far"
+            value={formatPhp(metrics.accruedCostPhp)}
+            icon={Clock}
+            tone="slate"
+            hint={`${metrics.utilizationPct}% of committed`}
             compact
           />
         </div>
 
-        {/* ---- Per-student contribution table ---- */}
+        {/* ---- Per-student billing table ---- */}
         <SectionCard
-          title="Per-student hour contribution"
-          description="Each student's required hours draw against your purchased pool. Edit a student's required hours to update billing."
+          title="Per-student billing"
+          description={`Each student's required hours × ${formatRate(
+            subscription.hourlyRatePhp
+          )}/hr = their billed amount. Edit a student's required hours to update billing.`}
           noPadding
           contentClassName="p-0"
         >
-          <StudentContributionTable
+          <StudentBillingTable
             students={students}
             metrics={metrics}
             onRowClick={(s) =>
@@ -394,7 +399,7 @@ export function SubscriptionPage() {
         {/* ---- Billing history ---- */}
         <SectionCard
           title="Billing history"
-          description="Invoices for your base plan and top-up purchases."
+          description="Usage invoices generated from logged intern-hours."
           noPadding
           contentClassName="p-0"
         >
@@ -402,10 +407,10 @@ export function SubscriptionPage() {
         </SectionCard>
       </div>
 
-      {/* ---- Purchase hours slide-over ---- */}
-      <PurchaseHoursSheet
-        open={purchaseOpen}
-        onOpenChange={setPurchaseOpen}
+      {/* ---- Set rate slide-over ---- */}
+      <SetRateSheet
+        open={rateSheetOpen}
+        onOpenChange={setRateSheetOpen}
         plan={currentPlan}
         metrics={metrics}
       />
@@ -421,16 +426,17 @@ export function SubscriptionPage() {
 }
 
 // ============================================================
-// Per-student contribution table (with built-in pagination)
+// Per-student billing table (with built-in pagination)
 // ============================================================
 
-interface ContributionRow {
+interface BillingRow {
   student: Student;
   companyName: string;
+  billed: number;
   pct: number;
 }
 
-function StudentContributionTable({
+function StudentBillingTable({
   students,
   metrics,
   onRowClick,
@@ -441,8 +447,9 @@ function StudentContributionTable({
 }) {
   const companies = useAppStore((s) => s.companies);
   const supervisors = useAppStore((s) => s.supervisors);
+  const rate = metrics.hourlyRatePhp;
 
-  const rows: ContributionRow[] = React.useMemo(() => {
+  const rows: BillingRow[] = React.useMemo(() => {
     return students
       .filter((s) => s.status === "active")
       .map((s) => {
@@ -450,6 +457,7 @@ function StudentContributionTable({
         return {
           student: s,
           companyName: company?.name ?? "—",
+          billed: (s.requiredHours || 0) * rate,
           pct:
             s.requiredHours === 0
               ? 0
@@ -459,10 +467,10 @@ function StudentContributionTable({
                 ),
         };
       })
-      .sort((a, b) => b.student.requiredHours - a.student.requiredHours);
-  }, [students, companies]);
+      .sort((a, b) => b.billed - a.billed);
+  }, [students, companies, rate]);
 
-  const columns: Column<ContributionRow>[] = [
+  const columns: Column<BillingRow>[] = [
     {
       key: "name",
       header: "Student",
@@ -525,6 +533,17 @@ function StudentContributionTable({
       ),
     },
     {
+      key: "billed",
+      header: "Billed",
+      align: "right",
+      sortValue: (r) => r.billed,
+      cell: (r) => (
+        <span className="font-semibold tabular-nums text-teal-700 dark:text-teal-300">
+          {formatPhp(r.billed)}
+        </span>
+      ),
+    },
+    {
       key: "logged",
       header: "Logged",
       align: "right",
@@ -572,14 +591,14 @@ function StudentContributionTable({
       rows={rows}
       getRowId={(r) => r.student.id}
       onRowClick={(r) => onRowClick(r.student)}
-      defaultSortKey="required"
+      defaultSortKey="billed"
       defaultSortDir="desc"
       pageSize={10}
       pageSizeOptions={[10, 25, 50]}
       emptyState={
         <div className="px-4 py-10 text-center text-sm text-muted-foreground">
           No active students yet. Add students with required hours to see their
-          billing contribution here.
+          billing here.
         </div>
       }
       mobileCard={(r) => (
@@ -594,6 +613,9 @@ function StudentContributionTable({
                 {r.student.course} · {r.companyName}
               </p>
             </div>
+            <span className="shrink-0 font-semibold tabular-nums text-teal-700 dark:text-teal-300">
+              {formatPhp(r.billed)}
+            </span>
           </div>
           <div className="flex items-center justify-between text-sm">
             <span className="text-muted-foreground">Required</span>
@@ -659,7 +681,7 @@ function BillingHistoryTable() {
       cell: (i) =>
         i.hours > 0 ? (
           <span className="tabular-nums text-muted-foreground">
-            +{i.hours.toLocaleString()}
+            {i.hours.toLocaleString()}
           </span>
         ) : (
           <span className="text-muted-foreground">—</span>
@@ -698,7 +720,7 @@ function BillingHistoryTable() {
   if (invoices.length === 0) {
     return (
       <div className="px-4 py-10 text-center text-sm text-muted-foreground">
-        No invoices yet.
+        No invoices yet. Click “Generate invoice” to bill accrued hours.
       </div>
     );
   }
@@ -717,12 +739,17 @@ function BillingHistoryTable() {
 }
 
 // ============================================================
-// Purchase hours slide-over
+// Set rate slide-over
 // ============================================================
 
-const QUICK_TOPUPS = [500, 1000, 2500, 5000];
+const RATE_PRESETS = [
+  { label: "₱0.05/hr", value: 0.05 },
+  { label: "₱0.0667/hr", value: 0.0667 },
+  { label: "₱0.10/hr", value: 0.1 },
+  { label: "₱0.15/hr", value: 0.15 },
+];
 
-function PurchaseHoursSheet({
+function SetRateSheet({
   open,
   onOpenChange,
   plan,
@@ -733,25 +760,37 @@ function PurchaseHoursSheet({
   plan: SubscriptionPlan;
   metrics: SubscriptionMetrics;
 }) {
-  const purchaseHours = useAppStore((s) => s.purchaseHours);
-  const [hours, setHours] = React.useState<string>("1000");
+  const setHourlyRate = useAppStore((s) => s.setHourlyRate);
+  const subscription = useAppStore((s) => s.subscription);
+  const [rateStr, setRateStr] = React.useState<string>(
+    String(subscription.hourlyRatePhp)
+  );
 
-  const parsed = Number(hours);
+  // Reset the input to the live rate whenever the sheet opens.
+  React.useEffect(() => {
+    if (open) setRateStr(String(subscription.hourlyRatePhp));
+  }, [open, subscription.hourlyRatePhp]);
+
+  const parsed = Number(rateStr);
   const valid = Number.isFinite(parsed) && parsed > 0;
-  const amount = valid ? parsed * plan.ratePerHourPhp : 0;
-  const newTotal = valid ? metrics.remainingCredits + parsed : metrics.remainingCredits;
+  const newCommitted = valid
+    ? metrics.totalAssignedHours * parsed
+    : metrics.committedCostPhp;
+  const newAccrued = valid
+    ? metrics.totalUsedHours * parsed
+    : metrics.accruedCostPhp;
+  const delta = valid ? newCommitted - metrics.committedCostPhp : 0;
 
   const handleSubmit = () => {
     if (!valid) {
-      toast.error("Enter a valid number of hours to purchase.");
+      toast.error("Enter a valid hourly rate greater than 0.");
       return;
     }
-    purchaseHours(parsed);
+    setHourlyRate(parsed);
     toast.success(
-      `Purchased ${parsed.toLocaleString()} intern-hours for ${formatPhp(amount)}.`
+      `Billing rate set to ${formatRate(parsed)}/hr. ${rateExample(parsed)}.`
     );
     onOpenChange(false);
-    setHours("1000");
   };
 
   return (
@@ -759,111 +798,121 @@ function PurchaseHoursSheet({
       <SheetContent className="flex w-full flex-col gap-0 sm:max-w-md">
         <SheetHeader className="border-b border-border/60 px-6 pt-6">
           <SheetTitle className="flex items-center gap-2">
-            <Wallet className="h-5 w-5 text-teal-600" />
-            Purchase intern-hours
+            <Calculator className="h-5 w-5 text-teal-600" />
+            Set hourly rate
           </SheetTitle>
           <SheetDescription>
-            Top up your {plan.label} pool at{" "}
+            The rate charged for every intern-hour. Your {plan.label} tier
+            defaults to{" "}
             <span className="font-medium text-foreground">
-              {formatPhp(plan.ratePerHourPhp)}/hour
-            </span>
-            . Hours never expire during the active term.
+              {formatRate(plan.hourlyRatePhp)}/hr
+            </span>{" "}
+            ({rateExample(plan.hourlyRatePhp)}). Override it below.
           </SheetDescription>
         </SheetHeader>
 
         <div className="flex-1 space-y-5 overflow-y-auto px-6 py-5">
-          {/* Current pool snapshot */}
+          {/* Current snapshot */}
           <div className="rounded-lg border border-border/60 bg-muted/30 p-4">
             <div className="grid grid-cols-3 gap-2 text-center">
               <div>
                 <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
-                  Remaining
-                </p>
-                <p className="mt-0.5 font-bold tabular-nums text-foreground">
-                  {formatHours(metrics.remainingCredits)}
-                </p>
-              </div>
-              <div className="border-x border-border/60">
-                <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
-                  Assigned
+                  Committed
                 </p>
                 <p className="mt-0.5 font-bold tabular-nums text-foreground">
                   {formatHours(metrics.totalAssignedHours)}
                 </p>
               </div>
-              <div>
+              <div className="border-x border-border/60">
                 <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
-                  Used
+                  Logged
                 </p>
                 <p className="mt-0.5 font-bold tabular-nums text-foreground">
                   {formatHours(metrics.totalUsedHours)}
+                </p>
+              </div>
+              <div>
+                <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                  Students
+                </p>
+                <p className="mt-0.5 font-bold tabular-nums text-foreground">
+                  {metrics.activeStudents}
                 </p>
               </div>
             </div>
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="topup-hours">Hours to purchase</Label>
+            <Label htmlFor="hourly-rate">Hourly rate (PHP)</Label>
             <Input
-              id="topup-hours"
+              id="hourly-rate"
               type="number"
-              min={1}
-              step={100}
-              value={hours}
-              onChange={(e) => setHours(e.target.value)}
+              min={0.0001}
+              step={0.0001}
+              value={rateStr}
+              onChange={(e) => setRateStr(e.target.value)}
             />
             <div className="flex flex-wrap gap-1.5 pt-1">
-              {QUICK_TOPUPS.map((q) => (
+              {RATE_PRESETS.map((p) => (
                 <button
-                  key={q}
+                  key={p.value}
                   type="button"
-                  onClick={() => setHours(String(q))}
+                  onClick={() => setRateStr(String(p.value))}
                   className={cn(
                     "rounded-md border px-2.5 py-1 text-xs font-medium transition-colors",
-                    Number(hours) === q
+                    Number(rateStr) === p.value
                       ? "border-teal-500 bg-teal-50 text-teal-700 dark:bg-teal-950/40 dark:text-teal-300"
                       : "border-border/60 bg-background text-muted-foreground hover:bg-muted"
                   )}
                 >
-                  +{q.toLocaleString()}
+                  {p.label}
                 </button>
               ))}
             </div>
+            <p className="pt-1 text-xs text-muted-foreground">
+              Worked example at this rate:{" "}
+              <span className="font-medium text-foreground">
+                {valid ? rateExample(parsed) : "—"}
+              </span>
+            </p>
           </div>
 
           {/* Summary */}
           <div className="space-y-2 rounded-lg border border-border/60 p-4">
             <div className="flex items-center justify-between text-sm">
-              <span className="text-muted-foreground">Rate</span>
-              <span className="tabular-nums">
-                {formatPhp(plan.ratePerHourPhp)} / hr
+              <span className="text-muted-foreground">New committed total</span>
+              <span className="font-semibold tabular-nums text-foreground">
+                {formatPhp(newCommitted)}
               </span>
             </div>
             <div className="flex items-center justify-between text-sm">
-              <span className="text-muted-foreground">Hours</span>
-              <span className="tabular-nums">
-                {valid ? parsed.toLocaleString() : "—"}
+              <span className="text-muted-foreground">New accrued total</span>
+              <span className="tabular-nums text-foreground">
+                {formatPhp(newAccrued)}
               </span>
             </div>
             <div className="my-2 border-t border-border/60" />
-            <div className="flex items-center justify-between">
-              <span className="font-medium text-foreground">Total due</span>
-              <span className="text-lg font-bold tabular-nums text-foreground">
-                {formatPhp(amount)}
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-muted-foreground">Change vs current</span>
+              <span
+                className={cn(
+                  "tabular-nums font-medium",
+                  delta > 0.001
+                    ? "text-amber-600 dark:text-amber-400"
+                    : delta < -0.001
+                      ? "text-emerald-600 dark:text-emerald-400"
+                      : "text-muted-foreground"
+                )}
+              >
+                {delta > 0 ? "+" : ""}
+                {formatPhp(delta)}
               </span>
             </div>
-            <p className="pt-1 text-xs text-muted-foreground">
-              After purchase, your remaining credits will be{" "}
-              <span className="font-medium text-foreground">
-                {formatHours(newTotal)}
-              </span>
-              .
-            </p>
           </div>
 
           <p className="text-xs text-muted-foreground">
-            This is a prototype — no real payment is processed. The invoice is
-            recorded in your billing history as “paid” for demo purposes.
+            This is a prototype — no real payment is processed. The new rate
+            applies immediately to all billing calculations.
           </p>
         </div>
 
@@ -877,7 +926,7 @@ function PurchaseHoursSheet({
           </Button>
           <Button onClick={handleSubmit} className="w-full sm:flex-1">
             <Check className="h-4 w-4" />
-            Confirm purchase
+            Apply rate
           </Button>
         </SheetFooter>
       </SheetContent>
@@ -886,7 +935,7 @@ function PurchaseHoursSheet({
 }
 
 // ============================================================
-// Compare / change plan dialog
+// Compare / change plan dialog (rate tiers)
 // ============================================================
 
 function ComparePlansDialog({
@@ -906,9 +955,9 @@ function ComparePlansDialog({
     changePlan(confirmTier);
     const p = SUBSCRIPTION_PLANS.find((x) => x.tier === confirmTier);
     toast.success(
-      `Switched to the ${p?.label} plan. Your pool is now ${formatHours(
-        p?.baseHours ?? 0
-      )}.`
+      `Switched to the ${p?.label} plan. Your rate is now ${formatRate(
+        p?.hourlyRatePhp ?? 0
+      )}/hr (${rateExample(p?.hourlyRatePhp ?? 0)}).`
     );
     setConfirmTier(null);
     onOpenChange(false);
@@ -919,11 +968,11 @@ function ComparePlansDialog({
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-3xl">
           <DialogHeader>
-            <DialogTitle>Choose your plan</DialogTitle>
+            <DialogTitle>Choose your rate plan</DialogTitle>
             <DialogDescription>
-              Each tier includes a base pool of intern-hours per term. Top-ups
-              are billed at the tier&rsquo;s per-hour rate. Switching resets your
-              pool to the new tier&rsquo;s base.
+              Each tier sets a per-hour billing rate and a max-students cap.
+              You&rsquo;re billed the tier&rsquo;s rate for every intern-hour.
+              Switching adopts the new tier&rsquo;s rate immediately.
             </DialogDescription>
           </DialogHeader>
 
@@ -961,17 +1010,18 @@ function ComparePlansDialog({
                   </p>
                   <div className="mt-3">
                     <span className="text-2xl font-bold tabular-nums text-foreground">
-                      {formatPhp(p.basePricePhp)}
+                      {formatRate(p.hourlyRatePhp)}
                     </span>
                     <span className="text-xs text-muted-foreground">
                       {" "}
-                      / term
+                      / intern-hour
                     </span>
                   </div>
+                  <div className="mt-1 text-xs font-medium text-teal-700 dark:text-teal-300">
+                    {rateExample(p.hourlyRatePhp)}
+                  </div>
                   <div className="mt-1 text-xs text-muted-foreground">
-                    {formatHours(p.baseHours)} included ·{" "}
-                    {formatPhp(p.ratePerHourPhp)}/hr top-up · up to{" "}
-                    {p.maxStudents} students
+                    Up to {p.maxStudents} students
                   </div>
                   <ul className="mt-3 flex-1 space-y-1.5">
                     {p.features.map((f) => (
@@ -1022,12 +1072,17 @@ function ComparePlansDialog({
               <span className="font-medium text-foreground">
                 {SUBSCRIPTION_PLANS.find((p) => p.tier === confirmTier)?.label}
               </span>{" "}
-              plan will reset your purchased pool to{" "}
-              {formatHours(
+              plan sets your hourly rate to{" "}
+              {formatRate(
                 SUBSCRIPTION_PLANS.find((p) => p.tier === confirmTier)
-                  ?.baseHours ?? 0
-              )}{" "}
-              and issue a new base invoice. This cannot be undone.
+                  ?.hourlyRatePhp ?? 0
+              )}
+              /hr (
+              {rateExample(
+                SUBSCRIPTION_PLANS.find((p) => p.tier === confirmTier)
+                  ?.hourlyRatePhp ?? 0
+              )}
+              ). This cannot be undone.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="gap-2 sm:gap-2">
