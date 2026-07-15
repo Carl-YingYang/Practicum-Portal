@@ -19,6 +19,7 @@ export function InternsList() {
   const students = useAppStore((s) => s.students);
   const evaluations = useAppStore((s) => s.evaluations);
   const companies = useAppStore((s) => s.companies);
+  const schoolIdentity = useAppStore((s) => s.schoolIdentity);
   const navigate = useAppStore((s) => s.navigate);
 
   const supervisorId = currentUser?.supervisorId ?? "";
@@ -82,6 +83,7 @@ export function InternsList() {
                 key={s.id}
                 student={s}
                 companyName={getCompany(companies, s.companyId)?.name}
+                schoolName={schoolIdentity.shortName}
                 lastScore={submitted ? averageScore(submitted) : undefined}
                 hasEvaluation={!!submitted}
                 onOpen={() =>

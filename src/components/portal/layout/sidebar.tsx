@@ -268,6 +268,7 @@ export function MobileSidebar({
   const students = useAppStore((s) => s.students);
   const evaluations = useAppStore((s) => s.evaluations);
   const journals = useAppStore((s) => s.journals);
+  const schoolIdentity = useAppStore((s) => s.schoolIdentity);
   if (!role || !currentUser) return null;
 
   const allItems = navConfig[role];
@@ -276,7 +277,6 @@ export function MobileSidebar({
     (item) => !secondaryItems.some((s) => s.key === item.key)
   );
   const groupedPrimary = groupBySection(primaryItems);
-
   const badgeFor = (badgeKey?: string): number | undefined => {
     if (!badgeKey) return undefined;
     if (badgeKey === "pendingEvaluations") {
@@ -371,14 +371,22 @@ export function MobileSidebar({
       >
         <SheetHeader className="space-y-0 border-b border-sidebar-border px-4 py-4">
           <SheetTitle className="flex items-center gap-2.5">
-            <div className="flex h-9 w-9 items-center justify-center rounded-md bg-white/15 ring-1 ring-white/20">
-              <GraduationCap className="h-[18px] w-[18px] text-sidebar-primary" strokeWidth={2.2} />
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-md bg-white/15 ring-1 ring-white/20">
+              {schoolIdentity.logoDataUrl ? (
+                <img
+                  src={schoolIdentity.logoDataUrl}
+                  alt={`${schoolIdentity.name} logo`}
+                  className="h-full w-full rounded-md object-contain p-0.5"
+                />
+              ) : (
+                <GraduationCap className="h-[18px] w-[18px] text-sidebar-primary" strokeWidth={2.2} />
+              )}
             </div>
             <div className="min-w-0 flex-1">
-              <span className="block font-heading text-base font-bold leading-tight text-sidebar-foreground">
-                Practo
+              <span className="block truncate font-heading text-base font-bold leading-tight text-sidebar-foreground">
+                {schoolIdentity.name}
               </span>
-              <span className="block text-xs font-normal text-sidebar-foreground/55">
+              <span className="block truncate text-xs font-normal text-sidebar-foreground/55">
                 {ROLE_LABELS[role]} workspace
               </span>
             </div>

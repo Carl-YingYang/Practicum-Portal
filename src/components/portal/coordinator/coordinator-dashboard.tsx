@@ -29,8 +29,6 @@ import { Avatar } from "@/components/portal/shared/avatar";
 import { EmptyState } from "@/components/portal/shared/empty-state";
 import { StatCardSkeleton, TableSkeleton } from "@/components/portal/shared/skeletons";
 import { useInitialLoading } from "@/components/portal/shared/page-transition";
-import { ToolsStatusBanner } from "@/components/portal/shared/tools-status-banner";
-import { ConnectToolsSheet } from "@/components/portal/coordinator/connect-tools-sheet";
 import { Button } from "@/components/ui/button";
 import {
   Users,
@@ -76,7 +74,6 @@ export function CoordinatorDashboard() {
   const loading = useInitialLoading(420);
 
   const [attentionTab, setAttentionTab] = React.useState<AttentionTab>("unassigned");
-  const [connectOpen, setConnectOpen] = React.useState(false);
 
   const cohortRows: CohortRow[] = React.useMemo(() => {
     return students.map((st) => {
@@ -296,9 +293,6 @@ export function CoordinatorDashboard() {
       />
 
       <div className="space-y-5">
-        {/* v5: Tools status banner — coordinator can connect/edit from here. */}
-        <ToolsStatusBanner role="coordinator" onConnect={() => setConnectOpen(true)} />
-
         {/* KPIs — 3 cards. 2-up on phone, 3-up sm+. */}
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4">
           <StatCard
@@ -528,9 +522,6 @@ export function CoordinatorDashboard() {
         {/* Cohort by Department — breakdown card */}
         <CohortByDepartment students={students} />
       </div>
-
-      {/* v5: Connect Tools sheet — opened from the status banner. */}
-      <ConnectToolsSheet open={connectOpen} onOpenChange={setConnectOpen} />
     </div>
   );
 }

@@ -9,9 +9,7 @@ import { JournalStatusBadge } from "@/components/portal/shared/badges";
 import { ProgressBar } from "@/components/portal/shared/progress-ring";
 import { ClockWidget } from "@/components/portal/shared/clock-widget";
 import { WeeklyGoalWidget } from "@/components/portal/shared/weekly-goal-widget";
-import { ToolsStatusBanner } from "@/components/portal/shared/tools-status-banner";
-import { JournalStatusCard } from "@/components/portal/shared/journal-status-card";
-import { ExternalLink } from "@/components/portal/shared/external-link";
+import { SchoolIdentityCard } from "@/components/portal/shared/school-identity-card";
 import { StatCardSkeleton, TableSkeleton } from "@/components/portal/shared/skeletons";
 import { useInitialLoading } from "@/components/portal/shared/page-transition";
 import { useAppStore } from "@/store/use-app-store";
@@ -24,7 +22,7 @@ import {
   journalsForStudent,
   weekLabel,
 } from "@/lib/selectors";
-import { RATING_CRITERIA, type Journal, type ToolsConfig } from "@/lib/types";
+import { RATING_CRITERIA, type Journal } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import {
   ChevronRight,
@@ -33,9 +31,6 @@ import {
   NotebookText,
   Plus,
   CheckCircle2,
-  FolderOpen,
-  FileText,
-  ExternalLink as ExternalLinkIcon,
 } from "lucide-react";
 
 export function StudentDashboard() {
@@ -43,7 +38,6 @@ export function StudentDashboard() {
   const students = useAppStore((s) => s.students);
   const journals = useAppStore((s) => s.journals);
   const evaluations = useAppStore((s) => s.evaluations);
-  const toolsConfig = useAppStore((s) => s.toolsConfig);
   const navigate = useAppStore((s) => s.navigate);
   const loading = useInitialLoading(380);
 
@@ -186,13 +180,8 @@ export function StudentDashboard() {
           />
         </div>
 
-        {/* v5: Practicum Tools — external links + this week's journal card. */}
-        <PracticumToolsSection
-          toolsConfig={toolsConfig}
-          latestJournal={myJournals[0] ?? null}
-          requiredHours={student.requiredHours}
-          loggedHours={student.loggedHours}
-        />
+        {/* Your school — branded identity strip, cross-platform. */}
+        <SchoolIdentityCard variant="compact" />
 
         {/* Weekly goal + action needed — 2-col */}
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
@@ -365,119 +354,5 @@ export function StudentDashboard() {
         </SectionCard>
       </div>
     </>
-  );
-}
-
-/**
- * PracticumToolsSection — v5 free-first integration.
- * Shows 3 cards: this week's journal (with external Doc link + submit),
- * hours (with Jibble link), files (with Drive link).
- * If no tools are connected, shows the banner + an EmptyState prompt.
- */
-function PracticumToolsSection({
-  toolsConfig,
-  latestJournal,
-  requiredHours,
-  loggedHours,
-}: {
-  toolsConfig: ToolsConfig;
-  latestJournal: Journal | null;
-  requiredHours: number;
-  loggedHours: number;
-}) {
-  const connected = [
-    toolsConfig.driveFolderUrl.trim(),
-    toolsConfig.journalTemplateUrl.trim(),
-    toolsConfig.formUrl.trim(),
-    toolsConfig.jibbleInviteUrl.trim(),
-  ].filter(Boolean).length;
-
-  // Not connected at all — show banner + empty state.
-  if (connected === 0) {
-    return (
-      <div className="space-y-2.5">
-        <ToolsStatusBanner role="student" />
-        <div className="rounded-xl border border-dashed border-border bg-muted/20 p-4 text-center">
-          <p className="text-xs text-muted-foreground">
-            Once your coordinator connects practicum tools, you'll see your
-            weekly journal, hours, and files here.
-          </p>
-        </div>
-      </div>
-    );
-  }
-
-  const hoursPct = Math.min(100, Math.round((loggedHours / requiredHours) * 100));
-
-  return (
-    <div className="space-y-2.5">
-      <ToolsStatusBanner role="student" />
-      <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
-        {/* This week's journal */}
-        <div className="space-y-1.5">
-          <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-            <FileText className="h-3.5 w-3.5" />
-            This week's journal
-          </p>
-          <JournalStatusCard
-            journal={latestJournal}
-            role="student"
-            journalTemplateUrl={toolsConfig.journalTemplateUrl}
-          />
-        </div>
-
-        {/* Hours */}
-        <div className="space-y-1.5">
-          <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-            <Hourglass className="h-3.5 w-3.5" />
-            Hours
-          </p>
-          <div className="rounded-xl border border-border bg-card p-4">
-            <div className="flex items-baseline justify-between">
-              <p className="text-2xl font-bold tabular-nums text-foreground">
-                {loggedHours}
-                <span className="text-sm font-normal text-muted-foreground">/{requiredHours}</span>
-              </p>
-              <span className="text-xs font-medium text-muted-foreground">{hoursPct}%</span>
-            </div>
-            <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-muted">
-              <div
-                className="h-full rounded-full bg-emerald-500 transition-all"
-                style={{ width: `${hoursPct}%` }}
-              />
-            </div>
-            <div className="mt-3">
-              <ExternalLink
-                href={toolsConfig.jibbleInviteUrl}
-                label="Open Jibble"
-                icon={Clock}
-                variant="button"
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* Files */}
-        <div className="space-y-1.5">
-          <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-            <FolderOpen className="h-3.5 w-3.5" />
-            My files
-          </p>
-          <div className="rounded-xl border border-border bg-card p-4">
-            <p className="text-xs leading-snug text-muted-foreground">
-              Your Google Drive folder for journals and submission files.
-            </p>
-            <div className="mt-3">
-              <ExternalLink
-                href={toolsConfig.driveFolderUrl}
-                label="Open Drive"
-                icon={FolderOpen}
-                variant="button"
-              />
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
   );
 }

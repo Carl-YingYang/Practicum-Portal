@@ -20,6 +20,7 @@ import { PageHeader } from "@/components/portal/layout/page-header";
 import { SectionCard } from "@/components/portal/shared/section-card";
 import { Avatar } from "@/components/portal/shared/avatar";
 import { RoleBadge } from "@/components/portal/shared/badges";
+import { SchoolIdentityCard } from "@/components/portal/shared/school-identity-card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -70,6 +71,9 @@ export function SupervisorProfile() {
         title="My Profile"
         description="Manage your account details and password."
       />
+
+      {/* The school your interns are affiliated with — full identity block. */}
+      <SchoolIdentityCard variant="full" className="mb-6" />
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         {/* Account card */}

@@ -33,7 +33,7 @@ import { Avatar } from "@/components/portal/shared/avatar";
 import { ScoreBadge } from "@/components/portal/shared/badges";
 import { EmptyState } from "@/components/portal/shared/empty-state";
 import { JournalStatusCard } from "@/components/portal/shared/journal-status-card";
-import { ToolsStatusBanner } from "@/components/portal/shared/tools-status-banner";
+import { SchoolIdentityCard } from "@/components/portal/shared/school-identity-card";
 import { StatCardSkeleton, TableSkeleton } from "@/components/portal/shared/skeletons";
 import { useInitialLoading } from "@/components/portal/shared/page-transition";
 import { Button } from "@/components/ui/button";
@@ -45,6 +45,7 @@ export function SupervisorDashboard() {
   const evaluations = useAppStore((s) => s.evaluations);
   const companies = useAppStore((s) => s.companies);
   const supervisors = useAppStore((s) => s.supervisors);
+  const schoolIdentity = useAppStore((s) => s.schoolIdentity);
   const navigate = useAppStore((s) => s.navigate);
   const loading = useInitialLoading(400);
 
@@ -137,10 +138,10 @@ export function SupervisorDashboard() {
           />
         </div>
 
-        {/* v5: Tools status — informational for supervisors. */}
-        <ToolsStatusBanner role="supervisor" />
+        {/* The school your interns are affiliated with — branded strip. */}
+        <SchoolIdentityCard variant="compact" />
 
-        {/* v5: Pending my review — inline Approve / Return (no navigation). */}
+        {/* Pending my review — inline Approve / Return (no navigation). */}
         <SectionCard
           title="Pending my review"
           description={`${pendingJournals.length} journal${pendingJournals.length === 1 ? "" : "s"} awaiting your approval.`}
@@ -222,6 +223,7 @@ export function SupervisorDashboard() {
                       key={s.id}
                       student={s}
                       companyName={company?.name}
+                      schoolName={schoolIdentity.shortName}
                       lastScore={submitted ? averageScore(submitted) : undefined}
                       hasEvaluation={!!submitted}
                       onOpen={() =>

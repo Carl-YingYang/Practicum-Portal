@@ -6,11 +6,13 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { Student } from "@/lib/types";
 import { hoursPercent } from "@/lib/selectors";
-import { ChevronRight } from "lucide-react";
+import { ChevronRight, GraduationCap } from "lucide-react";
 
 interface InternCardProps {
   student: Student;
   companyName?: string;
+  /** The intern's affiliated school/program short name (multi-school ready). */
+  schoolName?: string;
   lastScore?: number;
   hasEvaluation: boolean;
   onOpen: () => void;
@@ -32,6 +34,7 @@ interface InternCardProps {
 export function InternCard({
   student,
   companyName,
+  schoolName,
   lastScore,
   hasEvaluation,
   onOpen,
@@ -96,7 +99,7 @@ export function InternCard({
       </div>
 
       {/* Row 3: status pills — shrink-0 badge + truncate meta */}
-      <div className="mt-3 flex min-w-0 items-center gap-2">
+      <div className="mt-3 flex min-w-0 flex-wrap items-center gap-2">
         {hasEvaluation ? (
           <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
             <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
@@ -106,6 +109,12 @@ export function InternCard({
           <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-700 dark:bg-amber-950/40 dark:text-amber-300">
             <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
             Evaluation due
+          </span>
+        )}
+        {schoolName && (
+          <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
+            <GraduationCap className="h-3 w-3" />
+            {schoolName}
           </span>
         )}
         {companyName && (

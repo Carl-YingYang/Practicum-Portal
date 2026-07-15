@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
+import { SchoolIdentityCard } from "@/components/portal/shared/school-identity-card";
 import { toast } from "sonner";
 import {
   Building2,
@@ -46,6 +47,9 @@ export function StudentProfile() {
         breadcrumb="Profile"
         description="Your account details and practicum placement."
       />
+
+      {/* Your school — full identity block, cross-platform. */}
+      <SchoolIdentityCard variant="full" className="mb-6" />
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         {/* My Account */}
