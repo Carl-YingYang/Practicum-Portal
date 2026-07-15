@@ -71,6 +71,14 @@ interface AppState {
   // --- auth actions ---
   login: (role: Role) => void;
   loginAs: (userId: string) => void;
+  /**
+   * Sign a user in by email. Checks the seed demo accounts first, then the
+   * live in-app coordinators / students / supervisors collections so that
+   * accounts created from inside the portal (or from the login-page
+   * coordinator self-registration) can sign in with their email.
+   * Returns true if a matching account was found and signed in.
+   */
+  loginByEmail: (email: string) => boolean;
   logout: () => void;
 
   // --- navigation actions ---
@@ -300,6 +308,87 @@ export const useAppStore = create<AppState>((set, get) => ({
       viewParams: {},
       history: [],
     });
+  },
+
+  loginByEmail: (email) => {
+    const lower = email.trim().toLowerCase();
+    if (!lower) return false;
+
+    // 1. Seed demo accounts (static).
+    const mockMatch = mockUsers.find((u) => u.email.toLowerCase() === lower);
+    if (mockMatch) {
+      set({
+        currentUser: mockMatch,
+        view: roleHomeView[mockMatch.role],
+        viewParams: {},
+        history: [],
+      });
+      return true;
+    }
+
+    // 2. Coordinators created in-app (incl. login-page self-registration).
+    const coord = get().coordinators.find(
+      (c) => c.email.toLowerCase() === lower
+    );
+    if (coord && coord.status === "active") {
+      const user: User = {
+        id: `u-coord-${coord.id}`,
+        name: coord.name,
+        email: coord.email,
+        role: "coordinator",
+        coordinatorId: coord.id,
+        avatarColor: coord.avatarColor,
+      };
+      set({
+        currentUser: user,
+        view: roleHomeView["coordinator"],
+        viewParams: {},
+        history: [],
+      });
+      return true;
+    }
+
+    // 3. Students created in-app.
+    const stu = get().students.find((s) => s.email.toLowerCase() === lower);
+    if (stu && stu.status === "active") {
+      const user: User = {
+        id: `u-stu-${stu.id}`,
+        name: stu.name,
+        email: stu.email,
+        role: "student",
+        studentId: stu.id,
+        avatarColor: "#0f766e",
+      };
+      set({
+        currentUser: user,
+        view: roleHomeView["student"],
+        viewParams: {},
+        history: [],
+      });
+      return true;
+    }
+
+    // 4. Supervisors created in-app.
+    const sup = get().supervisors.find((s) => s.email.toLowerCase() === lower);
+    if (sup && sup.status === "active") {
+      const user: User = {
+        id: `u-sup-${sup.id}`,
+        name: sup.name,
+        email: sup.email,
+        role: "supervisor",
+        supervisorId: sup.id,
+        avatarColor: "#d97706",
+      };
+      set({
+        currentUser: user,
+        view: roleHomeView["supervisor"],
+        viewParams: {},
+        history: [],
+      });
+      return true;
+    }
+
+    return false;
   },
 
   logout: () =>

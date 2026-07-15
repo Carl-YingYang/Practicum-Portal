@@ -3,21 +3,32 @@
 import * as React from "react";
 import { useAppStore } from "@/store/use-app-store";
 import { mockUsers } from "@/lib/mock-data";
-import { ROLE_LABELS, type Role } from "@/lib/types";
+import { COORDINATOR_DEPARTMENTS, ROLE_LABELS, type Role } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Avatar } from "@/components/portal/shared/avatar";
 import { BlurImage } from "@/components/portal/shared/blur-image";
+import { CredentialsDialog } from "@/components/portal/shared/credentials-dialog";
 import {
   GraduationCap,
   Eye,
   EyeOff,
   ArrowRight,
+  ArrowLeft,
   ShieldCheck,
   ClipboardCheck,
   FileText,
   Check,
+  AlertCircle,
+  UserPlus,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -119,21 +130,395 @@ function RoleCarousel() {
 }
 
 // ============================================================
+// Left brand panel — shared by sign-in and register modes
+// ============================================================
+function BrandPanel() {
+  return (
+    <div className="bg-ici-navy-gradient relative hidden w-1/2 flex-col justify-between overflow-hidden p-12 text-white lg:flex">
+      <div className="bg-grid-texture pointer-events-none absolute inset-0 opacity-30" />
+      <div className="bg-ici-dots pointer-events-none absolute left-8 top-8 h-24 w-24 opacity-40" />
+      <div className="bg-ici-dots pointer-events-none absolute right-8 top-8 h-24 w-24 opacity-40" />
+      <div className="pointer-events-none absolute -left-24 top-1/3 h-72 w-72 rounded-full bg-[#ADE1FB]/15 blur-3xl" />
+      <div className="pointer-events-none absolute -right-20 bottom-1/4 h-64 w-64 rounded-full bg-sky-400/10 blur-3xl" />
+
+      {/* Hero image with LQIP blur-up loading */}
+      <div className="pointer-events-none absolute inset-0 opacity-25">
+        <BlurImage
+          src="/hero-students.png"
+          alt=""
+          darkPlaceholder
+          eager
+          wrapperClassName="absolute inset-0 h-full w-full"
+          className="h-full w-full object-cover"
+        />
+      </div>
+
+      {/* Brand */}
+      <div className="relative">
+        <div className="flex items-center gap-3">
+          <div className="flex h-11 w-11 items-center justify-center rounded-md bg-white/15 ring-1 ring-white/25 backdrop-blur-sm">
+            <GraduationCap className="h-6 w-6 text-[#ADE1FB]" strokeWidth={2.4} />
+          </div>
+          <div>
+            <p className="text-base font-bold leading-tight">
+              Practo
+            </p>
+            <p className="text-xs text-white/70">
+              Practicum Management
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Motto + auto-scrolling role carousel */}
+      <div className="relative max-w-md space-y-7">
+        <div className="space-y-3">
+          {/* Department / school motto — clean, professional */}
+          <h1 className="text-[2.25rem] font-extrabold leading-[1.08] tracking-tight">
+            Practicum management,{" "}
+            <span className="text-[#ADE1FB]">simplified.</span>
+          </h1>
+          <p className="text-[15px] font-medium leading-relaxed text-white/85">
+            One focused platform to evaluate interns, approve weekly journals,
+            and export practicum accreditation reports.
+          </p>
+        </div>
+
+        {/* Pale-blue accent divider */}
+        <div className="h-1 w-16 rounded-full bg-[#ADE1FB]" />
+
+        {/* Auto-scrolling role carousel */}
+        <div className="space-y-3">
+          <p className="text-[11px] font-semibold uppercase tracking-wider text-white/50">
+            Built for
+          </p>
+          <RoleCarousel />
+        </div>
+      </div>
+
+      {/* User Agreement link */}
+      <div className="relative">
+        <a
+          href="#"
+          onClick={(e) => e.preventDefault()}
+          className="text-xs font-medium text-white/60 transition-colors hover:text-white"
+        >
+          User Agreement
+        </a>
+      </div>
+    </div>
+  );
+}
+
+// ============================================================
+// Coordinator self-registration form
+// Shown on the login page. Only coordinators can self-register —
+// students and supervisors are still provisioned by a coordinator
+// from inside the portal.
+// ============================================================
+function CoordinatorRegisterForm({
+  onBackToSignIn,
+}: {
+  onBackToSignIn: () => void;
+}) {
+  const createCoordinator = useAppStore((s) => s.createCoordinator);
+  const coordinators = useAppStore((s) => s.coordinators);
+
+  const [name, setName] = React.useState("");
+  const [email, setEmail] = React.useState("");
+  const [title, setTitle] = React.useState("");
+  const [department, setDepartment] = React.useState<string>("");
+  const [errors, setErrors] = React.useState<Record<string, string>>({});
+  const [credsOpen, setCredsOpen] = React.useState(false);
+  const [createdCreds, setCreatedCreds] = React.useState<{
+    name: string;
+    email: string;
+    tempPassword: string;
+  } | null>(null);
+
+  const validate = () => {
+    const next: Record<string, string> = {};
+    if (!name.trim()) next.name = "Name is required.";
+    if (!email.trim()) next.email = "Email is required.";
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
+      next.email = "Enter a valid email.";
+    else {
+      const emailLower = email.trim().toLowerCase();
+      const dup =
+        coordinators.some((c) => c.email.trim().toLowerCase() === emailLower);
+      if (dup) next.email = "A coordinator with this email already exists.";
+    }
+    if (!title.trim()) next.title = "Title is required.";
+    if (!department) next.department = "Department is required.";
+    setErrors(next);
+    return Object.keys(next).length === 0;
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!validate()) {
+      toast.error("Please fix the highlighted fields.");
+      return;
+    }
+    // Final duplicate-safety net right before create.
+    const emailLower = email.trim().toLowerCase();
+    const dup =
+      coordinators.some((c) => c.email.trim().toLowerCase() === emailLower);
+    if (dup) {
+      toast.error("Duplicate email", {
+        description: "A coordinator with this email already exists.",
+      });
+      setErrors((prev) => ({
+        ...prev,
+        email: "A coordinator with this email already exists.",
+      }));
+      return;
+    }
+    const result = createCoordinator({
+      name: name.trim(),
+      email: email.trim(),
+      title: title.trim(),
+      department,
+    });
+    setCreatedCreds({
+      name: name.trim(),
+      email: email.trim(),
+      tempPassword: result.tempPassword,
+    });
+    setCredsOpen(true);
+  };
+
+  return (
+    <div className="w-full max-w-[400px]">
+      {/* Mobile brand */}
+      <div className="mb-8 flex items-center gap-3 lg:hidden">
+        <div className="flex h-11 w-11 items-center justify-center rounded-md bg-primary text-primary-foreground elev-sm">
+          <GraduationCap className="h-6 w-6" strokeWidth={2.4} />
+        </div>
+        <div>
+          <p className="text-base font-bold leading-tight text-foreground">
+            Practo
+          </p>
+          <p className="text-xs text-muted-foreground">
+            Practicum Management
+          </p>
+        </div>
+      </div>
+
+      <button
+        onClick={onBackToSignIn}
+        className="mb-4 inline-flex items-center gap-1.5 text-xs font-semibold text-muted-foreground transition-colors hover:text-foreground"
+      >
+        <ArrowLeft className="h-3.5 w-3.5" />
+        Back to sign in
+      </button>
+
+      <div className="mb-6">
+        <div className="mb-2 flex h-11 w-11 items-center justify-center rounded-md bg-primary/10 text-primary">
+          <ShieldCheck className="h-5 w-5" strokeWidth={2.2} />
+        </div>
+        <h2 className="text-[1.625rem] font-bold tracking-tight text-foreground">
+          Create coordinator account
+        </h2>
+        <p className="mt-1.5 text-sm text-muted-foreground">
+          University staff who run the practicum program can register here.
+          Students and supervisors are added by a coordinator after sign-in.
+        </p>
+      </div>
+
+      {/* Info banner — explains the power of a coordinator account */}
+      <div className="mb-5 flex items-start gap-3 rounded-md border border-primary/20 bg-primary/5 p-3.5">
+        <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
+          <ShieldCheck className="h-4 w-4" strokeWidth={2.2} />
+        </span>
+        <div className="min-w-0">
+          <p className="text-sm font-semibold text-foreground">
+            Coordinator accounts have full access
+          </p>
+          <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">
+            Coordinators can manage students, supervisors, and other
+            coordinators, export reports, and configure practicum forms. Only
+            register if you are an authorised university staff member.
+          </p>
+        </div>
+      </div>
+
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div className="space-y-1.5">
+          <Label htmlFor="reg-name" className="text-[13px] font-semibold">
+            Full Name <span className="text-destructive">*</span>
+          </Label>
+          <Input
+            id="reg-name"
+            value={name}
+            onChange={(e) => {
+              setName(e.target.value);
+              setErrors((p) => ({ ...p, name: "" }));
+            }}
+            placeholder="Prof. Patricia Lim"
+            className="h-11"
+            aria-invalid={!!errors.name}
+          />
+          {errors.name && (
+            <p className="flex items-center gap-1 text-xs text-destructive">
+              <AlertCircle className="h-3 w-3" />
+              {errors.name}
+            </p>
+          )}
+        </div>
+
+        <div className="space-y-1.5">
+          <Label htmlFor="reg-email" className="text-[13px] font-semibold">
+            Email <span className="text-destructive">*</span>
+          </Label>
+          <Input
+            id="reg-email"
+            type="email"
+            value={email}
+            onChange={(e) => {
+              setEmail(e.target.value);
+              setErrors((p) => ({ ...p, email: "" }));
+            }}
+            placeholder="patricia.lim@university.edu"
+            className="h-11"
+            autoComplete="email"
+            aria-invalid={!!errors.email}
+          />
+          {errors.email && (
+            <p className="flex items-center gap-1 text-xs text-destructive">
+              <AlertCircle className="h-3 w-3" />
+              {errors.email}
+            </p>
+          )}
+        </div>
+
+        <div className="space-y-1.5">
+          <Label htmlFor="reg-title" className="text-[13px] font-semibold">
+            Title <span className="text-destructive">*</span>
+          </Label>
+          <Input
+            id="reg-title"
+            value={title}
+            onChange={(e) => {
+              setTitle(e.target.value);
+              setErrors((p) => ({ ...p, title: "" }));
+            }}
+            placeholder="Practicum Coordinator"
+            className="h-11"
+            aria-invalid={!!errors.title}
+          />
+          {errors.title && (
+            <p className="flex items-center gap-1 text-xs text-destructive">
+              <AlertCircle className="h-3 w-3" />
+              {errors.title}
+            </p>
+          )}
+        </div>
+
+        <div className="space-y-1.5">
+          <Label className="text-[13px] font-semibold">
+            Academic Department <span className="text-destructive">*</span>
+          </Label>
+          <Select
+            value={department}
+            onValueChange={(v) => {
+              setDepartment(v);
+              setErrors((p) => ({ ...p, department: "" }));
+            }}
+          >
+            <SelectTrigger className="h-11 w-full" aria-invalid={!!errors.department}>
+              <SelectValue placeholder="Select department" />
+            </SelectTrigger>
+            <SelectContent>
+              {COORDINATOR_DEPARTMENTS.map((d) => (
+                <SelectItem key={d} value={d}>
+                  {d}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {errors.department && (
+            <p className="flex items-center gap-1 text-xs text-destructive">
+              <AlertCircle className="h-3 w-3" />
+              {errors.department}
+            </p>
+          )}
+        </div>
+
+        <Button type="submit" size="lg" className="h-11 w-full">
+          <UserPlus className="h-4 w-4" />
+          Create Coordinator Account
+        </Button>
+      </form>
+
+      <div className="mt-5 text-center">
+        <p className="text-xs text-muted-foreground">
+          Already have an account?{" "}
+          <button
+            onClick={onBackToSignIn}
+            className="font-semibold text-foreground underline-offset-2 hover:underline"
+          >
+            Sign in
+          </button>
+        </p>
+      </div>
+
+      {/* Mobile user agreement */}
+      <div className="mt-6 text-center lg:hidden">
+        <a
+          href="#"
+          onClick={(e) => e.preventDefault()}
+          className="text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
+        >
+          User Agreement
+        </a>
+      </div>
+
+      {createdCreds && (
+        <CredentialsDialog
+          open={credsOpen}
+          onOpenChange={setCredsOpen}
+          name={createdCreds.name}
+          email={createdCreds.email}
+          tempPassword={createdCreds.tempPassword}
+          onDone={() => {
+            toast.success("Coordinator account created", {
+              description: `${createdCreds.name} can now sign in.`,
+            });
+            // Reset the form and return to the sign-in screen so the new
+            // coordinator can immediately sign in with their credentials.
+            setName("");
+            setEmail("");
+            setTitle("");
+            setDepartment("");
+            setCreatedCreds(null);
+            onBackToSignIn();
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+// ============================================================
 // Main login screen
 // ============================================================
 export function LoginScreen() {
   const login = useAppStore((s) => s.login);
-  const loginAs = useAppStore((s) => s.loginAs);
+  const loginByEmail = useAppStore((s) => s.loginByEmail);
   const [email, setEmail] = React.useState("");
   const [password, setPassword] = React.useState("");
   const [showPass, setShowPass] = React.useState(false);
   const [error, setError] = React.useState("");
   const [selectedRole, setSelectedRole] = React.useState<Role | null>(null);
+  const [mode, setMode] = React.useState<"signin" | "register">("signin");
   const emailRef = React.useRef<HTMLInputElement>(null);
 
   React.useEffect(() => {
-    emailRef.current?.focus();
-  }, []);
+    if (mode === "signin") {
+      emailRef.current?.focus();
+    }
+  }, [mode]);
 
   const detectRole = (value: string): Role => {
     const v = value.toLowerCase();
@@ -149,17 +534,16 @@ export function LoginScreen() {
       setError("Please enter your email.");
       return;
     }
-    const match = mockUsers.find(
-      (u) => u.email.toLowerCase() === email.trim().toLowerCase()
-    );
-    if (match) {
-      loginAs(match.id);
-      toast.success(`Welcome back, ${match.name.split(" ")[0]}`);
-    } else {
-      const role = detectRole(email);
-      login(role);
-      toast.success(`Signed in as ${ROLE_LABELS[role]}`);
+    // First, try to match a real account (demo or created in-app) by email.
+    const found = loginByEmail(email);
+    if (found) {
+      toast.success("Welcome back");
+      return;
     }
+    // Fall back to role detection for the demo flow.
+    const role = detectRole(email);
+    login(role);
+    toast.success(`Signed in as ${ROLE_LABELS[role]}`);
   };
 
   const quickFill = (role: Role) => {
@@ -170,82 +554,25 @@ export function LoginScreen() {
     setSelectedRole(role);
   };
 
-  return (
-    <div className="flex min-h-screen bg-background">
-      {/* Left brand panel — monochromatic blue hero, hidden on mobile */}
-      <div className="bg-ici-navy-gradient relative hidden w-1/2 flex-col justify-between overflow-hidden p-12 text-white lg:flex">
-        <div className="bg-grid-texture pointer-events-none absolute inset-0 opacity-30" />
-        <div className="bg-ici-dots pointer-events-none absolute left-8 top-8 h-24 w-24 opacity-40" />
-        <div className="bg-ici-dots pointer-events-none absolute right-8 top-8 h-24 w-24 opacity-40" />
-        <div className="pointer-events-none absolute -left-24 top-1/3 h-72 w-72 rounded-full bg-[#ADE1FB]/15 blur-3xl" />
-        <div className="pointer-events-none absolute -right-20 bottom-1/4 h-64 w-64 rounded-full bg-sky-400/10 blur-3xl" />
-
-        {/* Hero image with LQIP blur-up loading */}
-        <div className="pointer-events-none absolute inset-0 opacity-25">
-          <BlurImage
-            src="/hero-students.png"
-            alt=""
-            darkPlaceholder
-            eager
-            wrapperClassName="absolute inset-0 h-full w-full"
-            className="h-full w-full object-cover"
+  // ---- Coordinator self-registration mode ----
+  if (mode === "register") {
+    return (
+      <div className="flex min-h-screen bg-background">
+        <BrandPanel />
+        <div className="flex w-full flex-col items-center justify-center px-4 py-10 lg:w-1/2">
+          <CoordinatorRegisterForm
+            onBackToSignIn={() => setMode("signin")}
           />
         </div>
-
-        {/* Brand */}
-        <div className="relative">
-          <div className="flex items-center gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-md bg-white/15 ring-1 ring-white/25 backdrop-blur-sm">
-              <GraduationCap className="h-6 w-6 text-[#ADE1FB]" strokeWidth={2.4} />
-            </div>
-            <div>
-              <p className="text-base font-bold leading-tight">
-                Practo
-              </p>
-              <p className="text-xs text-white/70">
-                Practicum Management
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {/* Motto + auto-scrolling role carousel */}
-        <div className="relative max-w-md space-y-7">
-          <div className="space-y-3">
-            {/* Department / school motto — clean, professional */}
-            <h1 className="text-[2.25rem] font-extrabold leading-[1.08] tracking-tight">
-              Practicum management,{" "}
-              <span className="text-[#ADE1FB]">simplified.</span>
-            </h1>
-            <p className="text-[15px] font-medium leading-relaxed text-white/85">
-              One focused platform to evaluate interns, approve weekly journals,
-              and export practicum accreditation reports.
-            </p>
-          </div>
-
-          {/* Pale-blue accent divider */}
-          <div className="h-1 w-16 rounded-full bg-[#ADE1FB]" />
-
-          {/* Auto-scrolling role carousel */}
-          <div className="space-y-3">
-            <p className="text-[11px] font-semibold uppercase tracking-wider text-white/50">
-              Built for
-            </p>
-            <RoleCarousel />
-          </div>
-        </div>
-
-        {/* User Agreement link */}
-        <div className="relative">
-          <a
-            href="#"
-            onClick={(e) => e.preventDefault()}
-            className="text-xs font-medium text-white/60 transition-colors hover:text-white"
-          >
-            User Agreement
-          </a>
-        </div>
       </div>
+    );
+  }
+
+  // ---- Default sign-in mode ----
+  return (
+    <div className="flex min-h-screen bg-background">
+      {/* Left brand panel */}
+      <BrandPanel />
 
       {/* Right form panel — clean flat white */}
       <div className="flex w-full flex-col items-center justify-center px-4 py-10 lg:w-1/2">
@@ -343,15 +670,25 @@ export function LoginScreen() {
             </Button>
           </form>
 
-          {/* Account help — no self-service signup. Accounts are provisioned
-              by the practicum coordinator. */}
-          <div className="mt-5 text-center">
+          {/* Account help — students/supervisors contact their coordinator.
+              Coordinators can self-register via the link below. */}
+          <div className="mt-5 space-y-2 text-center">
             <p className="text-xs text-muted-foreground">
               Don&apos;t have an account?{" "}
               <span className="font-medium text-foreground">
-                Contact your practicum coordinator.
+                Students &amp; supervisors: contact your practicum coordinator.
               </span>
             </p>
+            <div className="flex items-center justify-center gap-2 text-xs">
+              <span className="text-muted-foreground">University staff?</span>
+              <button
+                onClick={() => setMode("register")}
+                className="inline-flex items-center gap-1 font-semibold text-primary underline-offset-2 hover:underline"
+              >
+                <ShieldCheck className="h-3.5 w-3.5" />
+                Create a coordinator account
+              </button>
+            </div>
           </div>
 
           {/* Demo accounts */}
