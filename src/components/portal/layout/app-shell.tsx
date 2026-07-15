@@ -43,8 +43,13 @@ export function AppShell({ children }: AppShellProps) {
 
   return (
     <div className="flex min-h-screen bg-background">
-      {/* Desktop sidebar — visible at lg+ only (per Responsive Contract §1.5). */}
-      <div className="hidden lg:block">
+      {/*
+        Desktop sidebar — pinned to the viewport via sticky so it NEVER scrolls
+        with the page. self-start prevents the flex row from stretching it to
+        content height; h-screen pins it to exactly one viewport; the internal
+        ScrollArea handles its own nav overflow.
+      */}
+      <div className="sticky top-0 hidden h-screen shrink-0 self-start lg:flex lg:flex-col">
         <Sidebar collapsed={collapsed} onToggleCollapse={() => setCollapsed((c) => !c)} />
       </div>
 
@@ -72,11 +77,17 @@ export function AppShell({ children }: AppShellProps) {
           </div>
         </main>
         {/* Footer — desktop only. Sticky to bottom via mt-auto. Bottom tab bar
-            replaces it on mobile (<lg). No font-size below 12px. */}
+            replaces it on mobile (<lg). Clean: brand + user agreement link. */}
         <footer className="mt-auto hidden border-t border-border/60 bg-background/50 px-4 py-2.5 sm:px-6 lg:block lg:px-8">
           <div className="mx-auto flex w-full max-w-7xl items-center justify-between gap-2 text-xs text-muted-foreground">
-            <p className="truncate">Practicum Evaluation Portal</p>
-            <p className="shrink-0 text-muted-foreground/70">Term 2024–2025</p>
+            <p className="truncate">Practo</p>
+            <a
+              href="#"
+              onClick={(e) => e.preventDefault()}
+              className="shrink-0 font-medium text-muted-foreground transition-colors hover:text-foreground"
+            >
+              User Agreement
+            </a>
           </div>
         </footer>
       </div>

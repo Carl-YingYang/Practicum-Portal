@@ -64,7 +64,7 @@ export function NotificationsDropdown() {
       <DropdownMenuTrigger asChild>
         <button
           className={cn(
-            "relative flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40",
+            "relative flex h-9 w-9 items-center justify-center rounded-full text-topbar-foreground transition-colors hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30",
             hasUrgent && !open && "text-red-500 hover:text-red-600"
           )}
           aria-label={"Notifications" + (unreadCount > 0 ? `, ${unreadCount} unread` : "")}

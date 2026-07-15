@@ -6,8 +6,8 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
-  --font-heading: var(--font-jakarta), ui-sans-serif, system-ui, sans-serif;
+  --font-sans: var(--font-inter), "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --font-heading: var(--font-inter), "Helvetica Neue", Helvetica, Arial, sans-serif;
   --font-mono: var(--font-jetbrains), ui-monospace, monospace;
 
   --color-sidebar-ring: var(--sidebar-ring);
@@ -18,6 +18,11 @@
   --color-sidebar-primary: var(--sidebar-primary);
   --color-sidebar-foreground: var(--sidebar-foreground);
   --color-sidebar: var(--sidebar);
+
+  /* Topbar — blue chrome (matches sidebar) */
+  --color-topbar: var(--topbar);
+  --color-topbar-foreground: var(--topbar-foreground);
+  --color-topbar-border: var(--topbar-border);
 
   --color-chart-5: var(--chart-5);
   --color-chart-4: var(--chart-4);
@@ -61,191 +66,246 @@
 }
 
 /* ============================================================
-   Practicum Evaluation Portal — Design Tokens (v2 refined)
-   Scholarly palette: Slate neutrals + Teal brand + Amber accent
-   (No indigo / blue — per blueprint)
+   BLUE CHROME + NEUTRAL PAGE — MODERN PROFESSIONAL
+   ────────────────────────────────────────────────────────────
+   CONCEPT: Only the header + sidebar are BLUE. The page content
+   is pure neutral (white in light, near-black in dark).
 
-   v2 refinements:
-   - Warmer, softer app background for a premium SaaS feel
-   - Unified elevation scale (xs → 2xl)
-   - Refined border/ring tokens (hairline borders)
-   - Text-color hierarchy via semantic opacity
-   - Transition timing curves (calm / spring / emphasis)
-   - Glassmorphism utility for sticky surfaces
-   - Better dark-mode contrast parity
+   Light mode:
+   - Header + Sidebar = lighter blue (#266CA9 vibrant)
+   - Page bg = pure white #FFFFFF
+   - Cards = white with hairline border
+   - Text = near-black #0A0A0A
+
+   Dark mode:
+   - Header + Sidebar = darker blue (#041D56 deep navy)
+   - Page bg = near-black #0A0A0A (NOT blue — pure neutral)
+   - Cards = dark gray #141414
+   - Text = near-white #FAFAFA
+
+   Palette (monochromatic blue from @indelibleconcepts):
+   - #ADE1FB  Lightest  — active item highlight, pale accent
+   - #266CA9  Medium    — LIGHT mode chrome (header + sidebar)
+   - #0F2573  Deep      — brand/deep
+   - #041D56  Darker    — DARK mode chrome (header + sidebar)
+   - #01082D  Darkest   — deep text accent
    ============================================================ */
 :root {
-  --radius: 0.625rem; /* 10px — slightly rounder, more modern */
+  --radius: 0.375rem; /* 6px — sharp, professional corners */
 
-  /* App surface — warm off-white instead of pure slate-50 */
-  --background: #fbfbfa;
-  --foreground: #1a1d21;
+  /* ---- PAGE SURFACES — pure neutral (NOT blue) ---- */
+  --background: #ffffff;
+  --foreground: #0a0a0a;
   --card: #ffffff;
-  --card-foreground: #1a1d21;
+  --card-foreground: #0a0a0a;
   --popover: #ffffff;
-  --popover-foreground: #1a1d21;
+  --popover-foreground: #0a0a0a;
 
-  /* Brand — teal-700 (richer, more grounded) */
-  --primary: #0f766e;
+  /* ---- Brand — vibrant blue (buttons, links in page) ---- */
+  --primary: #266ca9;
   --primary-foreground: #ffffff;
 
-  --secondary: #f4f5f4;
-  --secondary-foreground: #1a1d21;
+  /* ---- Secondary — neutral light gray ---- */
+  --secondary: #f4f4f5;
+  --secondary-foreground: #18181b;
 
-  --muted: #f4f5f4;
-  --muted-foreground: #6b7280;
+  /* ---- Muted — neutral ---- */
+  --muted: #f4f4f5;
+  --muted-foreground: #71717a;
 
-  /* Accent — amber (rating/highlight) */
-  --accent: #fef3c7;
-  --accent-foreground: #92400e;
+  /* ---- Accent — pale blue (soft fill for badges) ---- */
+  --accent: #e8f1fb;
+  --accent-foreground: #266ca9;
 
+  /* ---- Semantic ---- */
   --destructive: #dc2626;
   --destructive-foreground: #ffffff;
-
-  --success: #059669;
+  --success: #16a34a;
   --success-foreground: #ffffff;
-  --warning: #d97706;
+  --warning: #ea580c;
   --warning-foreground: #ffffff;
   --danger: #dc2626;
   --danger-foreground: #ffffff;
-  --info: #475569;
+  --info: #266ca9;
   --info-foreground: #ffffff;
 
-  /* Hairline borders — softer than slate-200 */
-  --border: #ececea;
-  --input: #e4e4e0;
-  --ring: #0f766e;
+  /* ---- Page borders — neutral hairline ---- */
+  --border: #e4e4e7;
+  --input: #d4d4d8;
+  --ring: #266ca9;
 
-  /* ---- Elevation scale ---- */
-  --shadow-xs: 0 1px 2px 0 rgb(15 23 42 / 0.04);
-  --shadow-sm: 0 1px 3px 0 rgb(15 23 42 / 0.05), 0 1px 2px -1px rgb(15 23 42 / 0.04);
-  --shadow-md: 0 4px 12px -2px rgb(15 23 42 / 0.06), 0 2px 6px -2px rgb(15 23 42 / 0.04);
-  --shadow-lg: 0 12px 28px -6px rgb(15 23 42 / 0.10), 0 6px 12px -4px rgb(15 23 42 / 0.06);
-  --shadow-xl: 0 20px 48px -12px rgb(15 23 42 / 0.16), 0 8px 20px -6px rgb(15 23 42 / 0.08);
+  /* ---- Chart palette ---- */
+  --chart-1: #266ca9;
+  --chart-2: #ade1fb;
+  --chart-3: #0f2573;
+  --chart-4: #71717a;
+  --chart-5: #041d56;
 
-  /* Card default elevation */
-  --shadow-card: var(--shadow-sm);
-  --shadow-card-hover: var(--shadow-md);
+  /* ---- SIDEBAR — LIGHTER BLUE CHROME ---- */
+  --sidebar: #266ca9;
+  --sidebar-foreground: #ffffff;
+  --sidebar-primary: #ade1fb;
+  --sidebar-primary-foreground: #041d56;
+  --sidebar-accent: rgba(255, 255, 255, 0.14);
+  --sidebar-accent-foreground: #ffffff;
+  --sidebar-border: rgba(255, 255, 255, 0.16);
+  --sidebar-ring: #ade1fb;
 
-  /* ---- Transition curves ---- */
+  /* ---- TOPBAR — LIGHTER BLUE CHROME (matches sidebar) ---- */
+  --topbar: #266ca9;
+  --topbar-foreground: #ffffff;
+  --topbar-border: rgba(255, 255, 255, 0.16);
+
+  /* ---- Blue brand tokens (raw, for gradients) ---- */
+  --blue-lightest: #ade1fb;
+  --blue-light: #5a9fd4;
+  --blue: #266ca9;
+  --blue-deep: #0f2573;
+  --blue-darker: #041d56;
+  --blue-darkest: #01082d;
+
+  /* ---- Backwards-compat aliases ---- */
+  --navy: #266ca9;
+  --navy-deep: #0f2573;
+  --navy-darker: #041d56;
+  --navy-light: #ade1fb;
+  --gold: #ade1fb;
+  --gold-light: #ade1fb;
+  --gold-soft: #e8f1fb;
+
+  /* ---- Soft shadows (neutral, subtle) ---- */
+  --shadow-xs: 0 1px 2px 0 rgba(0, 0, 0, 0.04);
+  --shadow-sm: 0 1px 3px 0 rgba(0, 0, 0, 0.06), 0 1px 2px -1px rgba(0, 0, 0, 0.04);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.07), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -4px rgba(0, 0, 0, 0.05);
+  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.10), 0 8px 10px -6px rgba(0, 0, 0, 0.05);
+  --shadow-card: var(--shadow-xs);
+  --shadow-card-hover: var(--shadow-sm);
+
+  /* ---- Easing curves ---- */
   --ease-calm: cubic-bezier(0.4, 0, 0.2, 1);
   --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
   --ease-emphasis: cubic-bezier(0.16, 1, 0.3, 1);
-
-  --chart-1: #0f766e;   /* teal */
-  --chart-2: #d97706;   /* amber */
-  --chart-3: #059669;   /* emerald */
-  --chart-4: #475569;   /* slate */
-  --chart-5: #dc2626;   /* red */
-
-  /* Sidebar — soft scholarly off-white with teal active */
-  --sidebar: #ffffff;
-  --sidebar-foreground: #1a1d21;
-  --sidebar-primary: #0f766e;
-  --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #f0fdfa;      /* teal-50 tint for active */
-  --sidebar-accent-foreground: #0f766e;
-  --sidebar-border: #f0f0ee;
-  --sidebar-ring: #0f766e;
 }
 
 .dark {
-  /* Refined dark — clearer card/app separation, brighter text for readability */
-  --background: #0f1115;
-  --foreground: #f0f1f3;
-  --card: #1a1d24;
-  --card-foreground: #f0f1f3;
-  --popover: #1a1d24;
-  --popover-foreground: #f0f1f3;
+  /* ---- PAGE SURFACES — pure neutral near-black (NOT blue) ---- */
+  --background: #0a0a0a;
+  --foreground: #fafafa;
+  --card: #141414;
+  --card-foreground: #fafafa;
+  --popover: #141414;
+  --popover-foreground: #fafafa;
 
-  --primary: #2dd4bf;             /* teal-400 — brighter for dark */
-  --primary-foreground: #042f2e;
+  /* ---- Brand — vibrant blue (buttons, links in page) ---- */
+  --primary: #266ca9;
+  --primary-foreground: #ffffff;
 
-  --secondary: #242830;
-  --secondary-foreground: #f0f1f3;
+  /* ---- Secondary — neutral dark gray ---- */
+  --secondary: #1c1c1f;
+  --secondary-foreground: #e4e4e7;
 
-  --muted: #242830;
-  --muted-foreground: #b8c0cc;    /* brighter for better contrast */
+  /* ---- Muted ---- */
+  --muted: #1c1c1f;
+  --muted-foreground: #a1a1aa;
 
-  --accent: #422006;
-  --accent-foreground: #fbbf24;
+  /* ---- Accent — dark blue tint ---- */
+  --accent: #0f2573;
+  --accent-foreground: #ade1fb;
 
+  /* ---- Semantic ---- */
   --destructive: #f87171;
-  --destructive-foreground: #1a1d21;
-
+  --destructive-foreground: #0a0a0a;
   --success: #34d399;
-  --success-foreground: #042f2e;
+  --success-foreground: #0a0a0a;
   --warning: #fbbf24;
-  --warning-foreground: #1a1d21;
+  --warning-foreground: #0a0a0a;
   --danger: #f87171;
-  --danger-foreground: #1a1d21;
-  --info: #94a3b8;
-  --info-foreground: #1a1d21;
+  --danger-foreground: #0a0a0a;
+  --info: #5a9fd4;
+  --info-foreground: #0a0a0a;
 
-  --border: #2e333d;              /* slightly brighter for visible separation */
-  --input: #3a424d;
-  --ring: #2dd4bf;
+  /* ---- Page borders — visible on dark ---- */
+  --border: #27272a;
+  --input: #3f3f46;
+  --ring: #266ca9;
 
-  /* Elevation in dark uses a tinted black with subtle teal */
-  --shadow-xs: 0 1px 2px 0 rgb(0 0 0 / 0.3);
-  --shadow-sm: 0 1px 3px 0 rgb(0 0 0 / 0.4), 0 1px 2px -1px rgb(0 0 0 / 0.3);
-  --shadow-md: 0 4px 12px -2px rgb(0 0 0 / 0.4), 0 2px 6px -2px rgb(0 0 0 / 0.3);
-  --shadow-lg: 0 12px 28px -6px rgb(0 0 0 / 0.5), 0 6px 12px -4px rgb(0 0 0 / 0.35);
-  --shadow-xl: 0 20px 48px -12px rgb(0 0 0 / 0.6), 0 8px 20px -6px rgb(0 0 0 / 0.4);
-
-  --shadow-card: var(--shadow-sm);
-  --shadow-card-hover: var(--shadow-md);
-
-  --chart-1: #2dd4bf;
-  --chart-2: #fbbf24;
-  --chart-3: #34d399;
-  --chart-4: #94a3b8;
+  /* ---- Chart ---- */
+  --chart-1: #266ca9;
+  --chart-2: #ade1fb;
+  --chart-3: #5a9fd4;
+  --chart-4: #a1a1aa;
   --chart-5: #f87171;
 
-  --sidebar: #0f1115;
-  --sidebar-foreground: #f0f1f3;
-  --sidebar-primary: #2dd4bf;
-  --sidebar-primary-foreground: #042f2e;
-  --sidebar-accent: #1a2a27;
-  --sidebar-accent-foreground: #5eead4;
-  --sidebar-border: #242830;
-  --sidebar-ring: #2dd4bf;
+  /* ---- SIDEBAR — DARKER BLUE CHROME ---- */
+  --sidebar: #041d56;
+  --sidebar-foreground: #e8eef9;
+  --sidebar-primary: #266ca9;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: rgba(255, 255, 255, 0.08);
+  --sidebar-accent-foreground: #ade1fb;
+  --sidebar-border: rgba(255, 255, 255, 0.10);
+  --sidebar-ring: #266ca9;
+
+  /* ---- TOPBAR — DARKER BLUE CHROME (matches sidebar) ---- */
+  --topbar: #041d56;
+  --topbar-foreground: #e8eef9;
+  --topbar-border: rgba(255, 255, 255, 0.10);
+
+  /* ---- Soft shadows on dark ---- */
+  --shadow-xs: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
+  --shadow-sm: 0 1px 3px 0 rgba(0, 0, 0, 0.4), 0 1px 2px -1px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.45), 0 2px 4px -2px rgba(0, 0, 0, 0.35);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.5), 0 4px 6px -4px rgba(0, 0, 0, 0.4);
+  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.6), 0 8px 10px -6px rgba(0, 0, 0, 0.45);
+  --shadow-card: var(--shadow-sm);
+  --shadow-card-hover: var(--shadow-md);
 }
 
 @layer base {
   * {
     @apply border-border outline-ring/50;
   }
+
   body {
     @apply bg-background text-foreground antialiased;
     font-feature-settings: "cv02", "cv03", "cv04", "cv11";
-    /* Refined text rendering */
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
-  h1, h2, h3, h4 {
-    font-family: var(--font-jakarta), ui-sans-serif, system-ui, sans-serif;
-    letter-spacing: -0.018em;
+
+  /* ICI uses the same sans-serif for headings and body */
+  h1,
+  h2,
+  h3,
+  h4 {
+    font-family: "Helvetica Neue", Helvetica, Arial, var(--font-inter), sans-serif;
+    letter-spacing: -0.015em;
+    font-weight: 700;
   }
 
-  /* Custom scrollbars — slimmer, more polished */
+  /* Slim scrollbars — ICI-clean */
   .scroll-area-custom {
     scrollbar-width: thin;
     scrollbar-color: var(--border) transparent;
   }
+
   .scroll-area-custom::-webkit-scrollbar {
     width: 8px;
     height: 8px;
   }
+
   .scroll-area-custom::-webkit-scrollbar-track {
     background: transparent;
   }
+
   .scroll-area-custom::-webkit-scrollbar-thumb {
     background-color: var(--border);
     border-radius: 9999px;
     border: 2px solid transparent;
     background-clip: content-box;
   }
+
   .scroll-area-custom::-webkit-scrollbar-thumb:hover {
     background-color: var(--muted-foreground);
     background-clip: content-box;
@@ -253,63 +313,210 @@
 }
 
 /* ============================================================
-   Utility classes — elevation, glass, gradients
+   Utility classes — elevation, glass, gradients, ICI brand
+   All use var() so they auto-adapt to dark mode.
    ============================================================ */
 @layer utilities {
-  .elev-xs { box-shadow: var(--shadow-xs); }
-  .elev-sm { box-shadow: var(--shadow-sm); }
-  .elev-md { box-shadow: var(--shadow-md); }
-  .elev-lg { box-shadow: var(--shadow-lg); }
-  .elev-xl { box-shadow: var(--shadow-xl); }
-  .elev-card { box-shadow: var(--shadow-card); }
-  .elev-card-hover { box-shadow: var(--shadow-card-hover); }
+  .elev-xs {
+    box-shadow: var(--shadow-xs);
+  }
+  .elev-sm {
+    box-shadow: var(--shadow-sm);
+  }
+  .elev-md {
+    box-shadow: var(--shadow-md);
+  }
+  .elev-lg {
+    box-shadow: var(--shadow-lg);
+  }
+  .elev-xl {
+    box-shadow: var(--shadow-xl);
+  }
+  .elev-card {
+    box-shadow: var(--shadow-card);
+  }
+  .elev-card-hover {
+    box-shadow: var(--shadow-card-hover);
+  }
 
-  /* Glassmorphism for sticky surfaces (topbar, action bar, dialogs) */
+  /* Blue gradient — hero panels, login left side, footer
+     Monochromatic blue: deep navy → vibrant blue → darker navy */
+  .bg-ici-navy-gradient {
+    background-image:
+      radial-gradient(circle at 15% 20%, color-mix(in srgb, var(--blue-lightest) 14%, transparent) 0, transparent 42%),
+      radial-gradient(circle at 85% 80%, color-mix(in srgb, var(--blue) 22%, transparent) 0, transparent 38%),
+      linear-gradient(135deg, var(--blue-deep) 0%, var(--blue) 55%, var(--blue-darker) 100%);
+  }
+
+  .dark .bg-ici-navy-gradient {
+    background-image:
+      radial-gradient(circle at 15% 20%, color-mix(in srgb, var(--blue-lightest) 12%, transparent) 0, transparent 42%),
+      radial-gradient(circle at 85% 80%, color-mix(in srgb, var(--blue) 18%, transparent) 0, transparent 38%),
+      linear-gradient(135deg, var(--blue-darker) 0%, var(--blue-deep) 55%, var(--blue-darkest) 100%);
+  }
+
+  /* Backwards-compat alias */
+  .bg-brand-gradient {
+    background-image:
+      radial-gradient(circle at 15% 20%, color-mix(in srgb, var(--blue-lightest) 14%, transparent) 0, transparent 42%),
+      radial-gradient(circle at 85% 80%, color-mix(in srgb, var(--blue) 22%, transparent) 0, transparent 38%),
+      linear-gradient(135deg, var(--blue-deep) 0%, var(--blue) 55%, var(--blue-darker) 100%);
+  }
+
+  .dark .bg-brand-gradient {
+    background-image:
+      radial-gradient(circle at 15% 20%, color-mix(in srgb, var(--blue-lightest) 12%, transparent) 0, transparent 42%),
+      radial-gradient(circle at 85% 80%, color-mix(in srgb, var(--blue) 18%, transparent) 0, transparent 38%),
+      linear-gradient(135deg, var(--blue-darker) 0%, var(--blue-deep) 55%, var(--blue-darkest) 100%);
+  }
+
+  /* Glassmorphism — sticky surfaces */
   .glass {
-    background-color: color-mix(in srgb, var(--background) 72%, transparent);
+    background-color: color-mix(in srgb, var(--background) 78%, transparent);
     backdrop-filter: saturate(180%) blur(14px);
     -webkit-backdrop-filter: saturate(180%) blur(14px);
   }
-  .dark .glass {
-    background-color: color-mix(in srgb, var(--background) 78%, transparent);
-  }
 
-  /* Brand gradient surface (login panel, hero accents) */
-  .bg-brand-gradient {
-    background-image:
-      radial-gradient(circle at 15% 20%, color-mix(in srgb, var(--primary) 0%, #ffffff 18%) 0, transparent 42%),
-      radial-gradient(circle at 85% 80%, color-mix(in srgb, #14b8a6 0%, #ffffff 14%) 0, transparent 38%),
-      linear-gradient(135deg, var(--primary) 0%, color-mix(in srgb, var(--primary) 70%, #134e4a) 100%);
-  }
-  .dark .bg-brand-gradient {
-    background-image:
-      radial-gradient(circle at 15% 20%, rgba(45, 212, 191, 0.16) 0, transparent 42%),
-      radial-gradient(circle at 85% 80%, rgba(20, 184, 166, 0.12) 0, transparent 38%),
-      linear-gradient(135deg, #0f766e 0%, #134e4a 100%);
+  .dark .glass {
+    background-color: color-mix(in srgb, var(--background) 82%, transparent);
   }
 
   /* Subtle grid texture for brand panels */
   .bg-grid-texture {
     background-image:
-      linear-gradient(to right, rgba(255,255,255,0.06) 1px, transparent 1px),
-      linear-gradient(to bottom, rgba(255,255,255,0.06) 1px, transparent 1px);
+      linear-gradient(to right, rgba(255, 255, 255, 0.06) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(255, 255, 255, 0.06) 1px, transparent 1px);
     background-size: 36px 36px;
   }
 
-  /* Hairline divider — softer than border */
+  /* ICI dotted corner pattern */
+  .bg-ici-dots {
+    background-image: radial-gradient(circle, rgba(255, 255, 255, 0.15) 1px, transparent 1px);
+    background-size: 18px 18px;
+  }
+
+  /* Blue accent line (was gold — now monochromatic) */
+  .border-gold-top {
+    border-top: 3px solid var(--blue);
+  }
+
+  .border-gold-bottom {
+    border-bottom: 3px solid var(--blue);
+  }
+
+  .dark .border-gold-top {
+    border-top-color: var(--blue-lightest);
+  }
+
+  .dark .border-gold-bottom {
+    border-bottom-color: var(--blue-lightest);
+  }
+
+  /* Hairline divider */
   .hairline {
     border-color: color-mix(in srgb, var(--border) 80%, transparent);
   }
 
-  /* Focus ring utility — consistent accessible focus */
+  /* Focus ring utility */
   .focus-ring {
     @apply outline-none focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background;
   }
 
   /* Text hierarchy helpers */
-  .text-primary-strong { color: var(--foreground); }
-  .text-secondary { color: color-mix(in srgb, var(--foreground) 72%, transparent); }
-  .text-tertiary { color: var(--muted-foreground); }
+  .text-primary-strong {
+    color: var(--foreground);
+  }
+
+  .text-secondary {
+    color: color-mix(in srgb, var(--foreground) 72%, transparent);
+  }
+
+  .text-tertiary {
+    color: var(--muted-foreground);
+  }
+
+  .text-navy {
+    color: var(--blue);
+  }
+
+  .dark .text-navy {
+    color: var(--blue-lightest);
+  }
+
+  .text-gold {
+    color: var(--blue);
+  }
+
+  .dark .text-gold {
+    color: var(--blue-lightest);
+  }
+
+  /* ============================================================
+     LQIP — Low Quality Image Loading with blur-up effect
+     ============================================================ */
+  .lqip-wrapper {
+    position: relative;
+    overflow: hidden;
+    background: linear-gradient(110deg, #ececec 8%, #f5f5f5 18%, #ececec 33%);
+    background-size: 200% 100%;
+    animation: lqip-shimmer 1.4s linear infinite;
+  }
+
+  .dark .lqip-wrapper {
+    background: linear-gradient(110deg, #1c2d4a 8%, #243752 18%, #1c2d4a 33%);
+    background-size: 200% 100%;
+  }
+
+  .lqip-wrapper.is-dark {
+    background: linear-gradient(110deg, #14315e 8%, #1e3a6b 18%, #14315e 33%);
+    background-size: 200% 100%;
+  }
+
+  .lqip-wrapper.is-loaded {
+    animation: none;
+    background: transparent;
+  }
+
+  .lqip-img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    opacity: 0;
+    filter: blur(18px);
+    transform: scale(1.04);
+    transition:
+      opacity 520ms var(--ease-calm),
+      filter 520ms var(--ease-calm),
+      transform 520ms var(--ease-calm);
+  }
+
+  .lqip-img.is-loaded {
+    opacity: 1;
+    filter: blur(0);
+    transform: scale(1);
+  }
+
+  .lqip-blur-placeholder {
+    position: absolute;
+    inset: 0;
+    background: inherit;
+    filter: blur(24px);
+    transform: scale(1.1);
+    opacity: 1;
+    transition: opacity 520ms var(--ease-calm);
+    pointer-events: none;
+  }
+
+  .lqip-wrapper.is-loaded .lqip-blur-placeholder {
+    opacity: 0;
+  }
+}
+
+@keyframes lqip-shimmer {
+  to {
+    background-position: -200% 0;
+  }
 }
 
 /* ============================================================
@@ -328,59 +535,127 @@
 }
 
 /* ============================================================
-   Component polish — applied broadly via @layer components
+   Component polish — flat ICI-style cards & inputs
+   All use var() so they adapt to dark mode automatically.
    ============================================================ */
 @layer components {
-  /* Card — refined default elevation + radius */
+  /* Card — flat with hairline border, minimal shadow */
   .card-refined {
     box-shadow: var(--shadow-card);
-    transition: box-shadow 220ms var(--ease-calm), transform 220ms var(--ease-calm), border-color 220ms var(--ease-calm);
-  }
-  .card-refined.is-interactive:hover {
-    box-shadow: var(--shadow-card-hover);
-    border-color: color-mix(in srgb, var(--primary) 24%, var(--border));
+    transition: box-shadow 220ms var(--ease-calm), transform 220ms var(--ease-calm),
+      border-color 220ms var(--ease-calm);
   }
 
-  /* Input focus — refined ring */
-  .input-refined {
-    transition: border-color 180ms var(--ease-calm), box-shadow 180ms var(--ease-calm), background-color 180ms var(--ease-calm);
+  .card-refined.is-interactive:hover {
+    box-shadow: var(--shadow-card-hover);
+    border-color: color-mix(in srgb, var(--primary) 28%, var(--border));
+    transform: translateY(-1px);
   }
+
+  /* Input focus — uses primary (navy in light, lighter navy in dark) */
+  .input-refined {
+    transition: border-color 180ms var(--ease-calm), box-shadow 180ms var(--ease-calm),
+      background-color 180ms var(--ease-calm);
+  }
+
   .input-refined:focus-visible,
   .input-refined:focus {
     border-color: color-mix(in srgb, var(--primary) 60%, var(--input));
     box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 14%, transparent);
     outline: none;
   }
+
+  /* Pale blue CTA button — soft secondary action */
+  .btn-ici-gold {
+    background-color: var(--accent);
+    color: var(--accent-foreground);
+    font-weight: 600;
+    border-radius: var(--radius);
+    transition: background-color 180ms var(--ease-calm), transform 180ms var(--ease-calm),
+      box-shadow 180ms var(--ease-calm);
+  }
+
+  .btn-ici-gold:hover {
+    background-color: color-mix(in srgb, var(--accent) 85%, var(--blue));
+    box-shadow: 0 4px 12px -2px color-mix(in srgb, var(--blue) 30%, transparent);
+    transform: translateY(-1px);
+  }
+
+  .btn-ici-gold:active {
+    transform: translateY(0);
+  }
+
+  /* Vibrant blue CTA button — primary action */
+  .btn-ici-navy {
+    background-color: var(--primary);
+    color: var(--primary-foreground);
+    font-weight: 600;
+    border-radius: var(--radius);
+    transition: background-color 180ms var(--ease-calm), transform 180ms var(--ease-calm),
+      box-shadow 180ms var(--ease-calm);
+  }
+
+  .btn-ici-navy:hover {
+    background-color: color-mix(in srgb, var(--primary) 85%, var(--blue-deep));
+    box-shadow: 0 4px 12px -2px color-mix(in srgb, var(--primary) 40%, transparent);
+    transform: translateY(-1px);
+  }
+
+  .btn-ici-navy:active {
+    transform: translateY(0);
+  }
+
+  /* Section header — blue text with lighter blue underline */
+  .ici-section-header {
+    position: relative;
+    padding-bottom: 0.5rem;
+    color: var(--primary);
+    font-weight: 700;
+  }
+
+  .ici-section-header::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    bottom: 0;
+    width: 40px;
+    height: 3px;
+    background-color: var(--accent);
+    border-radius: 2px;
+  }
 }
 
-/* Print styles for PDF / report views — "what I see is what prints" */
+/* Print styles */
 @media print {
   .no-print {
     display: none !important;
   }
+
   .print-area {
     box-shadow: none !important;
     border: none !important;
     max-width: none !important;
     padding: 0 !important;
   }
+
   body {
     background: #ffffff !important;
   }
-  /* Force section breaks onto their own page in the accreditation doc */
+
   .page-break-before {
     break-before: page;
     page-break-before: always;
   }
-  /* Cover page gets its own page too */
+
   .cover-page {
     break-after: page;
     page-break-after: always;
   }
-  /* Prevent signature lines from splitting across pages */
+
   section {
     break-inside: avoid-page;
   }
+
   @page {
     margin: 1.5cm;
   }
@@ -389,11 +664,6 @@
 /* ============================================================
    Mobile UX polish — view transitions + scroll behavior
    ============================================================ */
-
-/* View enter animation — keyed on the view name in AppShell so React
-   remounts the wrapper on every route change. A subtle fade + 4px
-   upward slide gives a native-app "page push" feel without being
-   distracting. Duration kept short (220ms) for snappy mobile nav. */
 @keyframes portal-view-enter {
   from {
     opacity: 0;
@@ -404,45 +674,40 @@
     transform: translateY(0);
   }
 }
+
 .view-enter {
   animation: portal-view-enter 220ms var(--ease-calm);
 }
 
-/* Respect users who prefer reduced motion — disable the slide. */
 @media (prefers-reduced-motion: reduce) {
   .view-enter {
     animation: none;
   }
+
   html {
     scroll-behavior: auto !important;
   }
 }
 
-/* Mobile: ensure the body has smooth scrolling enabled by default,
-   but only on devices that support it well (coarse pointer). */
 @media (pointer: coarse) {
   html {
     -webkit-tap-highlight-color: transparent;
   }
-  /* Prevent the rubber-band overscroll from showing white gaps
-     under the fixed bottom nav on iOS. */
+
   body {
     overscroll-behavior-y: none;
   }
 }
 
-/* Hide scrollbars on horizontal chip rows (used in messages view,
-   filter strips, etc.) for a cleaner mobile look. */
 .no-scrollbar {
   scrollbar-width: none;
   -ms-overflow-style: none;
 }
+
 .no-scrollbar::-webkit-scrollbar {
   display: none;
 }
 
-/* Mobile safe-area top padding for the sticky topbar — ensures
-   the topbar clears the iOS notch / dynamic island. */
 @supports (padding-top: env(safe-area-inset-top)) {
   .topbar-safe-top {
     padding-top: env(safe-area-inset-top, 0px);

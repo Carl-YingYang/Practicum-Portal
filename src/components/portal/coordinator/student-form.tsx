@@ -128,6 +128,26 @@ export function StudentForm({ studentId }: { studentId?: ViewParams["studentId"]
     if (!companyId) next.companyId = "Company is required.";
     if (!position.trim()) next.position = "Position is required.";
     if (!department) next.department = "Department is required.";
+
+    // Duplicate prevention (only on create — skip the record being edited).
+    if (!isEdit) {
+      const emailLower = email.trim().toLowerCase();
+      const dupEmail = students.some(
+        (s) => s.email.trim().toLowerCase() === emailLower
+      );
+      if (dupEmail) {
+        next.email = next.email || "A student with this email already exists.";
+      }
+      const numTrim = studentNumber.trim();
+      const dupNum = students.some(
+        (s) => s.studentNumber.trim().toLowerCase() === numTrim.toLowerCase()
+      );
+      if (dupNum) {
+        next.studentNumber =
+          next.studentNumber || "A student with this student number already exists.";
+      }
+    }
+
     setErrors(next);
     return Object.keys(next).length === 0;
   };
@@ -136,6 +156,38 @@ export function StudentForm({ studentId }: { studentId?: ViewParams["studentId"]
     if (!validate()) {
       toast.error("Please fix the highlighted fields.");
       return;
+    }
+    // Final duplicate-safety net right before create (in case state changed
+    // between validation and this call).
+    if (!isEdit) {
+      const emailLower = email.trim().toLowerCase();
+      const dupEmail = students.some(
+        (s) => s.email.trim().toLowerCase() === emailLower
+      );
+      const numTrim = studentNumber.trim();
+      const dupNum = students.some(
+        (s) => s.studentNumber.trim().toLowerCase() === numTrim.toLowerCase()
+      );
+      if (dupEmail) {
+        toast.error("Duplicate email", {
+          description: "A student with this email already exists.",
+        });
+        setErrors((prev) => ({
+          ...prev,
+          email: "A student with this email already exists.",
+        }));
+        return;
+      }
+      if (dupNum) {
+        toast.error("Duplicate student number", {
+          description: "A student with this student number already exists.",
+        });
+        setErrors((prev) => ({
+          ...prev,
+          studentNumber: "A student with this student number already exists.",
+        }));
+        return;
+      }
     }
     const supId = supervisorId;
     const startDateIso = startDate ? new Date(startDate + "T08:00:00").toISOString() : null;

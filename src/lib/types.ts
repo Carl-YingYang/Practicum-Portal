@@ -13,6 +13,7 @@ export interface User {
   /** link to the role-specific record */
   studentId?: string;
   supervisorId?: string;
+  coordinatorId?: string;
   /** initials avatar background */
   avatarColor: string;
 }
@@ -97,6 +98,34 @@ export interface Supervisor {
   department: Department;
   /** Max interns they will take. */
   capacity: number;
+  createdAt: string;
+}
+
+export type CoordinatorStatus = "active" | "inactive";
+
+/** Academic department options for coordinators (university-side). */
+export const COORDINATOR_DEPARTMENTS: string[] = [
+  "Computer Studies",
+  "Engineering",
+  "Business",
+  "Arts & Sciences",
+  "Education",
+  "Accountancy",
+  "Other",
+];
+
+/** Coordinator — university staff who manage the practicum program. */
+export interface Coordinator {
+  id: string;
+  name: string;
+  email: string;
+  /** Their role/title at the university (e.g. "Practicum Coordinator"). */
+  title: string;
+  /** Academic department (e.g. "Computer Studies"). */
+  department: string;
+  status: CoordinatorStatus;
+  /** initials avatar background */
+  avatarColor: string;
   createdAt: string;
 }
 
@@ -380,6 +409,9 @@ export type ViewKey =
   | "coordinator.messages"
   | "coordinator.forms"
   | "coordinator.form-editor"
+  | "coordinator.user-management"
+  | "coordinator.bulk-create"
+  | "coordinator.coordinator-new"
   | "coordinator.profile";
 
 export interface NavItem {
@@ -395,11 +427,14 @@ export interface NavItem {
     | "pendingJournals"
     | "unassignedStudents"
     | "unreadMessages";
+  /** Optional section label for grouping in the sidebar (e.g. "Overview", "People"). */
+  section?: string;
 }
 
 export interface ViewParams {
   studentId?: string;
   supervisorId?: string;
+  coordinatorId?: string;
   evaluationId?: string;
   journalId?: string;
   conversationId?: string;

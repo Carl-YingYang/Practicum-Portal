@@ -24,6 +24,7 @@ const iconMap: Record<string, LucideIcon> = {
   reports: FileText,
   students: Users,
   supervisors: UserSquare2,
+  users: Users,
   approvals: FileCheck2,
   allEvaluations: ClipboardCheck,
   allJournals: ClipboardList,
@@ -41,15 +42,15 @@ export function getNavIcon(name: string): LucideIcon {
 
 export const navConfig: Record<Role, NavItem[]> = {
   student: [
-    { key: "dashboard", label: "Dashboard", shortLabel: "Home", view: "student.dashboard", icon: "dashboard" },
-    { key: "timeClock", label: "Time Clock", shortLabel: "Clock", view: "student.time-clock", icon: "timeClock" },
-    { key: "journals", label: "Journals", shortLabel: "Journals", view: "student.journals", icon: "journals" },
-    { key: "evaluations", label: "Evaluations", shortLabel: "Evals", view: "student.evaluations", icon: "evaluations" },
-    { key: "reports", label: "Reports & PDFs", shortLabel: "Reports", view: "student.reports", icon: "reports" },
+    { key: "dashboard", label: "Dashboard", shortLabel: "Home", view: "student.dashboard", icon: "dashboard", section: "Overview" },
+    { key: "timeClock", label: "Time Clock", shortLabel: "Clock", view: "student.time-clock", icon: "timeClock", section: "My Work" },
+    { key: "journals", label: "Journals", shortLabel: "Journals", view: "student.journals", icon: "journals", section: "My Work" },
+    { key: "evaluations", label: "Evaluations", shortLabel: "Evals", view: "student.evaluations", icon: "evaluations", section: "My Work" },
+    { key: "reports", label: "Reports & PDFs", shortLabel: "Reports", view: "student.reports", icon: "reports", section: "Insights" },
   ],
   supervisor: [
-    { key: "dashboard", label: "Dashboard", shortLabel: "Home", view: "supervisor.dashboard", icon: "dashboard" },
-    { key: "interns", label: "My Interns", shortLabel: "Interns", view: "supervisor.interns", icon: "students" },
+    { key: "dashboard", label: "Dashboard", shortLabel: "Home", view: "supervisor.dashboard", icon: "dashboard", section: "Overview" },
+    { key: "interns", label: "My Interns", shortLabel: "Interns", view: "supervisor.interns", icon: "students", section: "Interns" },
     {
       key: "evaluations",
       label: "Evaluations",
@@ -57,6 +58,7 @@ export const navConfig: Record<Role, NavItem[]> = {
       view: "supervisor.evaluations",
       icon: "evaluations",
       badgeKey: "pendingEvaluations",
+      section: "Workflow",
     },
     {
       key: "journals",
@@ -65,6 +67,7 @@ export const navConfig: Record<Role, NavItem[]> = {
       view: "supervisor.journals",
       icon: "approvals",
       badgeKey: "pendingJournals",
+      section: "Workflow",
     },
     {
       key: "forms",
@@ -72,6 +75,7 @@ export const navConfig: Record<Role, NavItem[]> = {
       shortLabel: "Forms",
       view: "supervisor.forms",
       icon: "forms",
+      section: "Workflow",
     },
     {
       key: "messages",
@@ -80,19 +84,22 @@ export const navConfig: Record<Role, NavItem[]> = {
       view: "supervisor.messages",
       icon: "messages",
       badgeKey: "unreadMessages",
+      section: "Workflow",
     },
-    { key: "reports", label: "Reports & PDFs", shortLabel: "Reports", view: "supervisor.reports", icon: "reports" },
+    { key: "reports", label: "Reports & PDFs", shortLabel: "Reports", view: "supervisor.reports", icon: "reports", section: "Insights" },
   ],
   coordinator: [
-    { key: "dashboard", label: "Dashboard", shortLabel: "Home", view: "coordinator.dashboard", icon: "dashboard" },
-    { key: "students", label: "Students", shortLabel: "Students", view: "coordinator.students", icon: "students", badgeKey: "unassignedStudents" },
-    { key: "supervisors", label: "Supervisors", shortLabel: "Supervisors", view: "coordinator.supervisors", icon: "supervisors" },
+    { key: "dashboard", label: "Dashboard", shortLabel: "Home", view: "coordinator.dashboard", icon: "dashboard", section: "Overview" },
+    { key: "students", label: "Students", shortLabel: "Students", view: "coordinator.students", icon: "students", badgeKey: "unassignedStudents", section: "People" },
+    { key: "supervisors", label: "Supervisors", shortLabel: "Supervisors", view: "coordinator.supervisors", icon: "supervisors", section: "People" },
+    { key: "users", label: "User Management", shortLabel: "Users", view: "coordinator.user-management", icon: "users", section: "People" },
     {
       key: "forms",
       label: "Forms",
       shortLabel: "Forms",
       view: "coordinator.forms",
       icon: "forms",
+      section: "Workflow",
     },
     {
       key: "messages",
@@ -101,10 +108,11 @@ export const navConfig: Record<Role, NavItem[]> = {
       view: "coordinator.messages",
       icon: "messages",
       badgeKey: "unreadMessages",
+      section: "Workflow",
     },
-    { key: "evaluations", label: "Evaluations", shortLabel: "Evals", view: "coordinator.evaluations", icon: "allEvaluations" },
-    { key: "journals", label: "Journals", shortLabel: "Journals", view: "coordinator.journals", icon: "allJournals" },
-    { key: "reports", label: "Reports", shortLabel: "Reports", view: "coordinator.reports", icon: "reports" },
+    { key: "evaluations", label: "Evaluations", shortLabel: "Evals", view: "coordinator.evaluations", icon: "allEvaluations", section: "Workflow" },
+    { key: "journals", label: "Journals", shortLabel: "Journals", view: "coordinator.journals", icon: "allJournals", section: "Workflow" },
+    { key: "reports", label: "Reports", shortLabel: "Reports", view: "coordinator.reports", icon: "reports", section: "Insights" },
   ],
 };
 
@@ -159,6 +167,9 @@ export const viewTitles: Record<ViewKey, string> = {
   "coordinator.messages": "Messages",
   "coordinator.forms": "Forms",
   "coordinator.form-editor": "Edit Form",
+  "coordinator.user-management": "User Management",
+  "coordinator.bulk-create": "Bulk Create Users",
+  "coordinator.coordinator-new": "Add Coordinator",
   "coordinator.profile": "My Profile",
 };
 

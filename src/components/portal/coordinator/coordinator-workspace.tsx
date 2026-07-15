@@ -18,6 +18,9 @@ import { CoordinatorProfile } from "./coordinator-profile";
 import { MessagesView } from "@/components/portal/shared/messages-view";
 import { FormsList } from "./forms-list";
 import { FormEditor } from "./form-editor";
+import { UserManagement } from "./user-management";
+import { BulkCreateUsers } from "./bulk-create-users";
+import { CoordinatorForm } from "./coordinator-form";
 
 /**
  * Barrel + router for the Coordinator workspace. Reads `view` + `viewParams`
@@ -56,6 +59,12 @@ export function CoordinatorWorkspace() {
       return <FormsList />;
     case "coordinator.form-editor":
       return <FormEditor formId={viewParams.formId} />;
+    case "coordinator.user-management":
+      return <UserManagement />;
+    case "coordinator.bulk-create":
+      return <BulkCreateUsers />;
+    case "coordinator.coordinator-new":
+      return <CoordinatorForm coordinatorId={viewParams.coordinatorId} />;
     case "coordinator.reports":
       return <CoordinatorReports />;
     case "coordinator.profile":
@@ -81,4 +90,7 @@ export {
   CoordinatorProfile,
   FormsList,
   FormEditor,
+  UserManagement,
+  BulkCreateUsers,
+  CoordinatorForm,
 };

@@ -2,6 +2,7 @@ import type {
   ActivityLog,
   Company,
   Conversation,
+  Coordinator,
   Evaluation,
   FormDocument,
   Journal,
@@ -906,6 +907,23 @@ export const activityLog: ActivityLog[] = [
 ];
 
 // ============================================================
+// Coordinators — university staff who manage the practicum program.
+// Seeded with the demo coordinator so the cohort starts non-empty.
+// ============================================================
+export const coordinators: Coordinator[] = [
+  {
+    id: "coord1",
+    name: "Prof. Patricia Lim",
+    email: "patricia.lim@university.edu",
+    title: "Practicum Coordinator",
+    department: "Computer Studies",
+    status: "active",
+    avatarColor: "#475569",
+    createdAt: "2025-01-10T08:00:00.000Z",
+  },
+];
+
+// ============================================================
 // Mock login accounts — one per role for the demo.
 // The login screen lets the user pick a role to sign in as.
 // ============================================================
@@ -931,6 +949,7 @@ export const mockUsers: User[] = [
     name: "Prof. Patricia Lim",
     email: "patricia.lim@university.edu",
     role: "coordinator",
+    coordinatorId: "coord1",
     avatarColor: "#475569",
   },
 ];

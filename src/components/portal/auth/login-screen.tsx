@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Avatar } from "@/components/portal/shared/avatar";
+import { BlurImage } from "@/components/portal/shared/blur-image";
 import {
   GraduationCap,
   Eye,
@@ -17,13 +18,14 @@ import {
   ClipboardCheck,
   FileText,
   Check,
-  UserPlus,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { CreateAccountDialog } from "@/components/portal/auth/create-account-dialog";
 
-const roleHighlights: {
+// ============================================================
+// Role carousel data — cycles on the left brand panel
+// ============================================================
+const roleSlides: {
   role: Role;
   icon: typeof ShieldCheck;
   blurb: string;
@@ -46,11 +48,79 @@ const roleHighlights: {
 ];
 
 const roleAccent: Record<Role, string> = {
-  student: "from-teal-400/30 to-teal-600/20",
+  student: "from-sky-400/30 to-sky-600/20",
   supervisor: "from-amber-300/30 to-amber-500/20",
   coordinator: "from-emerald-300/30 to-emerald-500/20",
 };
 
+// ============================================================
+// Auto-scrolling role carousel
+// ============================================================
+function RoleCarousel() {
+  const [index, setIndex] = React.useState(0);
+  const [paused, setPaused] = React.useState(false);
+
+  React.useEffect(() => {
+    if (paused) return;
+    const timer = setInterval(() => {
+      setIndex((i) => (i + 1) % roleSlides.length);
+    }, 4500);
+    return () => clearInterval(timer);
+  }, [paused]);
+
+  return (
+    <div
+      className="relative overflow-hidden rounded-md border border-white/10 bg-white/5 backdrop-blur-sm"
+      onMouseEnter={() => setPaused(true)}
+      onMouseLeave={() => setPaused(false)}
+    >
+      {/* Slide track */}
+      <div
+        className="flex transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)]"
+        style={{ transform: `translateX(-${index * 100}%)` }}
+      >
+        {roleSlides.map(({ role, icon: Icon, blurb }, i) => (
+          <div key={role} className="w-full shrink-0 px-5 py-5">
+            <div className="flex items-start gap-3.5">
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-white/12 ring-1 ring-white/20">
+                <Icon className="h-5 w-5 text-[#ADE1FB]" strokeWidth={2.2} />
+              </span>
+              <div className="min-w-0 flex-1 pt-0.5">
+                <p className="text-sm font-bold text-white">
+                  {ROLE_LABELS[role]}
+                </p>
+                <p className="mt-1 text-[13px] leading-relaxed text-white/70">
+                  {blurb}
+                </p>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Dot indicators */}
+      <div className="flex items-center justify-center gap-1.5 pb-3.5">
+        {roleSlides.map((_, i) => (
+          <button
+            key={i}
+            onClick={() => setIndex(i)}
+            aria-label={`Go to slide ${i + 1}`}
+            className={cn(
+              "h-1.5 rounded-full transition-all duration-300",
+              i === index
+                ? "w-6 bg-[#ADE1FB]"
+                : "w-1.5 bg-white/30 hover:bg-white/50"
+            )}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ============================================================
+// Main login screen
+// ============================================================
 export function LoginScreen() {
   const login = useAppStore((s) => s.login);
   const loginAs = useAppStore((s) => s.loginAs);
@@ -59,7 +129,6 @@ export function LoginScreen() {
   const [showPass, setShowPass] = React.useState(false);
   const [error, setError] = React.useState("");
   const [selectedRole, setSelectedRole] = React.useState<Role | null>(null);
-  const [createOpen, setCreateOpen] = React.useState(false);
   const emailRef = React.useRef<HTMLInputElement>(null);
 
   React.useEffect(() => {
@@ -103,86 +172,101 @@ export function LoginScreen() {
 
   return (
     <div className="flex min-h-screen bg-background">
-      {/* Left brand panel — hidden on mobile */}
-      <div className="bg-brand-gradient relative hidden w-1/2 flex-col justify-between overflow-hidden p-12 text-primary-foreground lg:flex">
-        <div className="bg-grid-texture pointer-events-none absolute inset-0 opacity-40" />
-        {/* Soft glow accents */}
-        <div className="pointer-events-none absolute -left-24 top-1/3 h-72 w-72 rounded-full bg-white/10 blur-3xl" />
-        <div className="pointer-events-none absolute -right-20 bottom-1/4 h-64 w-64 rounded-full bg-teal-200/15 blur-3xl" />
+      {/* Left brand panel — monochromatic blue hero, hidden on mobile */}
+      <div className="bg-ici-navy-gradient relative hidden w-1/2 flex-col justify-between overflow-hidden p-12 text-white lg:flex">
+        <div className="bg-grid-texture pointer-events-none absolute inset-0 opacity-30" />
+        <div className="bg-ici-dots pointer-events-none absolute left-8 top-8 h-24 w-24 opacity-40" />
+        <div className="bg-ici-dots pointer-events-none absolute right-8 top-8 h-24 w-24 opacity-40" />
+        <div className="pointer-events-none absolute -left-24 top-1/3 h-72 w-72 rounded-full bg-[#ADE1FB]/15 blur-3xl" />
+        <div className="pointer-events-none absolute -right-20 bottom-1/4 h-64 w-64 rounded-full bg-sky-400/10 blur-3xl" />
 
+        {/* Hero image with LQIP blur-up loading */}
+        <div className="pointer-events-none absolute inset-0 opacity-25">
+          <BlurImage
+            src="/hero-students.png"
+            alt=""
+            darkPlaceholder
+            eager
+            wrapperClassName="absolute inset-0 h-full w-full"
+            className="h-full w-full object-cover"
+          />
+        </div>
+
+        {/* Brand */}
         <div className="relative">
           <div className="flex items-center gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-white/15 ring-1 ring-white/20 backdrop-blur-sm">
-              <GraduationCap className="h-6 w-6" strokeWidth={2.2} />
+            <div className="flex h-11 w-11 items-center justify-center rounded-md bg-white/15 ring-1 ring-white/25 backdrop-blur-sm">
+              <GraduationCap className="h-6 w-6 text-[#ADE1FB]" strokeWidth={2.4} />
             </div>
             <div>
-              <p className="font-heading text-base font-bold leading-tight">
-                Practicum Portal
+              <p className="text-base font-bold leading-tight">
+                Practo
               </p>
-              <p className="text-xs text-primary-foreground/75">
-                Evaluation &amp; Journal System
+              <p className="text-xs text-white/70">
+                Practicum Management
               </p>
             </div>
           </div>
         </div>
 
+        {/* Motto + auto-scrolling role carousel */}
         <div className="relative max-w-md space-y-7">
           <div className="space-y-3">
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1 text-[11px] font-medium uppercase tracking-wider text-primary-foreground/90 ring-1 ring-white/15">
-              <span className="h-1.5 w-1.5 rounded-full bg-teal-200" />
-              University Term 2024-2025
-            </span>
-            <h1 className="font-heading text-[2rem] font-bold leading-[1.15] tracking-tight">
-              A simpler way to evaluate interns and submit practicum requirements.
+            {/* Department / school motto — clean, professional */}
+            <h1 className="text-[2.25rem] font-extrabold leading-[1.08] tracking-tight">
+              Practicum management,{" "}
+              <span className="text-[#ADE1FB]">simplified.</span>
             </h1>
+            <p className="text-[15px] font-medium leading-relaxed text-white/85">
+              One focused platform to evaluate interns, approve weekly journals,
+              and export practicum accreditation reports.
+            </p>
           </div>
-          <p className="text-[15px] leading-relaxed text-primary-foreground/80">
-            Replace the Word, PDF, Messenger, and email mess with one focused
-            portal. Supervisors can evaluate an intern and get a printable PDF in
-            under three minutes.
-          </p>
-          <div className="space-y-2.5 border-t border-white/10 pt-6">
-            {roleHighlights.map(({ role, icon: Icon, blurb }) => (
-              <div key={role} className="flex items-start gap-3">
-                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white/10 ring-1 ring-white/15">
-                  <Icon className="h-4 w-4" strokeWidth={2} />
-                </span>
-                <div className="pt-0.5">
-                  <p className="text-sm font-semibold">{ROLE_LABELS[role]}</p>
-                  <p className="text-[13px] leading-snug text-primary-foreground/70">
-                    {blurb}
-                  </p>
-                </div>
-              </div>
-            ))}
+
+          {/* Pale-blue accent divider */}
+          <div className="h-1 w-16 rounded-full bg-[#ADE1FB]" />
+
+          {/* Auto-scrolling role carousel */}
+          <div className="space-y-3">
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-white/50">
+              Built for
+            </p>
+            <RoleCarousel />
           </div>
         </div>
 
-        <p className="relative text-xs text-primary-foreground/60">
-          © 2025 Practicum Portal · University term 2024-2025
-        </p>
+        {/* User Agreement link */}
+        <div className="relative">
+          <a
+            href="#"
+            onClick={(e) => e.preventDefault()}
+            className="text-xs font-medium text-white/60 transition-colors hover:text-white"
+          >
+            User Agreement
+          </a>
+        </div>
       </div>
 
-      {/* Right form panel */}
+      {/* Right form panel — clean flat white */}
       <div className="flex w-full flex-col items-center justify-center px-4 py-10 lg:w-1/2">
         <div className="w-full max-w-[400px]">
           {/* Mobile brand */}
           <div className="mb-8 flex items-center gap-3 lg:hidden">
-            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary text-primary-foreground elev-sm">
-              <GraduationCap className="h-6 w-6" strokeWidth={2.2} />
+            <div className="flex h-11 w-11 items-center justify-center rounded-md bg-primary text-primary-foreground elev-sm">
+              <GraduationCap className="h-6 w-6" strokeWidth={2.4} />
             </div>
             <div>
-              <p className="font-heading text-base font-bold leading-tight text-foreground">
-                Practicum Portal
+              <p className="text-base font-bold leading-tight text-foreground">
+                Practo
               </p>
               <p className="text-xs text-muted-foreground">
-                Evaluation &amp; Journal System
+                Practicum Management
               </p>
             </div>
           </div>
 
           <div className="mb-7">
-            <h2 className="font-heading text-[1.625rem] font-bold tracking-tight text-foreground">
+            <h2 className="text-[1.625rem] font-bold tracking-tight text-foreground">
               Sign in to your account
             </h2>
             <p className="mt-1.5 text-sm text-muted-foreground">
@@ -192,7 +276,7 @@ export function LoginScreen() {
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-1.5">
-              <Label htmlFor="email" className="text-[13px] font-medium">
+              <Label htmlFor="email" className="text-[13px] font-semibold">
                 Email
               </Label>
               <Input
@@ -211,13 +295,13 @@ export function LoginScreen() {
             </div>
             <div className="space-y-1.5">
               <div className="flex items-center justify-between">
-                <Label htmlFor="password" className="text-[13px] font-medium">
+                <Label htmlFor="password" className="text-[13px] font-semibold">
                   Password
                 </Label>
                 <a
                   href="#"
                   onClick={(e) => e.preventDefault()}
-                  className="text-xs font-medium text-muted-foreground transition-colors hover:text-primary"
+                  className="text-xs font-semibold text-muted-foreground transition-colors hover:text-primary"
                 >
                   Forgot password?
                 </a>
@@ -259,22 +343,16 @@ export function LoginScreen() {
             </Button>
           </form>
 
-          {/* Create account — walkable prototype (Prompt v3 §3.1) */}
+          {/* Account help — no self-service signup. Accounts are provisioned
+              by the practicum coordinator. */}
           <div className="mt-5 text-center">
             <p className="text-xs text-muted-foreground">
-              Don't have an account?{" "}
-              <button
-                type="button"
-                onClick={() => setCreateOpen(true)}
-                className="inline-flex items-center gap-1 font-semibold text-primary transition-colors hover:text-primary/80"
-              >
-                <UserPlus className="h-3.5 w-3.5" />
-                Create account
-              </button>
+              Don&apos;t have an account?{" "}
+              <span className="font-medium text-foreground">
+                Contact your practicum coordinator.
+              </span>
             </p>
           </div>
-
-          <CreateAccountDialog open={createOpen} onOpenChange={setCreateOpen} />
 
           {/* Demo accounts */}
           <div className="mt-8">
@@ -292,7 +370,7 @@ export function LoginScreen() {
                     key={u.id}
                     onClick={() => quickFill(u.role)}
                     className={cn(
-                      "group relative flex w-full items-center gap-3 rounded-xl border bg-card p-3 text-left transition-all duration-200",
+                      "group relative flex w-full items-center gap-3 rounded-md border bg-card p-3 text-left transition-all duration-200",
                       isSelected
                         ? "border-primary/50 ring-1 ring-primary/20 elev-sm"
                         : "border-border/70 hover:border-border hover:bg-muted/30 elev-xs"
@@ -301,7 +379,7 @@ export function LoginScreen() {
                     {/* Accent strip */}
                     <span
                       className={cn(
-                        "absolute inset-y-0 left-0 w-1 rounded-l-xl bg-gradient-to-b opacity-0 transition-opacity",
+                        "absolute inset-y-0 left-0 w-1 rounded-l-md bg-gradient-to-b opacity-0 transition-opacity",
                         roleAccent[u.role],
                         isSelected && "opacity-100"
                       )}
@@ -330,6 +408,17 @@ export function LoginScreen() {
               Pick an account to autofill, then press{" "}
               <span className="font-medium text-foreground">Sign in</span>.
             </p>
+          </div>
+
+          {/* Mobile user agreement */}
+          <div className="mt-6 text-center lg:hidden">
+            <a
+              href="#"
+              onClick={(e) => e.preventDefault()}
+              className="text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
+            >
+              User Agreement
+            </a>
           </div>
         </div>
       </div>

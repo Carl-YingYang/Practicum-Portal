@@ -1,21 +1,18 @@
 import type { Metadata } from "next";
-import { Inter, Plus_Jakarta_Sans, JetBrains_Mono } from "next/font/google";
+import { Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as SonnerToaster } from "@/components/ui/sonner";
 import { ThemeProvider } from "@/components/theme-provider";
 
+// ICI College uses 'Helvetica Neue', Helvetica, Arial, sans-serif.
+// We load Inter as a high-quality web-font fallback for systems that
+// lack Helvetica Neue (Linux/Android), so the look stays consistent
+// everywhere while Apple devices get the real Helvetica Neue.
 const inter = Inter({
   variable: "--font-inter",
   subsets: ["latin"],
   display: "swap",
-});
-
-const jakarta = Plus_Jakarta_Sans({
-  variable: "--font-jakarta",
-  subsets: ["latin"],
-  display: "swap",
-  weight: ["500", "600", "700", "800"],
 });
 
 const jetbrains = JetBrains_Mono({
@@ -25,18 +22,20 @@ const jetbrains = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Practicum Evaluation Portal",
+  title: "Practo | Practicum Management",
   description:
-    "A focused portal for supervisors and coordinators to evaluate interns, approve weekly journals, and export practicum reports.",
+    "Practo — a focused practicum management platform for coordinators, supervisors, and students. Journals, timesheets, evaluations, and accreditation in one place.",
   keywords: [
+    "Practo",
     "Practicum",
     "Internship",
     "Evaluation",
     "Portal",
     "University",
     "Supervisor",
+    "Coordinator",
   ],
-  authors: [{ name: "Practicum Portal" }],
+  authors: [{ name: "Practo" }],
   icons: {
     icon: "/logo.svg",
   },
@@ -50,7 +49,11 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body
-        className={`${inter.variable} ${jakarta.variable} ${jetbrains.variable} antialiased bg-background text-foreground`}
+        className={`${inter.variable} ${jetbrains.variable} antialiased bg-background text-foreground`}
+        style={{
+          fontFamily:
+            "'Helvetica Neue', Helvetica, Arial, var(--font-inter), sans-serif",
+        }}
       >
         <ThemeProvider
           attribute="class"

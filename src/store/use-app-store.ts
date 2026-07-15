@@ -6,6 +6,7 @@ import {
   activityLog as seedActivity,
   companies as seedCompanies,
   conversations as seedConversations,
+  coordinators as seedCoordinators,
   defaultToolsConfig,
   evaluations as seedEvaluations,
   formDocuments as seedFormDocuments,
@@ -20,6 +21,7 @@ import {
   type ActivityType,
   type Company,
   type Conversation,
+  type Coordinator,
   type Evaluation,
   type FormBlock,
   type FormBlockType,
@@ -50,6 +52,7 @@ interface AppState {
   companies: Company[];
   supervisors: Supervisor[];
   students: Student[];
+  coordinators: Coordinator[];
   evaluations: Evaluation[];
   journals: Journal[];
   timeLogs: TimeLog[];
@@ -143,6 +146,16 @@ interface AppState {
   updateSupervisor: (
     id: string,
     input: Partial<Pick<Supervisor, "name" | "email" | "companyId" | "status" | "title" | "department" | "capacity">>
+  ) => void;
+  createCoordinator: (input: {
+    name: string;
+    email: string;
+    title?: string;
+    department?: string;
+  }) => { coordinatorId: string; tempPassword: string };
+  updateCoordinator: (
+    id: string,
+    input: Partial<Pick<Coordinator, "name" | "email" | "status" | "title" | "department">>
   ) => void;
 
   // --- time clock actions (available to ALL roles) ---
@@ -249,6 +262,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   companies: seedCompanies,
   supervisors: seedSupervisors,
   students: seedStudents,
+  coordinators: seedCoordinators,
   evaluations: seedEvaluations,
   journals: seedJournals,
   timeLogs: seedTimeLogs,
@@ -581,6 +595,42 @@ export const useAppStore = create<AppState>((set, get) => ({
     set((s) => ({
       supervisors: s.supervisors.map((sup) =>
         sup.id === id ? { ...sup, ...input } : sup
+      ),
+    })),
+
+  createCoordinator: (input) => {
+    const id = uuid();
+    const now = new Date().toISOString();
+    const tempPassword = genTempPassword();
+    // Pick a deterministic avatar color from a small professional palette.
+    const palette = ["#475569", "#0f766e", "#7c3aed", "#b45309", "#be185d", "#1e40af"];
+    const avatarColor = palette[get().coordinators.length % palette.length];
+    const coordinator: Coordinator = {
+      id,
+      name: input.name,
+      email: input.email,
+      title: input.title ?? "Practicum Coordinator",
+      department: input.department ?? "Computer Studies",
+      status: "active",
+      avatarColor,
+      createdAt: now,
+    };
+    set((s) => ({
+      coordinators: [...s.coordinators, coordinator],
+      activity: logActivity(
+        s.activity,
+        "student_created",
+        `${input.name} was added as a coordinator`,
+        s.currentUser?.id ?? ""
+      ),
+    }));
+    return { coordinatorId: id, tempPassword };
+  },
+
+  updateCoordinator: (id, input) =>
+    set((s) => ({
+      coordinators: s.coordinators.map((c) =>
+        c.id === id ? { ...c, ...input } : c
       ),
     })),
 

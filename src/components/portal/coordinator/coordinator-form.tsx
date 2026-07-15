@@ -2,9 +2,8 @@
 
 import * as React from "react";
 import { useAppStore } from "@/store/use-app-store";
-import { getSupervisor } from "@/lib/selectors";
-import type { ViewParams, Department } from "@/lib/types";
-import { DEPARTMENTS } from "@/lib/types";
+import type { ViewParams } from "@/lib/types";
+import { COORDINATOR_DEPARTMENTS } from "@/lib/types";
 import { PageHeader } from "@/components/portal/layout/page-header";
 import { SectionCard } from "@/components/portal/shared/section-card";
 import { ActionBar } from "@/components/portal/shared/action-bar";
@@ -20,7 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { AlertCircle } from "lucide-react";
+import { AlertCircle, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
 
 function genTempPassword(): string {
@@ -31,30 +30,34 @@ function genTempPassword(): string {
   );
 }
 
-export function SupervisorForm({
-  supervisorId,
+/**
+ * CoordinatorForm — create (or edit) a Practicum Coordinator account.
+ *
+ * Coordinators are university staff who manage the practicum program. This
+ * form is intentionally simpler than the student/supervisor forms: no
+ * company, no capacity — just identity + academic department.
+ */
+export function CoordinatorForm({
+  coordinatorId,
 }: {
-  supervisorId?: ViewParams["supervisorId"];
+  coordinatorId?: ViewParams["coordinatorId"];
 }) {
   const navigate = useAppStore((s) => s.navigate);
   const back = useAppStore((s) => s.back);
-  const supervisors = useAppStore((s) => s.supervisors);
-  const companies = useAppStore((s) => s.companies);
-  const createSupervisor = useAppStore((s) => s.createSupervisor);
-  const updateSupervisor = useAppStore((s) => s.updateSupervisor);
+  const coordinators = useAppStore((s) => s.coordinators);
+  const createCoordinator = useAppStore((s) => s.createCoordinator);
+  const updateCoordinator = useAppStore((s) => s.updateCoordinator);
 
-  const isEdit = !!supervisorId;
+  const isEdit = !!coordinatorId;
   const existing = React.useMemo(
-    () => (supervisorId ? getSupervisor(supervisors, supervisorId) : undefined),
-    [supervisors, supervisorId]
+    () => (coordinatorId ? coordinators.find((c) => c.id === coordinatorId) : undefined),
+    [coordinators, coordinatorId]
   );
 
   const [name, setName] = React.useState("");
   const [email, setEmail] = React.useState("");
-  const [companyId, setCompanyId] = React.useState("");
   const [title, setTitle] = React.useState("");
-  const [department, setDepartment] = React.useState<Department | "">("");
-  const [capacity, setCapacity] = React.useState("5");
+  const [department, setDepartment] = React.useState<string>("");
   const [tempPassword] = React.useState(() => genTempPassword());
   const [errors, setErrors] = React.useState<Record<string, string>>({});
   const [credsOpen, setCredsOpen] = React.useState(false);
@@ -62,30 +65,28 @@ export function SupervisorForm({
     name: string;
     email: string;
     tempPassword: string;
-    supervisorId: string;
+    coordinatorId: string;
   } | null>(null);
 
   React.useEffect(() => {
     if (existing) {
       setName(existing.name);
       setEmail(existing.email);
-      setCompanyId(existing.companyId);
       setTitle(existing.title);
       setDepartment(existing.department);
-      setCapacity(String(existing.capacity));
     }
   }, [existing]);
 
   if (isEdit && !existing) {
     return (
       <div>
-        <PageHeader title="Edit Supervisor" showBack breadcrumb="Supervisors" />
+        <PageHeader title="Edit Coordinator" showBack breadcrumb="User Management" />
         <EmptyState
           icon={AlertCircle}
-          title="Supervisor not found"
-          description="This supervisor may have been removed."
-          actionLabel="Back to supervisors"
-          onAction={() => navigate("coordinator.supervisors")}
+          title="Coordinator not found"
+          description="This coordinator may have been removed."
+          actionLabel="Back to User Management"
+          onAction={() => navigate("coordinator.user-management")}
         />
       </div>
     );
@@ -96,20 +97,17 @@ export function SupervisorForm({
     if (!name.trim()) next.name = "Name is required.";
     if (!email.trim()) next.email = "Email is required.";
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) next.email = "Enter a valid email.";
-    if (!companyId) next.companyId = "Company is required.";
     if (!title.trim()) next.title = "Title is required.";
     if (!department) next.department = "Department is required.";
-    if (!capacity.trim() || Number.isNaN(Number(capacity)) || Number(capacity) <= 0)
-      next.capacity = "Capacity must be a positive number.";
 
     // Duplicate prevention (only on create).
     if (!isEdit) {
       const emailLower = email.trim().toLowerCase();
-      const dupEmail = supervisors.some(
-        (s) => s.email.trim().toLowerCase() === emailLower
+      const dupEmail = coordinators.some(
+        (c) => c.email.trim().toLowerCase() === emailLower
       );
       if (dupEmail) {
-        next.email = next.email || "A supervisor with this email already exists.";
+        next.email = next.email || "A coordinator with this email already exists.";
       }
     }
 
@@ -125,47 +123,43 @@ export function SupervisorForm({
     // Final duplicate-safety net right before create.
     if (!isEdit) {
       const emailLower = email.trim().toLowerCase();
-      const dupEmail = supervisors.some(
-        (s) => s.email.trim().toLowerCase() === emailLower
+      const dupEmail = coordinators.some(
+        (c) => c.email.trim().toLowerCase() === emailLower
       );
       if (dupEmail) {
         toast.error("Duplicate email", {
-          description: "A supervisor with this email already exists.",
+          description: "A coordinator with this email already exists.",
         });
         setErrors((prev) => ({
           ...prev,
-          email: "A supervisor with this email already exists.",
+          email: "A coordinator with this email already exists.",
         }));
         return;
       }
     }
     if (isEdit && existing) {
-      updateSupervisor(existing.id, {
+      updateCoordinator(existing.id, {
         name: name.trim(),
         email: email.trim(),
-        companyId,
         title: title.trim(),
-        department: department as Department,
-        capacity: Number(capacity),
+        department,
       });
-      toast.success("Supervisor updated", {
+      toast.success("Coordinator updated", {
         description: `${name} saved.`,
       });
-      navigate("coordinator.supervisor-view", { supervisorId: existing.id });
+      navigate("coordinator.user-management");
     } else {
-      const result = createSupervisor({
+      const result = createCoordinator({
         name: name.trim(),
         email: email.trim(),
-        companyId,
         title: title.trim(),
-        department: department as Department,
-        capacity: Number(capacity),
+        department,
       });
       setCreatedCreds({
         name: name.trim(),
         email: email.trim(),
         tempPassword,
-        supervisorId: result.supervisorId,
+        coordinatorId: result.coordinatorId,
       });
       setCredsOpen(true);
     }
@@ -174,25 +168,44 @@ export function SupervisorForm({
   return (
     <div>
       <PageHeader
-        title={isEdit ? "Edit Supervisor" : "Add Supervisor"}
+        title={isEdit ? "Edit Coordinator" : "Add Coordinator"}
         description={
           isEdit
             ? `Editing ${existing?.name}`
-            : "Create a company supervisor account and set their mentoring capacity."
+            : "Create a practicum coordinator account with full program-management access."
         }
-        breadcrumb="Supervisors"
+        breadcrumb="User Management"
         showBack
       />
 
       <div className="space-y-4 pb-8">
-        {/* Section 1 — Supervisor */}
-        <SectionCard title="Supervisor">
+        {/* Info banner — explains the power of a coordinator account */}
+        {!isEdit && (
+          <div className="flex items-start gap-3 rounded-md border border-primary/20 bg-primary/5 p-3.5">
+            <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
+              <ShieldCheck className="h-4 w-4" strokeWidth={2.2} />
+            </span>
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-foreground">
+                Coordinator accounts have full access
+              </p>
+              <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">
+                Coordinators can manage students, supervisors, and other coordinators,
+                export reports, and configure practicum forms. Only grant this role to
+                authorised university staff.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* Section 1 — Identity */}
+        <SectionCard title="Coordinator">
           <div className="grid gap-4 sm:grid-cols-2">
             <Field label="Full Name" required error={errors.name}>
               <Input
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="Maria Santos"
+                placeholder="Prof. Patricia Lim"
                 aria-invalid={!!errors.name}
               />
             </Field>
@@ -201,81 +214,45 @@ export function SupervisorForm({
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="maria.santos@acmecorp.com"
+                placeholder="patricia.lim@university.edu"
                 aria-invalid={!!errors.email}
               />
-            </Field>
-            <Field
-              label="Company"
-              required
-              error={errors.companyId}
-              className="sm:col-span-2"
-            >
-              <Select value={companyId} onValueChange={setCompanyId}>
-                <SelectTrigger className="w-full" aria-invalid={!!errors.companyId}>
-                  <SelectValue placeholder="Select company" />
-                </SelectTrigger>
-                <SelectContent>
-                  {companies.map((c) => (
-                    <SelectItem key={c.id} value={c.id}>
-                      {c.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
             </Field>
           </div>
         </SectionCard>
 
-        {/* Section 2 — Mentoring Profile (new) */}
+        {/* Section 2 — Role at the university */}
         <SectionCard
-          title="Mentoring Profile"
-          description="Used to match interns to the right supervisor."
+          title="University Role"
+          description="Identifies the coordinator's position and academic department."
         >
           <div className="grid gap-4 sm:grid-cols-2">
             <Field
-              label="Job Title"
+              label="Title"
               required
               error={errors.title}
-              hint="Their actual role at the company."
+              hint="Their role at the university."
             >
               <Input
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                placeholder="Senior Frontend Engineer"
+                placeholder="Practicum Coordinator"
                 aria-invalid={!!errors.title}
               />
             </Field>
-            <Field label="Department" required error={errors.department}>
-              <Select
-                value={department}
-                onValueChange={(v) => setDepartment(v as Department)}
-              >
+            <Field label="Academic Department" required error={errors.department}>
+              <Select value={department} onValueChange={setDepartment}>
                 <SelectTrigger className="w-full" aria-invalid={!!errors.department}>
                   <SelectValue placeholder="Select department" />
                 </SelectTrigger>
                 <SelectContent>
-                  {DEPARTMENTS.map((d) => (
+                  {COORDINATOR_DEPARTMENTS.map((d) => (
                     <SelectItem key={d} value={d}>
                       {d}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
-            </Field>
-            <Field
-              label="Intern Capacity"
-              required
-              error={errors.capacity}
-              hint="Max interns this supervisor can mentor at once."
-            >
-              <Input
-                type="number"
-                min={1}
-                value={capacity}
-                onChange={(e) => setCapacity(e.target.value)}
-                aria-invalid={!!errors.capacity}
-              />
             </Field>
           </div>
         </SectionCard>
@@ -286,7 +263,7 @@ export function SupervisorForm({
           Cancel
         </Button>
         <Button onClick={handleSave}>
-          {isEdit ? "Save Changes" : "Create Supervisor"}
+          {isEdit ? "Save Changes" : "Create Coordinator"}
         </Button>
       </ActionBar>
 
@@ -298,12 +275,10 @@ export function SupervisorForm({
           email={createdCreds.email}
           tempPassword={createdCreds.tempPassword}
           onDone={() => {
-            toast.success("Supervisor created", {
+            toast.success("Coordinator created", {
               description: `${createdCreds.name} can now sign in.`,
             });
-            navigate("coordinator.supervisor-view", {
-              supervisorId: createdCreds.supervisorId,
-            });
+            navigate("coordinator.user-management");
           }}
         />
       )}
