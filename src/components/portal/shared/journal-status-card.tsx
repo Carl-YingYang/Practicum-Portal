@@ -102,109 +102,80 @@ export function JournalStatusCard({
   // ---- Status pill config ----
   const pill = STATUS_PILLS[status];
 
+  // ---- Compact supervisor-pending card (used on the supervisor dashboard
+  // "Pending my review" list). Renders a dense 2-row layout:
+  //   Row 1: name + week·hours | status pill
+  //   Row 2: [Read] [Approve] [Return] [Doc↗] inline (single row, no stacking)
+  // This replaces the previous 4-row stacked layout (header → doc placeholder
+  // → "Read journal" full-width → Approve/Return row) which felt cramped and
+  // made the list look cluttered.
+  const isCompactSupervisorPending =
+    compact &&
+    role === "supervisor" &&
+    journal?.status === "pending";
+
   return (
     <div
       className={cn(
-        "rounded-xl border border-border bg-card",
+        "rounded-xl border border-border bg-card transition-colors",
         compact ? "p-3" : "p-4",
+        isCompactSupervisorPending &&
+          "border-amber-200/60 bg-amber-50/30 dark:border-amber-900/30 dark:bg-amber-950/10",
       )}
     >
-      {/* Header row: student (if supervisor) + status pill.
-          For supervisors with a pending journal, the header is clickable to
-          open the read-only preview modal so they can read the content
-          before deciding. */}
-      <div className="mb-2.5 flex items-start justify-between gap-2">
-        <div className="min-w-0 flex-1">
-          {studentName && (
-            <p
+      {isCompactSupervisorPending ? (
+        <div className="space-y-2.5">
+          {/* ---- Row 1: identity + meta + status ---- */}
+          <div className="flex items-start justify-between gap-2.5">
+            <div className="min-w-0 flex-1">
+              <button
+                type="button"
+                onClick={() => setReading(true)}
+                className="block max-w-full truncate text-left text-sm font-semibold text-foreground transition-colors hover:text-primary hover:underline underline-offset-2"
+                title={studentName}
+              >
+                {studentName ?? "Student"}
+              </button>
+              <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-muted-foreground">
+                <span className="inline-flex items-center gap-1">
+                  <CalendarDays className="h-3 w-3" />
+                  Week of {formatDate(journal!.date)}
+                </span>
+                <span className="text-border">·</span>
+                <span className="inline-flex items-center gap-1 tabular-nums">
+                  <Hourglass className="h-3 w-3" />
+                  {journal!.hours}h
+                </span>
+              </div>
+            </div>
+            <span
               className={cn(
-                "truncate text-sm font-semibold text-foreground",
-                role === "supervisor" &&
-                  journal?.status === "pending" &&
-                  "cursor-pointer hover:text-primary hover:underline underline-offset-2",
+                "inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold",
+                pill.className,
               )}
-              onClick={
-                role === "supervisor" && journal?.status === "pending"
-                  ? () => setReading(true)
-                  : undefined
-              }
             >
-              {studentName}
-            </p>
-          )}
-          <p className="text-xs text-muted-foreground">
-            {journal
-              ? `Week of ${formatDate(journal.date)}`
-              : "No journal this week yet"}
-          </p>
-        </div>
-        <span
-          className={cn(
-            "inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold",
-            pill.className,
-          )}
-        >
-          <pill.icon className="h-3 w-3" />
-          {pill.label}
-        </span>
-      </div>
+              <pill.icon className="h-3 w-3" />
+              {pill.label}
+            </span>
+          </div>
 
-      {/* Body: open-doc link + role-aware actions */}
-      <div className="space-y-2">
-        {/* External doc link */}
-        {role === "student" && !docUrl && journalTemplateUrl ? (
-          // Student hasn't created this week's Doc yet — show the template link
-          <ExternalLinkBtn
-            href={journalTemplateUrl}
-            label="Open journal template"
-            icon={FileText}
-            variant="button"
-          />
-        ) : docUrl ? (
-          <ExternalLinkBtn
-            href={docUrl}
-            label={role === "student" ? "Open your journal" : "Open journal"}
-            icon={FileText}
-            variant="button"
-          />
-        ) : (
-          <span className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-border bg-muted/40 px-3 text-xs font-medium text-muted-foreground/60">
-            <FileText className="h-3.5 w-3.5" />
-            No Doc link yet
-          </span>
-        )}
-
-        {/* Role-aware action */}
-        {role === "student" && journal?.status === "draft" && (
-          <Button
-            onClick={handleMarkSubmitted}
-            size="sm"
-            className="h-9 w-full"
-            type="button"
-          >
-            <Check className="h-3.5 w-3.5" />
-            Mark as submitted
-          </Button>
-        )}
-
-        {role === "supervisor" && journal?.status === "pending" && !returning && (
-          <div className="space-y-2">
-            {/* Read journal first — opens a preview modal with the content. */}
-            <Button
-              onClick={() => setReading(true)}
-              variant="secondary"
-              size="sm"
-              className="h-9 w-full"
-              type="button"
-            >
-              <Eye className="h-3.5 w-3.5" />
-              Read journal
-            </Button>
-            <div className="flex gap-2">
+          {/* ---- Row 2: inline actions (single row, no stacking) ---- */}
+          {!returning ? (
+            <div className="flex items-center gap-1.5">
+              <Button
+                onClick={() => setReading(true)}
+                variant="ghost"
+                size="sm"
+                className="h-8 flex-1"
+                type="button"
+              >
+                <Eye className="h-3.5 w-3.5" />
+                Read
+              </Button>
               <Button
                 onClick={handleApprove}
                 size="sm"
-                className="h-9 flex-1"
+                className="h-8 flex-1"
                 type="button"
               >
                 <Check className="h-3.5 w-3.5" />
@@ -214,71 +185,248 @@ export function JournalStatusCard({
                 onClick={() => setReturning(true)}
                 variant="outline"
                 size="sm"
-                className="h-9 flex-1"
+                className="h-8 flex-1"
                 type="button"
               >
                 <RotateCcw className="h-3.5 w-3.5" />
                 Return
               </Button>
+              {/* Compact doc link — icon-only button on the far right.
+                  Keeps the action row balanced whether or not a Doc URL
+                  is attached. */}
+              {docUrl ? (
+                <a
+                  href={docUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  title="Open journal Doc"
+                  className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-border bg-card text-foreground transition-colors hover:bg-muted/60"
+                >
+                  <FileText className="h-3.5 w-3.5" />
+                  <span className="sr-only">Open journal Doc</span>
+                </a>
+              ) : (
+                <span
+                  title="No Doc link attached"
+                  className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-dashed border-border/60 text-muted-foreground/40"
+                >
+                  <FileText className="h-3.5 w-3.5" />
+                  <span className="sr-only">No Doc link attached</span>
+                </span>
+              )}
             </div>
+          ) : (
+            // Return-with-comments inline form (compact)
+            <div className="space-y-2 rounded-lg border border-border bg-muted/30 p-2.5">
+              <Textarea
+                value={reason}
+                onChange={(e) => setReason(e.target.value)}
+                placeholder="Tell the student what to revise…"
+                className="min-h-[56px] text-xs"
+                autoFocus
+              />
+              <div className="flex gap-2">
+                <Button
+                  onClick={handleReturn}
+                  size="sm"
+                  variant="destructive"
+                  className="h-8 flex-1"
+                  type="button"
+                >
+                  <RotateCcw className="h-3 w-3" />
+                  Return with comments
+                </Button>
+                <Button
+                  onClick={() => {
+                    setReturning(false);
+                    setReason("");
+                  }}
+                  variant="ghost"
+                  size="sm"
+                  className="h-8"
+                  type="button"
+                >
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          )}
+        </div>
+      ) : (
+        <>
+          {/* ---- Default (non-compact) layout: student dashboard etc. ---- */}
+          {/* Header row: student (if supervisor) + status pill.
+              For supervisors with a pending journal, the header is clickable
+              to open the read-only preview modal so they can read the content
+              before deciding. */}
+          <div className="mb-2.5 flex items-start justify-between gap-2">
+            <div className="min-w-0 flex-1">
+              {studentName && (
+                <p
+                  className={cn(
+                    "truncate text-sm font-semibold text-foreground",
+                    role === "supervisor" &&
+                      journal?.status === "pending" &&
+                      "cursor-pointer hover:text-primary hover:underline underline-offset-2",
+                  )}
+                  onClick={
+                    role === "supervisor" && journal?.status === "pending"
+                      ? () => setReading(true)
+                      : undefined
+                  }
+                >
+                  {studentName}
+                </p>
+              )}
+              <p className="text-xs text-muted-foreground">
+                {journal
+                  ? `Week of ${formatDate(journal.date)}`
+                  : "No journal this week yet"}
+              </p>
+            </div>
+            <span
+              className={cn(
+                "inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold",
+                pill.className,
+              )}
+            >
+              <pill.icon className="h-3 w-3" />
+              {pill.label}
+            </span>
           </div>
-        )}
 
-        {/* Return-with-comments inline form */}
-        {role === "supervisor" && journal?.status === "pending" && returning && (
-          <div className="space-y-2 rounded-lg border border-border bg-muted/30 p-2.5">
-            <Textarea
-              value={reason}
-              onChange={(e) => setReason(e.target.value)}
-              placeholder="Tell the student what to revise…"
-              className="min-h-[64px] text-xs"
-              autoFocus
-            />
-            <div className="flex gap-2">
+          {/* Body: open-doc link + role-aware actions */}
+          <div className="space-y-2">
+            {/* External doc link */}
+            {role === "student" && !docUrl && journalTemplateUrl ? (
+              // Student hasn't created this week's Doc yet — show the template link
+              <ExternalLinkBtn
+                href={journalTemplateUrl}
+                label="Open journal template"
+                icon={FileText}
+                variant="button"
+              />
+            ) : docUrl ? (
+              <ExternalLinkBtn
+                href={docUrl}
+                label={role === "student" ? "Open your journal" : "Open journal"}
+                icon={FileText}
+                variant="button"
+              />
+            ) : (
+              <span className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-border bg-muted/40 px-3 text-xs font-medium text-muted-foreground/60">
+                <FileText className="h-3.5 w-3.5" />
+                No Doc link yet
+              </span>
+            )}
+
+            {/* Role-aware action */}
+            {role === "student" && journal?.status === "draft" && (
               <Button
-                onClick={handleReturn}
+                onClick={handleMarkSubmitted}
                 size="sm"
-                variant="destructive"
-                className="h-8 flex-1"
+                className="h-9 w-full"
                 type="button"
               >
-                <RotateCcw className="h-3 w-3" />
-                Return with comments
+                <Check className="h-3.5 w-3.5" />
+                Mark as submitted
               </Button>
-              <Button
-                onClick={() => {
-                  setReturning(false);
-                  setReason("");
-                }}
-                variant="ghost"
-                size="sm"
-                className="h-8"
-                type="button"
-              >
-                Cancel
-              </Button>
-            </div>
-          </div>
-        )}
+            )}
 
-        {/* Rejection reason (student view) */}
-        {role === "student" && journal?.status === "rejected" && journal.rejectionReason && (
-          <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-2.5">
-            <p className="flex items-start gap-1.5 text-xs text-destructive">
-              <AlertCircle className="mt-0.5 h-3 w-3 shrink-0" />
-              <span className="leading-snug">{journal.rejectionReason}</span>
-            </p>
-          </div>
-        )}
+            {role === "supervisor" && journal?.status === "pending" && !returning && (
+              <div className="space-y-2">
+                {/* Read journal first — opens a preview modal with the content. */}
+                <Button
+                  onClick={() => setReading(true)}
+                  variant="secondary"
+                  size="sm"
+                  className="h-9 w-full"
+                  type="button"
+                >
+                  <Eye className="h-3.5 w-3.5" />
+                  Read journal
+                </Button>
+                <div className="flex gap-2">
+                  <Button
+                    onClick={handleApprove}
+                    size="sm"
+                    className="h-9 flex-1"
+                    type="button"
+                  >
+                    <Check className="h-3.5 w-3.5" />
+                    Approve
+                  </Button>
+                  <Button
+                    onClick={() => setReturning(true)}
+                    variant="outline"
+                    size="sm"
+                    className="h-9 flex-1"
+                    type="button"
+                  >
+                    <RotateCcw className="h-3.5 w-3.5" />
+                    Return
+                  </Button>
+                </div>
+              </div>
+            )}
 
-        {/* Approved info */}
-        {journal?.status === "approved" && journal.reviewedAt && (
-          <p className="flex items-center gap-1 text-[11px] text-muted-foreground">
-            <CheckCircle2 className="h-3 w-3 text-emerald-600 dark:text-emerald-400" />
-            Approved {formatDate(journal.reviewedAt)}
-          </p>
-        )}
-      </div>
+            {/* Return-with-comments inline form */}
+            {role === "supervisor" && journal?.status === "pending" && returning && (
+              <div className="space-y-2 rounded-lg border border-border bg-muted/30 p-2.5">
+                <Textarea
+                  value={reason}
+                  onChange={(e) => setReason(e.target.value)}
+                  placeholder="Tell the student what to revise…"
+                  className="min-h-[64px] text-xs"
+                  autoFocus
+                />
+                <div className="flex gap-2">
+                  <Button
+                    onClick={handleReturn}
+                    size="sm"
+                    variant="destructive"
+                    className="h-8 flex-1"
+                    type="button"
+                  >
+                    <RotateCcw className="h-3 w-3" />
+                    Return with comments
+                  </Button>
+                  <Button
+                    onClick={() => {
+                      setReturning(false);
+                      setReason("");
+                    }}
+                    variant="ghost"
+                    size="sm"
+                    className="h-8"
+                    type="button"
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {/* Rejection reason (student view) */}
+            {role === "student" && journal?.status === "rejected" && journal.rejectionReason && (
+              <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-2.5">
+                <p className="flex items-start gap-1.5 text-xs text-destructive">
+                  <AlertCircle className="mt-0.5 h-3 w-3 shrink-0" />
+                  <span className="leading-snug">{journal.rejectionReason}</span>
+                </p>
+              </div>
+            )}
+
+            {/* Approved info */}
+            {journal?.status === "approved" && journal.reviewedAt && (
+              <p className="flex items-center gap-1 text-[11px] text-muted-foreground">
+                <CheckCircle2 className="h-3 w-3 text-emerald-600 dark:text-emerald-400" />
+                Approved {formatDate(journal.reviewedAt)}
+              </p>
+            )}
+          </div>
+        </>
+      )}
 
       {/* Read-only journal preview modal — lets the supervisor read the
           journal content (tasks, learnings, hours) before approving or

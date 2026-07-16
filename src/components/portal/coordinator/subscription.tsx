@@ -14,7 +14,7 @@ import {
   Users,
   Hourglass,
   Wallet,
-  FileText,
+  FileDown,
   Search,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -70,11 +70,15 @@ export function SubscriptionPage() {
   );
   const estimatedBalance = totalBillableHours * BILLING_RATE_PHP;
 
-  // ---- Generate Official Invoice (prototype: toast only) ----
-  const handleGenerateInvoice = () => {
-    toast.success("Official invoice queued", {
+  // ---- Download Statement of Account (prototype: toast only) ----
+  // This is an internal reporting/transparency action for the Coordinator.
+  // It does NOT generate the official school payment invoice (that is the
+  // Finance / Accounting Office's responsibility). In production this would
+  // produce a downloadable SOA PDF summarizing accrued intern-hour usage.
+  const handleDownloadSoa = () => {
+    toast.success("Preparing Statement of Account document for download...", {
       description:
-        "In the production version, this generates a PDF invoice for the institution's Finance / Accounting Office.",
+        "Your SOA summary will open in a new tab once generated. This is for internal review and transparency — not an official payment invoice.",
     });
   };
 
@@ -84,9 +88,9 @@ export function SubscriptionPage() {
         title="Billing & Usage Summary"
         description="Institutional post-paid billing — usage is calculated from the total required intern-hours of all active students at the fixed rate below. For administrative reporting and transparency only."
         actions={
-          <Button onClick={handleGenerateInvoice} className="w-full sm:w-auto">
-            <FileText className="h-4 w-4" />
-            Generate Official Invoice
+          <Button onClick={handleDownloadSoa} className="w-full sm:w-auto">
+            <FileDown className="h-4 w-4" />
+            Download Statement of Account (SOA)
           </Button>
         }
       />

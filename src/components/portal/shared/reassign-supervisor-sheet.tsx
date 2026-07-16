@@ -7,6 +7,7 @@ import { BottomSheet } from "@/components/portal/shared/bottom-sheet";
 import { SupervisorPicker } from "@/components/portal/shared/supervisor-picker";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import { UserMinus } from "lucide-react";
 import type { Student } from "@/lib/types";
 
 interface ReassignSupervisorSheetProps {
@@ -27,6 +28,11 @@ interface ReassignSupervisorSheetProps {
  *
  * Pre-filters the picker to the student's department so the best matches
  * surface first.
+ *
+ * Layout: header (sticky) → scrollable picker list → sticky footer with
+ * Unassign + Confirm actions. The footer stays pinned so the action buttons
+ * are always reachable without scrolling to the bottom of a long supervisor
+ * list.
  */
 export function ReassignSupervisorSheet({
   open,
@@ -44,6 +50,7 @@ export function ReassignSupervisorSheet({
   // Use the first target's department/company as the picker default filter
   const dept = targets[0]?.department;
   const companyId = targets[0]?.companyId;
+  const hasCurrentSupervisor = Boolean(targets[0]?.supervisorId);
 
   React.useEffect(() => {
     if (open) {
@@ -90,6 +97,10 @@ export function ReassignSupervisorSheet({
     onDone?.();
   };
 
+  const confirmLabel = isBulk
+    ? `Assign ${targets.length} students`
+    : "Confirm reassign";
+
   return (
     <BottomSheet
       open={open}
@@ -104,7 +115,9 @@ export function ReassignSupervisorSheet({
       }
       maxHeight={90}
     >
-      <div className="space-y-4 pb-4">
+      <div>
+        {/* Scrollable picker list (the BottomSheet's children container
+            is already the scroll area). */}
         <SupervisorPicker
           value={picked}
           onChange={setPicked}
@@ -112,17 +125,42 @@ export function ReassignSupervisorSheet({
           companyId={companyId}
         />
 
-        <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-between">
-          {targets[0]?.supervisorId ? (
-            <Button variant="ghost" onClick={handleClear} className="text-muted-foreground">
-              Unassign
+        {/* Sticky footer — always visible so the action buttons are
+            reachable without scrolling to the bottom of the list.
+            Backdrop blur + border-top separates it from the scrolling
+            content. Negative margins extend it to cover the BottomSheet's
+            default px-5 py-4 content padding. */}
+        <div className="sticky bottom-0 -mx-5 -mb-4 mt-3 border-t border-border/60 bg-background/95 px-5 pb-4 pt-3 backdrop-blur supports-[backdrop-filter]:bg-background/80">
+          <div className="flex items-center gap-2">
+            {hasCurrentSupervisor ? (
+              <Button
+                variant="ghost"
+                onClick={handleClear}
+                className="text-muted-foreground hover:text-destructive"
+                type="button"
+              >
+                <UserMinus className="h-4 w-4" />
+                <span className="hidden sm:inline">Unassign</span>
+              </Button>
+            ) : (
+              <Button
+                variant="ghost"
+                onClick={() => onOpenChange(false)}
+                className="text-muted-foreground"
+                type="button"
+              >
+                Cancel
+              </Button>
+            )}
+            <Button
+              onClick={handleConfirm}
+              disabled={!picked}
+              className="ml-auto flex-1 sm:flex-none"
+              type="button"
+            >
+              {confirmLabel}
             </Button>
-          ) : (
-            <span />
-          )}
-          <Button onClick={handleConfirm} disabled={!picked} className="sm:ml-auto">
-            {isBulk ? `Assign ${targets.length} students` : "Confirm reassign"}
-          </Button>
+          </div>
         </div>
       </div>
     </BottomSheet>

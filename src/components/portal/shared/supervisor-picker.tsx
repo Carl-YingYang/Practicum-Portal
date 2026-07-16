@@ -237,11 +237,11 @@ function FilterChip({
       onClick={onClick}
       disabled={disabled}
       className={cn(
-        "rounded-full px-3 py-1.5 text-xs font-medium transition-colors",
+        "inline-flex h-8 items-center rounded-full border px-3 text-xs font-medium transition-colors",
         active
-          ? "bg-primary text-primary-foreground"
-          : "bg-muted text-muted-foreground hover:bg-muted/80 hover:text-foreground",
-        disabled && "cursor-not-allowed opacity-50 hover:bg-muted"
+          ? "border-primary bg-primary text-primary-foreground shadow-sm"
+          : "border-border bg-background text-muted-foreground hover:border-border hover:bg-muted hover:text-foreground",
+        disabled && "cursor-not-allowed opacity-50 hover:bg-background",
       )}
     >
       {children}
@@ -282,18 +282,25 @@ function SupervisorCard({
         selected
           ? "border-primary bg-primary/5 ring-1 ring-primary/30"
           : "border-border/60 bg-card hover:border-border hover:bg-muted/30",
-        isFull && !selected && "cursor-not-allowed opacity-60"
+        isFull && !selected && "cursor-not-allowed opacity-60",
       )}
     >
-      <Avatar name={supervisor.name} size="md" className="mt-0.5" />
+      <Avatar name={supervisor.name} size="md" className="mt-0.5 shrink-0" />
       <div className="min-w-0 flex-1">
+        {/* Name + selected check + capacity pill (single row) */}
         <div className="flex items-center justify-between gap-2">
           <p className="truncate text-sm font-semibold text-foreground">
             {supervisor.name}
           </p>
-          {selected && (
-            <Check className="h-4 w-4 shrink-0 text-primary" strokeWidth={2.5} />
-          )}
+          <div className="flex shrink-0 items-center gap-1.5">
+            <span className={cn("flex items-center gap-1 text-[10px] font-medium", cap.text)}>
+              <span className={cn("h-1.5 w-1.5 rounded-full", cap.dot)} />
+              {cap.label}
+            </span>
+            {selected && (
+              <Check className="h-4 w-4 text-primary" strokeWidth={2.5} />
+            )}
+          </div>
         </div>
         <p className="truncate text-xs text-muted-foreground">
           {supervisor.title}
@@ -318,15 +325,11 @@ function SupervisorCard({
           )}
         </div>
 
-        {/* Load + capacity */}
+        {/* Load + capacity bar */}
         <div className="mt-2">
           <div className="flex items-center justify-between gap-2">
-            <span className="text-[11px] text-muted-foreground">
+            <span className="text-[11px] tabular-nums text-muted-foreground">
               {load} / {supervisor.capacity} interns
-            </span>
-            <span className={cn("flex items-center gap-1 text-[10px] font-medium", cap.text)}>
-              <span className={cn("h-1.5 w-1.5 rounded-full", cap.dot)} />
-              {cap.label}
             </span>
           </div>
           <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-muted">

@@ -118,6 +118,14 @@ export function useNotifications(): NotificationItem[] {
       // 1. Overdue journals (urgent)
       const overdue = studentsWithOverdueJournals(students, journals, 10);
       overdue.slice(0, 4).forEach(({ student, daysOverdue }) => {
+        // `daysOverdue` can be `Infinity` when the student has no journals at
+        // all (see `daysSinceLastJournal`). `new Date(Date.now() - Infinity)`
+        // throws a RangeError("invalid date"), so we clamp to a large but
+        // finite value (180d) purely for timestamp ordering — the visible
+        // description still uses the literal "No journal submitted yet".
+        const daysForTimestamp = Number.isFinite(daysOverdue)
+          ? daysOverdue
+          : 180;
         items.push({
           id: `overdue-${student.id}`,
           category: "urgent",
@@ -128,7 +136,7 @@ export function useNotifications(): NotificationItem[] {
               ? "No journal submitted yet this term."
               : `${daysOverdue} days since last journal entry.`,
           timestamp: new Date(
-            Date.now() - daysOverdue * 86400_000
+            Date.now() - daysForTimestamp * 86400_000
           ).toISOString(),
           action: {
             label: "View student",
