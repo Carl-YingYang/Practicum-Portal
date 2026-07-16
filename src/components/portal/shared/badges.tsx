@@ -8,9 +8,16 @@ import {
   XCircle,
   Send,
   UserX,
+  RotateCcw,
   type LucideIcon,
 } from "lucide-react";
-import type { JournalStatus, EvaluationStatus, FormStatus, Role } from "@/lib/types";
+import type {
+  JournalStatus,
+  EvaluationStatus,
+  FormStatus,
+  FormSubmissionStatus,
+  Role,
+} from "@/lib/types";
 
 type Tone = "slate" | "amber" | "emerald" | "red" | "teal";
 
@@ -120,6 +127,34 @@ export function FormStatusBadge({ status }: { status: FormStatus }) {
   const cfg = formStatusConfig[status];
   return (
     <Badge tone={cfg.tone} dot>
+      {cfg.label}
+    </Badge>
+  );
+}
+
+// ---- Form submission status badge ----
+const submissionStatusConfig: Record<
+  FormSubmissionStatus,
+  { tone: Tone; label: string; icon: LucideIcon }
+> = {
+  not_started: { tone: "slate", label: "Not started", icon: FileEdit },
+  in_progress: { tone: "slate", label: "In progress", icon: FileEdit },
+  submitted: { tone: "teal", label: "Submitted", icon: Send },
+  under_review: { tone: "amber", label: "Under review", icon: Clock },
+  approved: { tone: "emerald", label: "Approved", icon: CheckCircle2 },
+  needs_revision: { tone: "red", label: "Needs revision", icon: RotateCcw },
+};
+
+export function SubmissionStatusBadge({
+  status,
+  withIcon,
+}: {
+  status: FormSubmissionStatus;
+  withIcon?: boolean;
+}) {
+  const cfg = submissionStatusConfig[status];
+  return (
+    <Badge tone={cfg.tone} icon={withIcon ? cfg.icon : undefined} dot={!withIcon}>
       {cfg.label}
     </Badge>
   );

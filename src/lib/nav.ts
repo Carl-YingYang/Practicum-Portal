@@ -48,6 +48,7 @@ export const navConfig: Record<Role, NavItem[]> = {
     { key: "timeClock", label: "Time Clock", shortLabel: "Clock", view: "student.time-clock", icon: "timeClock", section: "My Work" },
     { key: "journals", label: "Journals", shortLabel: "Journals", view: "student.journals", icon: "journals", section: "My Work" },
     { key: "evaluations", label: "Evaluations", shortLabel: "Evals", view: "student.evaluations", icon: "evaluations", section: "My Work" },
+    { key: "forms", label: "Forms", shortLabel: "Forms", view: "student.forms", icon: "forms", section: "My Work" },
     { key: "reports", label: "Reports & PDFs", shortLabel: "Reports", view: "student.reports", icon: "reports", section: "Insights" },
   ],
   supervisor: [
@@ -120,6 +121,8 @@ export const viewTitles: Record<ViewKey, string> = {
   "student.evaluation-view": "Evaluation Report",
   "student.reports": "Reports & PDFs",
   "student.time-clock": "Time Clock",
+  "student.forms": "Forms",
+  "student.form-view": "Form",
   "student.profile": "My Profile",
   "supervisor.dashboard": "Dashboard",
   "supervisor.interns": "My Interns",
@@ -174,6 +177,7 @@ export const bottomTabs: Record<Role, NavItem[]> = {
   student: [
     { key: "dashboard", label: "Dashboard", shortLabel: "Home", view: "student.dashboard", icon: "dashboard" },
     { key: "journals", label: "Journals", shortLabel: "Journals", view: "student.journals", icon: "journals" },
+    { key: "forms", label: "Forms", shortLabel: "Forms", view: "student.forms", icon: "forms" },
     { key: "timeClock", label: "Time Clock", shortLabel: "Time", view: "student.time-clock", icon: "timeClock" },
     { key: "profile", label: "Profile", shortLabel: "Profile", view: "student.profile", icon: "profile" },
   ],

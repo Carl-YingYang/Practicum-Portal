@@ -24,6 +24,7 @@ import {
   type FormDocument,
   FORM_CATEGORY_LABELS,
 } from "@/lib/types";
+import { assignedFormsForUser } from "@/lib/selectors";
 
 const categoryOptions: { value: FormCategory | "all"; label: string }[] = [
   { value: "all", label: "All types" },
@@ -37,20 +38,29 @@ const categoryOptions: { value: FormCategory | "all"; label: string }[] = [
 export function SupervisorFormsList() {
   const navigate = useAppStore((s) => s.navigate);
   const forms = useAppStore((s) => s.formDocuments);
+  const assignments = useAppStore((s) => s.formAssignments);
+  const currentUser = useAppStore((s) => s.currentUser)!;
 
   const [search, setSearch] = React.useState("");
   const [categoryFilter, setCategoryFilter] = React.useState<FormCategory | "all">("all");
 
+  // Only forms actually assigned to this supervisor (by role or specific
+  // user) should appear in their inbox — not every published form.
+  const assigned = React.useMemo(
+    () => assignedFormsForUser(forms, assignments, currentUser),
+    [forms, assignments, currentUser]
+  );
+
   const published = React.useMemo(() => {
     const q = search.trim().toLowerCase();
-    return forms
-      .filter((f) => f.status === "published")
+    return assigned
+      .map(({ form }) => form)
       .filter((f) => (categoryFilter === "all" ? true : f.category === categoryFilter))
       .filter((f) =>
         q ? f.title.toLowerCase().includes(q) || f.description.toLowerCase().includes(q) : true
       )
       .sort((a, b) => new Date(b.publishedAt ?? b.updatedAt).getTime() - new Date(a.publishedAt ?? a.updatedAt).getTime());
-  }, [forms, search, categoryFilter]);
+  }, [assigned, search, categoryFilter]);
 
   const grouped = React.useMemo(() => {
     const map = new Map<FormCategory, FormDocument[]>();

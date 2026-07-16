@@ -98,6 +98,7 @@ export function FormBlockRenderer({
     case "rating-table":
       return (
         <RatingTable
+          scoreMode={block.scoreMode}
           scaleLabels={block.scaleLabels ?? []}
           criteria={block.criteria ?? []}
           interactive={interactive}
@@ -148,8 +149,13 @@ function InfoField({
     return (
       <div className={cn("flex items-baseline gap-2", className)}>
         <span className="shrink-0 text-[13px] font-medium text-foreground">{label}:</span>
-        <span className="flex-1 border-b border-dashed border-border/80 pb-0.5 text-[13px] text-muted-foreground/70">
-          {placeholder || "\u00A0"}
+        <span
+          className={cn(
+            "flex-1 border-b border-dashed border-border/80 pb-0.5 text-[13px]",
+            value ? "text-foreground" : "text-muted-foreground/70"
+          )}
+        >
+          {value || placeholder || "\u00A0"}
         </span>
       </div>
     );
@@ -190,12 +196,22 @@ function FillIn({
       <div className={cn("space-y-1", className)}>
         <div className="text-[12.5px] font-medium text-foreground">{label}</div>
         {multiline ? (
-          <div className="min-h-[60px] rounded-md border border-dashed border-border/80 bg-muted/20 p-2 text-[12.5px] text-muted-foreground/60">
-            {placeholder || "\u00A0"}
+          <div
+            className={cn(
+              "min-h-[60px] whitespace-pre-wrap rounded-md border border-dashed border-border/80 p-2 text-[12.5px]",
+              value ? "border-border/60 bg-muted/30 text-foreground" : "bg-muted/20 text-muted-foreground/60"
+            )}
+          >
+            {value || placeholder || "\u00A0"}
           </div>
         ) : (
-          <div className="border-b border-dashed border-border/80 pb-0.5 text-[13px] text-muted-foreground/70">
-            {placeholder || "\u00A0"}
+          <div
+            className={cn(
+              "border-b border-dashed border-border/80 pb-0.5 text-[13px]",
+              value ? "text-foreground" : "text-muted-foreground/70"
+            )}
+          >
+            {value || placeholder || "\u00A0"}
           </div>
         )}
       </div>
@@ -226,6 +242,7 @@ function FillIn({
 }
 
 function RatingTable({
+  scoreMode,
   scaleLabels,
   criteria,
   interactive,
@@ -233,18 +250,30 @@ function RatingTable({
   onSelect,
   className,
 }: {
+  scoreMode?: boolean;
   scaleLabels: string[];
-  criteria: { id: string; label: string }[];
+  criteria: { id: string; label: string; max?: string }[];
   interactive: boolean;
   selectedMap: Record<string, string>;
   onSelect: (criterionId: string, scaleLabel: string) => void;
   className?: string;
 }) {
-  if (criteria.length === 0 || scaleLabels.length === 0) {
+  if (criteria.length === 0 || (!scoreMode && scaleLabels.length === 0)) {
     return (
       <div className={cn("rounded-md border border-dashed border-border/70 p-3 text-[12px] text-muted-foreground", className)}>
         Empty rating table — add criteria and scale columns.
       </div>
+    );
+  }
+  if (scoreMode) {
+    return (
+      <ScoreTable
+        criteria={criteria}
+        interactive={interactive}
+        selectedMap={selectedMap}
+        onSelect={onSelect}
+        className={className}
+      />
     );
   }
   return (
@@ -303,8 +332,12 @@ function RatingTable({
                         >
                           {selected ? "✓" : ""}
                         </button>
+                      ) : selected ? (
+                        <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-primary text-[11px] font-bold text-primary-foreground">
+                          ✓
+                        </span>
                       ) : (
-                        <span className="text-muted-foreground/40">○</span>
+                        <span className="text-muted-foreground/25">·</span>
                       )}
                     </td>
                   );
@@ -312,6 +345,90 @@ function RatingTable({
               </tr>
             );
           })}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+/**
+ * ScoreTable — weighted rating table (Criterion | Max | Score input).
+ * Used by the OJT Performance Evaluation Sheet which scores each job
+ * factor against a max percentage (20% / 15% / 10% …). Faithful to the
+ * uploaded practicum-application-form2.docx "JOB FACTORS" table.
+ */
+function ScoreTable({
+  criteria,
+  interactive,
+  selectedMap,
+  onSelect,
+  className,
+}: {
+  criteria: { id: string; label: string; max?: string }[];
+  interactive: boolean;
+  selectedMap: Record<string, string>;
+  onSelect: (criterionId: string, score: string) => void;
+  className?: string;
+}) {
+  const total = criteria
+    .map((c) => parseFloat(selectedMap[c.id] ?? ""))
+    .filter((n) => Number.isFinite(n))
+    .reduce((sum, n) => sum + n, 0);
+  return (
+    <div className={cn("overflow-x-auto rounded-md border border-border/60", className)}>
+      <table className="w-full border-collapse text-left text-[12.5px]">
+        <thead>
+          <tr className="bg-muted/50">
+            <th className="border-b border-border/60 px-2.5 py-1.5 font-medium text-muted-foreground">
+              Job Factor
+            </th>
+            <th className="border-b border-l border-border/60 px-2 py-1.5 text-center font-medium text-muted-foreground w-[64px]">
+              Max
+            </th>
+            <th className="border-b border-l border-border/60 px-2 py-1.5 text-center font-medium text-muted-foreground w-[88px]">
+              Rating
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          {criteria.map((c, idx) => (
+            <tr key={c.id} className={cn(idx % 2 === 1 && "bg-muted/20")}>
+              <td className="border-b border-border/40 px-2.5 py-1.5 align-top text-foreground">
+                {c.label}
+              </td>
+              <td className="border-b border-l border-border/40 px-2 py-1.5 text-center align-top tabular-nums text-muted-foreground">
+                {c.max ?? "—"}
+              </td>
+              <td className="border-b border-l border-border/40 px-2 py-1.5 text-center align-top">
+                {interactive ? (
+                  <input
+                    type="number"
+                    inputMode="decimal"
+                    value={selectedMap[c.id] ?? ""}
+                    onChange={(e) => onSelect(c.id, e.target.value)}
+                    placeholder="—"
+                    aria-label={`Rating for ${c.label}`}
+                    className="w-full min-w-[56px] rounded border border-border/70 bg-background px-1.5 py-0.5 text-center tabular-nums text-[12.5px] text-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/30"
+                  />
+                ) : (
+                  <span className="tabular-nums text-foreground">
+                    {selectedMap[c.id] || "—"}
+                  </span>
+                )}
+              </td>
+            </tr>
+          ))}
+          <tr className="bg-muted/40 font-semibold">
+            <td className="border-t border-border/60 px-2.5 py-1.5 text-foreground">
+              Total Rating
+            </td>
+            <td className="border-t border-l border-border/60 px-2 py-1.5 text-center tabular-nums text-muted-foreground">
+              100%
+            </td>
+            <td className="border-t border-l border-border/60 px-2 py-1.5 text-center tabular-nums text-foreground">
+              {total > 0 ? `${total}%` : "—"}
+            </td>
+          </tr>
         </tbody>
       </table>
     </div>
@@ -343,7 +460,16 @@ function SignatureBlock({
           style={{ fontFamily: "'Brush Script MT', cursive, system-ui" }}
         />
       ) : (
-        <div className="h-7 w-full max-w-xs border-b border-border" />
+        <div className="flex h-7 w-full max-w-xs items-end border-b border-border pb-0.5">
+          {value && (
+            <span
+              className="font-[400] italic text-[14px] text-foreground"
+              style={{ fontFamily: "'Brush Script MT', cursive, system-ui" }}
+            >
+              {value}
+            </span>
+          )}
+        </div>
       )}
       <div className="mt-1 text-[11.5px] text-muted-foreground">{caption}</div>
     </div>

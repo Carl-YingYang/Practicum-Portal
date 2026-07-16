@@ -1,6 +1,9 @@
 import type {
   Company,
   Evaluation,
+  FormAssignment,
+  FormDocument,
+  FormSubmission,
   Journal,
   Role,
   Student,
@@ -528,4 +531,158 @@ export function validateToolUrl(
   } catch {
     return "Enter a valid URL (include https://).";
   }
+}
+
+// ============================================================
+// Custom forms — assignments & submissions selectors
+// ============================================================
+
+/**
+ * Does a given assignment apply to `user`?
+ *  - all_supervisors → any user with role "supervisor"
+ *  - all_students    → any user with role "student"
+ *  - specific_users  → user.id is in targetUserIds
+ * Coordinators never receive form assignments.
+ */
+export function assignmentAppliesTo(
+  assignment: FormAssignment,
+  user: User
+): boolean {
+  if (user.role === "coordinator") return false;
+  if (assignment.target === "all_supervisors") return user.role === "supervisor";
+  if (assignment.target === "all_students") return user.role === "student";
+  return assignment.targetUserIds.includes(user.id);
+}
+
+/**
+ * Published forms assigned to `user`, with the (first) matching assignment.
+ * De-duplicated by form id (picks the assignment with the earliest due date).
+ */
+export function assignedFormsForUser(
+  forms: FormDocument[],
+  assignments: FormAssignment[],
+  user: User
+): { form: FormDocument; assignment: FormAssignment }[] {
+  const matching = forms
+    .filter((f) => f.status === "published")
+    .map((form) => {
+      const formAssignments = assignments
+        .filter((a) => a.formId === form.id && assignmentAppliesTo(a, user))
+        .sort((a, b) => (a.dueDate ?? "").localeCompare(b.dueDate ?? ""));
+      return formAssignments.length > 0
+        ? { form, assignment: formAssignments[0] }
+        : null;
+    })
+    .filter((x): x is { form: FormDocument; assignment: FormAssignment } => x !== null);
+  return matching;
+}
+
+/** All submissions belonging to a user, newest first. */
+export function submissionsForUser(
+  submissions: FormSubmission[],
+  userId: string
+): FormSubmission[] {
+  return submissions
+    .filter((s) => s.userId === userId)
+    .sort((a, b) => (a.updatedAt < b.updatedAt ? 1 : -1));
+}
+
+/** All submissions for a form, newest first. */
+export function submissionsForForm(
+  submissions: FormSubmission[],
+  formId: string
+): FormSubmission[] {
+  return submissions
+    .filter((s) => s.formId === formId)
+    .sort((a, b) => (a.updatedAt < b.updatedAt ? 1 : -1));
+}
+
+/**
+ * The submission for (formId, userId, targetStudentId?).
+ * For self-reflective forms (no targetStudentId), match on userId only.
+ * For evaluation/ojt forms, match on userId + targetStudentId.
+ */
+export function submissionFor(
+  submissions: FormSubmission[],
+  formId: string,
+  userId: string,
+  targetStudentId?: string
+): FormSubmission | undefined {
+  return submissions.find(
+    (s) =>
+      s.formId === formId &&
+      s.userId === userId &&
+      (targetStudentId ? s.targetStudentId === targetStudentId : !s.targetStudentId)
+  );
+}
+
+/** All assignments targeting a given form. */
+export function assignmentsForForm(
+  assignments: FormAssignment[],
+  formId: string
+): FormAssignment[] {
+  return assignments.filter((a) => a.formId === formId);
+}
+
+/** Submissions awaiting coordinator review (submitted or under_review). */
+export function pendingSubmissionsForCoordinator(
+  submissions: FormSubmission[]
+): FormSubmission[] {
+  return submissions
+    .filter((s) => s.status === "submitted" || s.status === "under_review")
+    .sort((a, b) => (a.submittedAt ?? a.updatedAt) < (b.submittedAt ?? b.updatedAt) ? 1 : -1);
+}
+
+/**
+ * Response stats for a single form: how many responses are expected vs
+ * received / approved / sent back. Used by the coordinator Forms hub cards.
+ *
+ * Expected (`assigned`) is derived from the assignments + the live cohort:
+ *  - all_students   → active students count
+ *  - all_supervisors → for evaluation/ojt forms (supervisor fills one per
+ *    intern), the count of active students with a supervisor; otherwise the
+ *    active supervisors count
+ *  - specific_users → targetUserIds length
+ */
+export function formResponseStats(
+  form: FormDocument,
+  assignments: FormAssignment[],
+  submissions: FormSubmission[],
+  supervisors: Supervisor[],
+  students: Student[]
+): { assigned: number; submitted: number; approved: number; needsRevision: number } {
+  const formAssignments = assignmentsForForm(assignments, form.id);
+  const activeStudents = students.filter((s) => s.status === "active");
+  const activeSupervisors = supervisors.filter((s) => s.status === "active");
+  const isPerIntern = form.category === "evaluation" || form.category === "ojt";
+
+  let assigned = 0;
+  if (formAssignments.length === 0) {
+    assigned = 0;
+  } else {
+    const counts = formAssignments.map((a) => {
+      if (a.target === "all_students") return activeStudents.length;
+      if (a.target === "all_supervisors") {
+        return isPerIntern
+          ? activeStudents.filter((s) => s.supervisorId).length
+          : activeSupervisors.length;
+      }
+      // specific_users
+      return a.targetUserIds.length;
+    });
+    assigned = counts.reduce((sum, n) => sum + n, 0);
+  }
+
+  const formSubs = submissionsForForm(submissions, form.id);
+  const submitted = formSubs.filter(
+    (s) =>
+      s.status === "submitted" ||
+      s.status === "under_review" ||
+      s.status === "approved" ||
+      s.status === "needs_revision"
+  ).length;
+  const approved = formSubs.filter((s) => s.status === "approved").length;
+  const needsRevision = formSubs.filter((s) => s.status === "needs_revision").length;
+
+  return { assigned, submitted, approved, needsRevision };
 }

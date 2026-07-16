@@ -10,6 +10,8 @@ import { EvaluationView } from "./evaluation-view";
 import { StudentReports } from "./student-reports";
 import { TimeClockView } from "@/components/portal/shared/time-clock-view";
 import { StudentProfile } from "./student-profile";
+import { StudentForms } from "./student-forms";
+import { StudentFormWorkspace } from "./student-form-workspace";
 
 export {
   StudentDashboard,
@@ -21,6 +23,8 @@ export {
   StudentReports,
   TimeClockView,
   StudentProfile,
+  StudentForms,
+  StudentFormWorkspace,
 };
 
 /**
@@ -29,6 +33,7 @@ export {
  */
 export function StudentWorkspace() {
   const view = useAppStore((s) => s.view);
+  const viewParams = useAppStore((s) => s.viewParams);
 
   switch (view) {
     case "student.dashboard":
@@ -47,6 +52,10 @@ export function StudentWorkspace() {
       return <StudentReports />;
     case "student.time-clock":
       return <TimeClockView />;
+    case "student.forms":
+      return <StudentForms />;
+    case "student.form-view":
+      return <StudentFormWorkspace formId={viewParams.formId} />;
     case "student.profile":
       return <StudentProfile />;
     default:

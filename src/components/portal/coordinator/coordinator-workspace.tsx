@@ -15,7 +15,7 @@ import { AllJournalsList } from "./all-journals-list";
 import { JournalView } from "./journal-view";
 import { CoordinatorReports } from "./coordinator-reports";
 import { CoordinatorProfile } from "./coordinator-profile";
-import { FormsList } from "./forms-list";
+import { FormsHub } from "./forms-hub";
 import { FormEditor } from "./form-editor";
 import { UserManagement } from "./user-management";
 import { BulkCreateUsers } from "./bulk-create-users";
@@ -55,7 +55,7 @@ export function CoordinatorWorkspace() {
     case "coordinator.journal-view":
       return <JournalView journalId={viewParams.journalId} />;
     case "coordinator.forms":
-      return <FormsList />;
+      return <FormsHub />;
     case "coordinator.form-editor":
       return <FormEditor formId={viewParams.formId} />;
     case "coordinator.user-management":

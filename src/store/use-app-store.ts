@@ -10,7 +10,9 @@ import {
   defaultSubscription,
   defaultToolsConfig,
   evaluations as seedEvaluations,
+  formAssignments as seedFormAssignments,
   formDocuments as seedFormDocuments,
+  formSubmissions as seedFormSubmissions,
   journals as seedJournals,
   mockUsers,
   students as seedStudents,
@@ -24,11 +26,15 @@ import {
   type Company,
   type Coordinator,
   type Evaluation,
+  type FormAssignment,
+  type FormAssignmentTarget,
   type FormBlock,
   type FormBlockType,
   type FormCategory,
   type FormDocument,
+  type FormFieldValue,
   type FormStatus,
+  type FormSubmission,
   type Journal,
   type JournalStatus,
   type PlanTier,
@@ -61,6 +67,10 @@ interface AppState {
   timeLogs: TimeLog[];
   activity: ActivityLog[];
   formDocuments: FormDocument[];
+  /** published-form → audience assignments (coordinator-managed) */
+  formAssignments: FormAssignment[];
+  /** in-progress / submitted / reviewed form responses */
+  formSubmissions: FormSubmission[];
 
   // --- auth + navigation ---
   currentUser: User | null;
@@ -241,6 +251,38 @@ interface AppState {
   archiveFormDocument: (id: string) => void;
   deleteFormDocument: (id: string) => void;
   duplicateFormDocument: (id: string) => string;
+
+  // --- form assignments & submissions (fill / review layer) ---
+  /** Assign a published form to an audience (optionally with a due date). */
+  assignForm: (input: {
+    formId: string;
+    target: FormAssignmentTarget;
+    dueDate?: string;
+  }) => string;
+  /** Remove an assignment. */
+  unassignForm: (assignmentId: string) => void;
+  /**
+   * Get-or-create an in-progress submission for (formId, currentUser,
+   * optional targetStudentId). Returns the submission id. If one already
+   * exists (any status), returns its id without mutating.
+   */
+  startFormResponse: (input: {
+    formId: string;
+    targetStudentId?: string;
+  }) => string;
+  /** Persist the current draft values (autosave). Reopens needs_revision → in_progress. */
+  saveSubmissionDraft: (
+    submissionId: string,
+    values: Record<string, FormFieldValue>
+  ) => void;
+  /** Lock a submission as submitted and timestamp it. */
+  submitFormResponse: (submissionId: string) => void;
+  /** Coordinator review decision — approve or request revision, with an optional note. */
+  reviewSubmission: (
+    submissionId: string,
+    decision: "approve" | "request_revision",
+    note?: string
+  ) => void;
 }
 
 function logActivity(
@@ -311,6 +353,8 @@ export const useAppStore = create<AppState>((set, get) => ({
   timeLogs: seedTimeLogs,
   activity: seedActivity,
   formDocuments: seedFormDocuments,
+  formAssignments: seedFormAssignments,
+  formSubmissions: seedFormSubmissions,
 
   currentUser: null,
   view: "login",
@@ -1422,4 +1466,104 @@ export const useAppStore = create<AppState>((set, get) => ({
     set((s) => ({ formDocuments: [copy, ...s.formDocuments] }));
     return newId;
   },
+
+  // ---------------- Form assignments & submissions ----------------
+  assignForm: ({ formId, target, dueDate }) => {
+    const id = uuid();
+    const now = new Date().toISOString();
+    const assignment: FormAssignment = {
+      id,
+      formId,
+      target,
+      targetUserIds: [],
+      dueDate: dueDate ?? null,
+      createdBy: get().currentUser?.id ?? "u-coord",
+      createdAt: now,
+    };
+    set((s) => ({ formAssignments: [...s.formAssignments, assignment] }));
+    return id;
+  },
+
+  unassignForm: (assignmentId) =>
+    set((s) => ({
+      formAssignments: s.formAssignments.filter((a) => a.id !== assignmentId),
+    })),
+
+  startFormResponse: ({ formId, targetStudentId }) => {
+    const user = get().currentUser;
+    const userId = user?.id ?? "anonymous";
+    // Reuse an existing submission for this (form, user, targetStudent) if any.
+    const existing = get().formSubmissions.find(
+      (s) =>
+        s.formId === formId &&
+        s.userId === userId &&
+        (targetStudentId ? s.targetStudentId === targetStudentId : !s.targetStudentId)
+    );
+    if (existing) return existing.id;
+
+    const id = uuid();
+    const now = new Date().toISOString();
+    const submission: FormSubmission = {
+      id,
+      formId,
+      userId,
+      targetStudentId,
+      values: {},
+      status: "in_progress",
+      startedAt: now,
+      submittedAt: null,
+      reviewedAt: null,
+      reviewNote: null,
+      createdAt: now,
+      updatedAt: now,
+    };
+    set((s) => ({ formSubmissions: [...s.formSubmissions, submission] }));
+    return id;
+  },
+
+  saveSubmissionDraft: (submissionId, values) =>
+    set((s) => ({
+      formSubmissions: s.formSubmissions.map((sub) =>
+        sub.id === submissionId
+          ? {
+              ...sub,
+              values,
+              // editing a needs-revision response reopens it to in_progress
+              status: sub.status === "needs_revision" ? "in_progress" : sub.status,
+              updatedAt: new Date().toISOString(),
+            }
+          : sub
+      ),
+    })),
+
+  submitFormResponse: (submissionId) =>
+    set((s) => ({
+      formSubmissions: s.formSubmissions.map((sub) =>
+        sub.id === submissionId
+          ? {
+              ...sub,
+              status: "submitted" as const,
+              submittedAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString(),
+            }
+          : sub
+      ),
+    })),
+
+  reviewSubmission: (submissionId, decision, note) =>
+    set((s) => ({
+      formSubmissions: s.formSubmissions.map((sub) =>
+        sub.id === submissionId
+          ? {
+              ...sub,
+              status: (decision === "approve"
+                ? "approved"
+                : "needs_revision") as FormSubmission["status"],
+              reviewedAt: new Date().toISOString(),
+              reviewNote: note ?? null,
+              updatedAt: new Date().toISOString(),
+            }
+          : sub
+      ),
+    })),
 }));

@@ -403,6 +403,11 @@ export type FormBlockType =
 export interface FormRatingCriterion {
   id: string;
   label: string;
+  /**
+   * score-mode rating tables only: the max rating shown in the "Max" column
+   * (e.g. "20%", "15"). Ignored in radio mode.
+   */
+  max?: string;
 }
 
 export interface FormBlock {
@@ -422,6 +427,12 @@ export interface FormBlock {
   scaleLabels?: string[];
   /** rating-table: row criteria */
   criteria?: FormRatingCriterion[];
+  /**
+   * rating-table: when true, render a weighted score table
+   * (Criterion | Max | Score input) instead of radio columns. Used by the
+   * OJT Performance Evaluation Sheet which uses weighted percentages.
+   */
+  scoreMode?: boolean;
   /** signature: caption under the line (e.g. "Signature over Printed Name") */
   caption?: string;
 }
@@ -465,6 +476,78 @@ export const FORM_STATUS_LABELS: Record<FormStatus, string> = {
 };
 
 // ============================================================
+// Form assignments & submissions — the filling / review layer.
+// A coordinator assigns a published form to an audience
+// (all supervisors / all students / specific people). Each recipient
+// then creates a FormSubmission (one per intern for evaluation/ojt
+// forms). The coordinator reviews submissions (approve / request
+// revision).
+// ============================================================
+
+export type FormAssignmentTarget =
+  | "all_supervisors"
+  | "all_students"
+  | "specific_users";
+
+export interface FormAssignment {
+  id: string;
+  formId: string;
+  target: FormAssignmentTarget;
+  /** for specific_users: the recipient user ids; empty otherwise */
+  targetUserIds: string[];
+  dueDate: string | null;
+  createdBy: string;
+  createdAt: string;
+}
+
+export type FormSubmissionStatus =
+  /** virtual — no submission exists yet (used in inbox rows only) */
+  | "not_started"
+  /** draft, being filled */
+  | "in_progress"
+  /** submitted, awaiting coordinator review */
+  | "submitted"
+  /** coordinator opened the review */
+  | "under_review"
+  /** coordinator approved */
+  | "approved"
+  /** coordinator sent back for revision */
+  | "needs_revision";
+
+export type FormFieldValue = string | Record<string, string>;
+
+export interface FormSubmission {
+  id: string;
+  formId: string;
+  /** the user who fills the form (the submitter) */
+  userId: string;
+  /**
+   * for evaluation/ojt forms: the intern being evaluated. Undefined for
+   * self-reflective forms (journal / program / site evaluation).
+   */
+  targetStudentId?: string;
+  /** blockId → value (string for text fields, Record for rating tables) */
+  values: Record<string, FormFieldValue>;
+  status: FormSubmissionStatus;
+  startedAt: string | null;
+  submittedAt: string | null;
+  reviewedAt: string | null;
+  /** coordinator's approve / revision note */
+  reviewNote: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export const FORM_SUBMISSION_STATUS_LABELS: Record<FormSubmissionStatus, string> = {
+  not_started: "Not started",
+  in_progress: "In progress",
+  submitted: "Submitted",
+  under_review: "Under review",
+  approved: "Approved",
+  needs_revision: "Needs revision",
+};
+
+// ============================================================
 // Navigation & view routing
 // ============================================================
 
@@ -480,6 +563,8 @@ export type ViewKey =
   | "student.evaluation-view"
   | "student.reports"
   | "student.time-clock"
+  | "student.forms"
+  | "student.form-view"
   | "student.profile"
   // supervisor
   | "supervisor.dashboard"

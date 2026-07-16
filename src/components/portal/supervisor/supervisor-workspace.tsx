@@ -12,7 +12,7 @@ import { JournalReview } from "./journal-review";
 import { SupervisorReports } from "./supervisor-reports";
 import { SupervisorProfile } from "./supervisor-profile";
 import { SupervisorFormsList } from "./supervisor-forms-list";
-import { SupervisorFormViewer } from "./supervisor-form-viewer";
+import { SupervisorFormWorkspace } from "./supervisor-form-workspace";
 
 export function SupervisorWorkspace() {
   const view = useAppStore((s) => s.view);
@@ -38,7 +38,7 @@ export function SupervisorWorkspace() {
     case "supervisor.forms":
       return <SupervisorFormsList />;
     case "supervisor.form-view":
-      return <SupervisorFormViewer formId={viewParams.formId} />;
+      return <SupervisorFormWorkspace formId={viewParams.formId} />;
     case "supervisor.reports":
       return <SupervisorReports />;
     case "supervisor.profile":
