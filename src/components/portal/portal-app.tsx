@@ -24,14 +24,16 @@ export function PortalApp() {
   const viewParams = useAppStore((s) => s.viewParams);
   const hydrateToolsConfig = useAppStore((s) => s.hydrateToolsConfig);
   const hydrateSubscription = useAppStore((s) => s.hydrateSubscription);
+  const hydrateSchools = useAppStore((s) => s.hydrateSchools);
 
   // v5: hydrate tool config from localStorage once on mount (matches the
   // manual localStorage convention used elsewhere — no persist middleware).
-  // Also hydrate the subscription so coordinator billing edits persist.
+  // Also hydrate the subscription + schools so branding edits persist.
   React.useEffect(() => {
     hydrateToolsConfig();
     hydrateSubscription();
-  }, [hydrateToolsConfig, hydrateSubscription]);
+    hydrateSchools();
+  }, [hydrateToolsConfig, hydrateSubscription, hydrateSchools]);
 
   // Public route.
   if (!currentUser || view === "login") {

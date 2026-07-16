@@ -7,18 +7,15 @@ import { StatCardSkeleton } from "@/components/portal/shared/skeletons";
 import { useAppStore } from "@/store/use-app-store";
 import { greeting } from "@/lib/selectors";
 import type { Student } from "@/lib/types";
-import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import {
   Lock,
-  Hourglass,
   Building2,
   UserCheck,
   Timer,
   NotebookText,
-  Sparkles,
 } from "lucide-react";
-// New theme-driven bento dashboard (Active state). Aliased to avoid an
+// New editorial bento dashboard (Active state). Aliased to avoid an
 // export-name collision with this file's own `StudentDashboard` gate.
 import { StudentDashboard as BentoDashboard } from "./StudentDashboard";
 
@@ -40,11 +37,11 @@ import { StudentDashboard as BentoDashboard } from "./StudentDashboard";
  * ============================================================================
  */
 
-// ─── MOCK TOGGLE ───────────────────────────────────────────────────────────
-// Temporary mock: when the backend is wired, derive this from the student's
-// real assignment: `const isDeployed = Boolean(student?.supervisorId);`
-// Set to `false` to preview the LockedWorkspace, `true` for the ActiveWorkspace.
-const isDeployed = true;
+// ─── DEPLOYMENT STATE ──────────────────────────────────────────────────────
+// Derived from the student's real assignment. Students added to the masterlist
+// without a supervisor see the LockedWorkspace; once a supervisor is assigned,
+// the ActiveWorkspace (bento) unlocks automatically.
+// (Mock toggle removed — real logic now.)
 // ───────────────────────────────────────────────────────────────────────────
 
 export function StudentDashboard() {
@@ -84,7 +81,8 @@ export function StudentDashboard() {
     );
   }
 
-  // Branch on deployment state.
+  // Branch on deployment state — real derivation from supervisor assignment.
+  const isDeployed = Boolean(student?.supervisorId);
   return isDeployed ? (
     <BentoDashboard />
   ) : (
@@ -111,61 +109,30 @@ function LockedWorkspace({ student, firstName }: LockedWorkspaceProps) {
       />
 
       <div className="flex min-h-[calc(100vh-12rem)] items-center justify-center py-6">
-        <Card
-          className={cn(
-            "relative w-full max-w-xl overflow-hidden border-border/50 bg-zinc-950 py-0 text-zinc-100 shadow-2xl",
-            "ring-1 ring-zinc-800/60"
-          )}
-        >
-          {/* Ambient glow */}
-          <div
-            aria-hidden
-            className="pointer-events-none absolute inset-0 opacity-70"
-            style={{
-              background:
-                "radial-gradient(60% 50% at 50% 0%, rgba(45,212,191,0.16), transparent 70%), radial-gradient(40% 40% at 50% 100%, rgba(245,158,11,0.10), transparent 70%)",
-            }}
-          />
-          {/* Subtle top hairline */}
-          <div
-            aria-hidden
-            className="h-px w-full bg-gradient-to-r from-transparent via-zinc-700 to-transparent"
-          />
-
-          <div className="relative flex flex-col items-center px-6 py-12 text-center sm:px-10 sm:py-14">
-            {/* Icon — prominent lock in a glowing chip */}
-            <div className="relative mb-6">
-              <div
-                aria-hidden
-                className="absolute inset-0 animate-pulse rounded-2xl bg-teal-500/20 blur-xl"
-              />
-              <div className="relative flex h-20 w-20 items-center justify-center rounded-2xl border border-zinc-700/80 bg-zinc-900/80 shadow-inner">
-                <Lock className="h-9 w-9 text-teal-300" strokeWidth={1.75} />
-              </div>
-              {/* hourglass accent */}
-              <span className="absolute -bottom-2 -right-2 flex h-7 w-7 items-center justify-center rounded-full border border-zinc-700 bg-zinc-900">
-                <Hourglass className="h-3.5 w-3.5 text-amber-300" />
-              </span>
+        <div className="w-full max-w-lg">
+          {/* Editorial empty state — calm, flat, no dark glow */}
+          <div className="flex flex-col items-center rounded-2xl border border-border/50 bg-card p-8 text-center shadow-sm sm:p-12">
+            {/* Simple line-style icon — no glow, no pulse */}
+            <div className="mb-6 flex h-16 w-16 items-center justify-center rounded-full border border-border/60 bg-muted/30">
+              <Lock className="h-7 w-7 text-muted-foreground" strokeWidth={1.5} />
             </div>
 
-            {/* Status pill */}
-            <span className="mb-4 inline-flex items-center gap-1.5 rounded-full border border-zinc-700/80 bg-zinc-900/60 px-3 py-1 text-[11px] font-medium uppercase tracking-wide text-zinc-400">
-              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-amber-400" />
+            <span className="mb-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
               Pending Deployment
             </span>
 
-            <h1 className="font-heading text-2xl font-bold tracking-tight text-zinc-50 sm:text-3xl">
+            <h1 className="text-xl font-bold tracking-tight text-foreground sm:text-2xl">
               Awaiting OJT Deployment
             </h1>
 
-            <p className="mt-3 max-w-md text-sm leading-relaxed text-zinc-400 sm:text-[15px]">
+            <p className="mt-3 max-w-md text-sm leading-relaxed text-muted-foreground">
               Welcome to the OJT Portal! Your timesheet and journal features are
               currently locked. They will automatically unlock as soon as your
               Coordinator officially assigns your Company and Supervisor.
             </p>
 
-            {/* What's pending — three subtle hint chips */}
-            <div className="mt-8 grid w-full max-w-md grid-cols-1 gap-2.5 sm:grid-cols-3">
+            {/* What's pending — flat hint row */}
+            <div className="mt-8 grid w-full max-w-sm grid-cols-3 gap-3">
               <PendingHint
                 icon={Building2}
                 label="Company"
@@ -179,25 +146,22 @@ function LockedWorkspace({ student, firstName }: LockedWorkspaceProps) {
               <PendingHint icon={Timer} label="Timesheet" pending />
             </div>
 
-            {/* Footer reassurance */}
-            <div className="mt-8 flex items-center gap-2 rounded-lg border border-zinc-800/80 bg-zinc-900/50 px-4 py-2.5 text-xs text-zinc-500">
-              <Sparkles className="h-3.5 w-3.5 text-teal-300/80" />
-              <span>
-                No action needed — you'll be notified the moment your deployment
-                is confirmed.
-              </span>
-            </div>
+            {/* Calm reassurance — no sparkles, just text */}
+            <p className="mt-8 text-xs text-muted-foreground">
+              No action needed — you'll be notified the moment your deployment
+              is confirmed.
+            </p>
 
-            {/* Student context strip */}
-            <div className="mt-6 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-[11px] text-zinc-500">
-              <span className="font-mono">{student.studentNumber}</span>
-              <span className="text-zinc-700">•</span>
+            {/* Student context — flat, no mono */}
+            <div className="mt-4 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
+              <span>{student.studentNumber}</span>
+              <span className="text-border">·</span>
               <span>{student.course}</span>
-              <span className="text-zinc-700">•</span>
+              <span className="text-border">·</span>
               <span>{student.requiredHours}h required</span>
             </div>
           </div>
-        </Card>
+        </div>
       </div>
     </>
   );
@@ -213,33 +177,19 @@ function PendingHint({
   pending: boolean;
 }) {
   return (
-    <div
-      className={cn(
-        "flex flex-col items-center gap-1.5 rounded-lg border px-3 py-3 text-center transition-colors",
-        pending
-          ? "border-zinc-800 bg-zinc-900/40"
-          : "border-emerald-800/40 bg-emerald-950/20"
-      )}
-    >
+    <div className="flex flex-col items-center gap-1.5 rounded-lg border border-border/40 bg-background/50 px-2 py-3 text-center">
       <Icon
         className={cn(
           "h-4 w-4",
-          pending ? "text-zinc-500" : "text-emerald-400"
+          pending ? "text-muted-foreground/60" : "text-emerald-600"
         )}
-        strokeWidth={1.75}
+        strokeWidth={1.5}
       />
-      <span
-        className={cn(
-          "text-[11px] font-medium",
-          pending ? "text-zinc-400" : "text-emerald-300"
-        )}
-      >
-        {label}
-      </span>
+      <span className="text-xs font-medium text-foreground">{label}</span>
       <span
         className={cn(
           "text-[10px] uppercase tracking-wide",
-          pending ? "text-zinc-600" : "text-emerald-500/80"
+          pending ? "text-muted-foreground/50" : "text-emerald-600"
         )}
       >
         {pending ? "Pending" : "Ready"}

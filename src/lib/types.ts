@@ -6,10 +6,64 @@
 export type Role = "student" | "supervisor" | "coordinator";
 
 // ============================================================
-// School Identity & Branding
-// Coordinator-configured per-school theming. Reflects across all
-// roles' views (login page, sidebar, dashboard). Stored as data URLs
-// in the MVP store (persisted to localStorage).
+// School Entity & Branding
+// Per-school branding (accent, logo, hero images) customized by
+// supervisors. Students/coordinators see their assigned school's
+// branding; supervisors with multi-school interns see the default.
+// ============================================================
+
+/** Editorial accent palette — calm, muted, warm. */
+export type AccentColor = "sage" | "terracotta" | "slate" | "sand" | "clay";
+
+/** A school with its branding configuration. */
+export interface School {
+  id: string;
+  name: string;
+  shortName: string;
+  tagline: string;
+  /** Editorial accent color. */
+  accentColor: AccentColor;
+  /** Optional logo as a data URL (PNG/JPEG, ≤ 30KB). */
+  logoDataUrl?: string;
+  /** Optional hero images as data URLs (≤ 200KB each, max 3). Empty = use defaults. */
+  heroImages: string[];
+  /** When true, this is the system default (Practo) — flat hero slideshow. */
+  isDefault?: boolean;
+  /** Card visibility order for the student bento dashboard. */
+  visibleCards: string[];
+}
+
+/** Default Practo school ID. */
+export const DEFAULT_SCHOOL_ID = "practo";
+
+/** Default visible cards for a new school. */
+export const DEFAULT_VISIBLE_CARDS: string[] = [
+  "time_clock",
+  "drafting_room",
+  "timesheet",
+  "evaluations",
+];
+
+/** Accent → hex color map (for CSS custom properties). */
+export const ACCENT_HEX: Record<AccentColor, { base: string; soft: string }> = {
+  sage: { base: "#5f8b7a", soft: "#e8f0ec" },
+  terracotta: { base: "#c47a5a", soft: "#f5e8e0" },
+  slate: { base: "#64748b", soft: "#e2e8f0" },
+  sand: { base: "#b89968", soft: "#f5efe0" },
+  clay: { base: "#a67b6b", soft: "#f0e6e0" },
+};
+
+export const ACCENT_OPTIONS: { value: AccentColor; label: string }[] = [
+  { value: "sage", label: "Sage" },
+  { value: "terracotta", label: "Terracotta" },
+  { value: "slate", label: "Slate" },
+  { value: "sand", label: "Sand" },
+  { value: "clay", label: "Clay" },
+];
+
+// ============================================================
+// School Identity (legacy — still used by the school-identity-card
+// component and coordinator settings. Will be migrated to School.)
 // ============================================================
 
 /** A built-in theme preset key, or "custom" for coordinator-picked colors. */
@@ -126,6 +180,8 @@ export interface Student {
   endDate: string | null;
   /** Where the intern works. */
   workMode: WorkMode;
+  /** School this student belongs to (drives branding). Defaults to "practo". */
+  schoolId: string;
   createdAt: string;
 }
 
@@ -187,6 +243,8 @@ export interface Coordinator {
   idNumber?: string;
   /** initials avatar background */
   avatarColor: string;
+  /** School this coordinator belongs to (drives branding). Defaults to "practo". */
+  schoolId: string;
   createdAt: string;
 }
 

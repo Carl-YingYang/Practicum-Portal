@@ -15,6 +15,7 @@ import {
   formSubmissions as seedFormSubmissions,
   journals as seedJournals,
   mockUsers,
+  schools as seedSchools,
   students as seedStudents,
   SUBSCRIPTION_PLANS,
   supervisors as seedSupervisors,
@@ -39,6 +40,7 @@ import {
   type JournalStatus,
   type PlanTier,
   type Role,
+  type School,
   type SchoolIdentity,
   type Student,
   type Subscription,
@@ -92,6 +94,15 @@ interface AppState {
   resetSchoolIdentity: () => void;
   /** Load school identity from localStorage (called once on mount). */
   hydrateSchoolIdentity: () => void;
+
+  // --- schools (per-school branding: accent, logo, hero images) ---
+  schools: School[];
+  /** Merge-patch a school's branding (accent, logo, heroImages, tagline, visibleCards). */
+  setSchoolBranding: (schoolId: string, patch: Partial<School>) => void;
+  /** Resolve a school by ID (falls back to the Practo default). */
+  getSchool: (schoolId: string) => School;
+  /** Load schools from localStorage (called once on mount). */
+  hydrateSchools: () => void;
 
   // --- subscription & billing (pay-per-hour; coordinator-managed) ---
   subscription: Subscription;
@@ -348,6 +359,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   supervisors: seedSupervisors,
   students: seedStudents,
   coordinators: seedCoordinators,
+  schools: seedSchools,
   evaluations: seedEvaluations,
   journals: seedJournals,
   timeLogs: seedTimeLogs,
@@ -419,6 +431,46 @@ export const useAppStore = create<AppState>((set, get) => ({
       set((s) => ({ schoolIdentity: { ...s.schoolIdentity, ...parsed } }));
     } catch {
       // Corrupt JSON — ignore and keep defaults.
+    }
+  },
+
+  // ===========================================================
+  // Schools (per-school branding)
+  // ===========================================================
+  setSchoolBranding: (schoolId, patch) => {
+    set((s) => ({
+      schools: s.schools.map((sch) =>
+        sch.id === schoolId ? { ...sch, ...patch } : sch,
+      ),
+    }));
+    // Persist to localStorage (survives reload).
+    try {
+      const next = get().schools;
+      localStorage.setItem("pp:schools", JSON.stringify(next));
+    } catch {
+      // Quota or serialization error — non-fatal.
+    }
+  },
+  getSchool: (schoolId) => {
+    const found = get().schools.find((s) => s.id === schoolId);
+    return found ?? get().schools.find((s) => s.isDefault) ?? get().schools[0];
+  },
+  hydrateSchools: () => {
+    try {
+      const raw = localStorage.getItem("pp:schools");
+      if (!raw) return;
+      const parsed = JSON.parse(raw) as School[];
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        // Merge: keep seed schools that aren't in storage, overlay stored ones.
+        const storedIds = new Set(parsed.map((s) => s.id));
+        const merged = [
+          ...parsed,
+          ...seedSchools.filter((s) => !storedIds.has(s.id)),
+        ];
+        set({ schools: merged });
+      }
+    } catch {
+      // Corrupt JSON — ignore and keep seed defaults.
     }
   },
 

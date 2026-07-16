@@ -2,15 +2,12 @@
 
 import * as React from "react";
 import { useAppStore } from "@/store/use-app-store";
-import {
-  ACCENT_CLASSES,
-  SCHOOL_ID,
-  useSchoolTheme,
-} from "@/store/useThemeStore";
-import { DashboardSlideshow } from "@/components/portal/shared/DashboardSlideshow";
+import { useEffectiveSchool } from "@/lib/use-effective-school";
+import { HeroSlideshow } from "@/components/portal/shared/HeroSlideshow";
 import { ProgressRing } from "@/components/portal/shared/progress-ring";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { ACCENT_HEX } from "@/lib/types";
 import {
   activeTimeLog,
   averageScore,
@@ -34,22 +31,19 @@ import {
   NotebookText,
   ChevronRight,
   FileText,
-  Sparkles,
   Timer,
 } from "lucide-react";
 
 /* ========================================================================== */
-/*  StudentDashboard — Calm Editorial Bento (theme-driven)                    */
+/*  StudentDashboard — Editorial Calm Bento (brand-driven)                    */
 /*  ------------------------------------------------------------------------  */
-/*  Reads the school theme from `useThemeStore` (customized by supervisors).  */
-/*  Renders a fixed-aspect slideshow + a responsive bento grid of 4 cards.    */
-/*  Toggling a card off in the Customize sheet removes it here without CLS.   */
+/*  Reads the effective school's branding (accent + hero images + cards).     */
+/*  Editorial aesthetic: cream surfaces, ink text, one accent, flat cards.    */
+/*  No gradient washes, no mono fonts, no colored pills, no glows.            */
 /* ========================================================================== */
 
-/** BSCS OJT required-hour ceiling. */
 const REQUIRED_HOURS = 250;
 
-/** Live 1s ticker for the active clock session. */
 function useTicker(ms = 1000): number {
   const [now, setNow] = React.useState(() => Date.now());
   React.useEffect(() => {
@@ -68,10 +62,9 @@ export function StudentDashboard() {
   const clockOut = useAppStore((s) => s.clockOut);
   const navigate = useAppStore((s) => s.navigate);
 
-  // Theme — same key the supervisor edits in CustomizeSheet.
-  const theme = useSchoolTheme(SCHOOL_ID);
-  const accent = ACCENT_CLASSES[theme.accentColor];
-  const visible = theme.visibleCards;
+  const { school } = useEffectiveSchool();
+  const accentHex = ACCENT_HEX[school.accentColor] ?? ACCENT_HEX.sage;
+  const visible = school.visibleCards;
 
   const student = students.find((s) => s.id === currentUser?.studentId);
   const firstName = student?.name.split(" ")[0] ?? "Student";
@@ -86,93 +79,66 @@ export function StudentDashboard() {
     );
   }
 
+  // Inject the accent as a CSS custom property for this dashboard scope.
+  const accentStyle = {
+    "--brand-accent": accentHex.base,
+    "--brand-accent-soft": accentHex.soft,
+  } as React.CSSProperties;
+
   return (
-    <div className="space-y-4">
-      {/* Slim greeting header */}
-      <div className="flex flex-wrap items-end justify-between gap-2">
-        <div>
-          <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-            Dashboard
-          </p>
-          <h1 className="font-heading text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
-            {greeting()}, {firstName}
-          </h1>
-        </div>
-        <span
-          className={cn(
-            "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-medium",
-            accent.bg,
-            accent.text,
-          )}
-        >
-          <Sparkles className="h-3 w-3" />
-          {theme.accentColor === "sage"
-            ? "Sage"
-            : theme.accentColor === "terracotta"
-              ? "Terracotta"
-              : "Slate"}{" "}
-          theme
-        </span>
-      </div>
+    <div className="space-y-5" style={accentStyle}>
+      {/* Hero — editorial, brand-driven, crossfade */}
+      <HeroSlideshow
+        images={school.heroImages}
+        accentColor={school.accentColor}
+        staticCaption={`${greeting()}, ${firstName} — welcome to ${school.name}.`}
+      />
 
-      {/* Slideshow — full width, zero CLS */}
-      <DashboardSlideshow />
-
-      {/* Bento grid */}
+      {/* Bento grid — flat editorial cards */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 auto-rows-[minmax(168px,auto)]">
         {visible.includes("time_clock") && (
-          <BentoCard
-            className="sm:col-span-2 lg:col-span-2 lg:row-span-2"
-            accent={accent}
-          >
+          <div className="sm:col-span-2 lg:col-span-2 lg:row-span-2">
             <TimeClockCard
               student={student}
               userId={student.id}
               timeLogs={timeLogs}
               clockIn={clockIn}
               clockOut={clockOut}
-              accent={accent}
+              accentHex={accentHex}
             />
-          </BentoCard>
+          </div>
         )}
 
         {visible.includes("drafting_room") && (
-          <BentoCard accent={accent}>
-            <DraftingRoomCard
-              accent={accent}
-              onDraft={() => {
-                toast.info("Opening weekly journal draft…", {
-                  description: "A new journal entry is being prepared for this week.",
-                });
-                navigate("student.journal-new");
-              }}
-            />
-          </BentoCard>
+          <DraftingRoomCard
+            accentHex={accentHex}
+            onDraft={() => {
+              toast.info("Opening weekly journal draft…", {
+                description: "A new journal entry is being prepared for this week.",
+              });
+              navigate("student.journal-new");
+            }}
+          />
         )}
 
         {visible.includes("timesheet") && (
-          <BentoCard accent={accent}>
-            <TimesheetCard
-              timeLogs={timeLogs}
-              userId={student.id}
-              accent={accent}
-              onView={() => navigate("student.time-clock")}
-            />
-          </BentoCard>
+          <TimesheetCard
+            timeLogs={timeLogs}
+            userId={student.id}
+            accentHex={accentHex}
+            onView={() => navigate("student.time-clock")}
+          />
         )}
 
         {visible.includes("evaluations") && (
-          <BentoCard
-            accent={accent}
-            className="sm:col-span-2 lg:col-span-3"
-          >
+          <div className="sm:col-span-2 lg:col-span-3">
             <EvaluationsCard
               evaluations={evaluations}
               studentId={student.id}
-              accent={accent}
+              accentHex={accentHex}
               onView={() => navigate("student.evaluations")}
             />
-          </BentoCard>
+          </div>
         )}
       </div>
     </div>
@@ -180,23 +146,20 @@ export function StudentDashboard() {
 }
 
 /* -------------------------------------------------------------------------- */
-/*  Bento card shell                                                          */
+/*  Editorial card shell — flat, no gradient washes                           */
 /* -------------------------------------------------------------------------- */
 
-interface BentoCardProps {
+function EditorialCard({
+  children,
+  className,
+}: {
   children: React.ReactNode;
-  accent: (typeof ACCENT_CLASSES)[keyof typeof ACCENT_CLASSES];
   className?: string;
-}
-
-function BentoCard({ children, accent, className }: BentoCardProps) {
+}) {
   return (
     <section
       className={cn(
-        "relative flex flex-col overflow-hidden rounded-2xl border border-border/50 bg-card/80 shadow-sm backdrop-blur-sm",
-        // Subtle accent gradient wash, top-right.
-        "before:pointer-events-none before:absolute before:inset-0 before:bg-gradient-to-br before:opacity-60",
-        accent.gradient,
+        "flex h-full flex-col overflow-hidden rounded-2xl border border-border/50 bg-card shadow-sm",
         className,
       )}
     >
@@ -209,23 +172,21 @@ function BentoCard({ children, accent, className }: BentoCardProps) {
 /*  Card 1 — Time Clock (hero, 2x2 on lg)                                    */
 /* -------------------------------------------------------------------------- */
 
-interface TimeClockCardProps {
-  student: { loggedHours: number; requiredHours: number };
-  userId: string;
-  timeLogs: ReturnType<typeof useAppStore.getState>["timeLogs"];
-  clockIn: ReturnType<typeof useAppStore.getState>["clockIn"];
-  clockOut: ReturnType<typeof useAppStore.getState>["clockOut"];
-  accent: BentoCardProps["accent"];
-}
-
 function TimeClockCard({
   student,
   userId,
   timeLogs,
   clockIn,
   clockOut,
-  accent,
-}: TimeClockCardProps) {
+  accentHex,
+}: {
+  student: { loggedHours: number; requiredHours: number };
+  userId: string;
+  timeLogs: ReturnType<typeof useAppStore.getState>["timeLogs"];
+  clockIn: ReturnType<typeof useAppStore.getState>["clockIn"];
+  clockOut: ReturnType<typeof useAppStore.getState>["clockOut"];
+  accentHex: { base: string; soft: string };
+}) {
   const now = useTicker(1000);
   const [note, setNote] = React.useState("");
 
@@ -253,123 +214,106 @@ function TimeClockCard({
   };
 
   return (
-    <div className="relative flex h-full flex-col p-5 sm:p-6">
-      {/* Status row */}
-      <div className="flex items-center justify-between gap-3">
-        <span
-          className={cn(
-            "inline-flex items-center gap-2 rounded-full px-2.5 py-1 text-[11px] font-semibold ring-1 ring-inset",
-            active
-              ? "bg-emerald-100 text-emerald-800 ring-emerald-200 dark:bg-emerald-950/50 dark:text-emerald-300 dark:ring-emerald-900/60"
-              : "bg-slate-100 text-slate-600 ring-slate-200 dark:bg-slate-800/60 dark:text-slate-300 dark:ring-slate-700",
-          )}
-        >
-          <span
-            className={cn(
-              "h-1.5 w-1.5 rounded-full",
-              active ? "animate-pulse bg-emerald-500" : "bg-slate-400",
-            )}
-          />
-          {active ? "On the clock" : "Clocked out"}
-        </span>
-        <span className="font-mono text-[11px] text-muted-foreground">
-          {new Date().toLocaleDateString("en-US", {
-            weekday: "long",
-            month: "short",
-            day: "numeric",
-          })}
-        </span>
-      </div>
-
-      {/* Main: timer + progress ring */}
-      <div className="mt-4 flex flex-1 flex-col items-center justify-center gap-5 sm:flex-row sm:items-center sm:gap-6">
-        <div className="flex-1 text-center sm:text-left">
-          {active ? (
-            <>
-              <p className="font-mono text-4xl font-bold tabular-nums tracking-tight text-foreground sm:text-5xl">
-                {formatTimer(elapsedMs(active, now))}
-              </p>
-              <p className="mt-1.5 text-xs text-muted-foreground">
-                Clocked in at {formatTime(active.clockInAt)}
-                {active.note ? ` · ${active.note}` : ""}
-              </p>
-            </>
-          ) : (
-            <>
-              <p className="font-heading text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
-                Ready to start?
-              </p>
-              <p className="mt-1.5 text-xs text-muted-foreground">
-                Clock in to begin tracking today's practicum hours.
-              </p>
-            </>
-          )}
-
-          {/* Note + action */}
-          <div className="mt-4 flex flex-col gap-2 sm:max-w-xs">
-            <input
-              type="text"
-              value={note}
-              onChange={(e) => setNote(e.target.value)}
-              placeholder={
-                active
-                  ? "Add a note to this session (optional)"
-                  : "What are you working on? (optional)"
-              }
-              className="h-9 w-full rounded-lg border border-border/70 bg-background/60 px-3 text-sm text-foreground placeholder:text-muted-foreground/70 focus:border-ring focus:outline-none focus:ring-2 focus:ring-ring/30"
+    <EditorialCard>
+      <div className="flex h-full flex-col p-5 sm:p-6">
+        {/* Status row — flat, no colored pill */}
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <span
+              className="h-2 w-2 rounded-full"
+              style={{
+                backgroundColor: active ? "#10b981" : "#9ca3af",
+                animation: active ? "pulse 2s ease-in-out infinite" : undefined,
+              }}
             />
+            <span className="text-sm font-medium text-foreground">
+              {active ? "On the clock" : "Clocked out"}
+            </span>
+          </div>
+          <span className="text-sm text-muted-foreground">
+            {new Date().toLocaleDateString("en-US", {
+              weekday: "long",
+              month: "short",
+              day: "numeric",
+            })}
+          </span>
+        </div>
+
+        {/* Main: timer + progress */}
+        <div className="mt-5 flex flex-1 flex-col items-center justify-center gap-5 sm:flex-row sm:gap-6">
+          <div className="flex-1 text-center sm:text-left">
             {active ? (
-              <Button
-                variant="destructive"
-                className="h-10 w-full"
-                onClick={handleClockOut}
-              >
-                <Square className="h-4 w-4" fill="currentColor" />
-                Clock Out
-              </Button>
+              <>
+                <p className="text-4xl font-bold tracking-tight text-foreground sm:text-5xl" style={{ fontVariantNumeric: "tabular-nums" }}>
+                  {formatTimer(elapsedMs(active, now))}
+                </p>
+                <p className="mt-1.5 text-sm text-muted-foreground">
+                  Clocked in at {formatTime(active.clockInAt)}
+                  {active.note ? ` · ${active.note}` : ""}
+                </p>
+              </>
             ) : (
-              <Button className="h-10 w-full" onClick={handleClockIn}>
-                <Play className="h-4 w-4" fill="currentColor" />
-                Clock In
-              </Button>
+              <>
+                <p className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
+                  Ready to start?
+                </p>
+                <p className="mt-1.5 text-sm text-muted-foreground">
+                  Clock in to begin tracking today's practicum hours.
+                </p>
+              </>
             )}
+
+            {/* Note + action */}
+            <div className="mt-4 flex flex-col gap-2 sm:max-w-xs">
+              <input
+                type="text"
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
+                placeholder={
+                  active
+                    ? "Add a note to this session (optional)"
+                    : "What are you working on? (optional)"
+                }
+                className="h-9 w-full rounded-lg border border-border/70 bg-background px-3 text-sm text-foreground placeholder:text-muted-foreground/70 focus:border-ring focus:outline-none focus:ring-2 focus:ring-ring/20"
+              />
+              {active ? (
+                <Button
+                  variant="destructive"
+                  className="h-10 w-full"
+                  onClick={handleClockOut}
+                >
+                  <Square className="h-4 w-4" fill="currentColor" />
+                  Clock Out
+                </Button>
+              ) : (
+                <Button className="h-10 w-full" onClick={handleClockIn}>
+                  <Play className="h-4 w-4" fill="currentColor" />
+                  Clock In
+                </Button>
+              )}
+            </div>
+          </div>
+
+          {/* Progress ring — 250h */}
+          <div className="flex shrink-0 flex-col items-center">
+            <ProgressRing value={pct} size={132} strokeWidth={11} label="complete" />
+            <p className="mt-2 text-center text-sm text-muted-foreground">
+              <span className="font-semibold text-foreground">
+                {student.loggedHours}
+              </span>{" "}
+              hours rendered out of {REQUIRED_HOURS}
+            </p>
           </div>
         </div>
 
-        {/* Progress ring — 250h BSCS */}
-        <div className="flex shrink-0 flex-col items-center">
-          <ProgressRing value={pct} size={132} strokeWidth={11} label="complete" />
-          <p className="mt-2 text-center text-[11px] text-muted-foreground">
-            <span className="font-mono font-semibold text-foreground">
-              {student.loggedHours}
-            </span>{" "}
-            / {REQUIRED_HOURS}h
-          </p>
+        {/* Footer mini-stats — flat */}
+        <div className="mt-5 grid grid-cols-3 gap-2 border-t border-border/40 pt-4">
+          <MiniStat icon={Clock} label="Today" value={formatDuration(todayMs)} />
+          <MiniStat icon={CalendarDays} label="This week" value={formatDuration(weekMs)} />
+          <MiniStat icon={Hourglass} label="Remaining" value={`${remaining}h`} />
         </div>
       </div>
-
-      {/* Footer mini-stats */}
-      <div className="mt-5 grid grid-cols-3 gap-2 border-t border-border/50 pt-4">
-        <MiniStat
-          icon={Clock}
-          label="Today"
-          value={formatDuration(todayMs)}
-          accent={accent}
-        />
-        <MiniStat
-          icon={CalendarDays}
-          label="This week"
-          value={formatDuration(weekMs)}
-          accent={accent}
-        />
-        <MiniStat
-          icon={Hourglass}
-          label="Remaining"
-          value={`${remaining}h`}
-          accent={accent}
-        />
-      </div>
-    </div>
+    </EditorialCard>
   );
 }
 
@@ -377,93 +321,73 @@ function MiniStat({
   icon: Icon,
   label,
   value,
-  accent,
 }: {
   icon: typeof Clock;
   label: string;
   value: string;
-  accent: BentoCardProps["accent"];
 }) {
   return (
     <div className="flex items-center gap-2">
-      <span
-        className={cn(
-          "flex h-7 w-7 items-center justify-center rounded-lg",
-          accent.bg,
-          accent.text,
-        )}
-      >
-        <Icon className="h-3.5 w-3.5" />
-      </span>
+      <Icon className="h-4 w-4 text-muted-foreground" strokeWidth={1.5} />
       <div className="min-w-0">
-        <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-          {label}
-        </p>
-        <p className="font-mono text-sm font-semibold tabular-nums text-foreground">
-          {value}
-        </p>
+        <p className="text-xs text-muted-foreground">{label}</p>
+        <p className="text-sm font-semibold text-foreground">{value}</p>
       </div>
     </div>
   );
 }
 
 /* -------------------------------------------------------------------------- */
-/*  Card 2 — Drafting Room (weekly journal)                                  */
+/*  Card 2 — Drafting Room                                                   */
 /* -------------------------------------------------------------------------- */
 
 function DraftingRoomCard({
-  accent,
+  accentHex,
   onDraft,
 }: {
-  accent: BentoCardProps["accent"];
+  accentHex: { base: string; soft: string };
   onDraft: () => void;
 }) {
   return (
-    <div className="flex h-full flex-col p-5">
-      <div className="flex items-center gap-2">
-        <span
-          className={cn(
-            "flex h-8 w-8 items-center justify-center rounded-lg",
-            accent.bg,
-            accent.text,
-          )}
-        >
-          <NotebookText className="h-4 w-4" strokeWidth={1.75} />
-        </span>
-        <h3 className="text-sm font-semibold text-foreground">Drafting Room</h3>
-      </div>
+    <EditorialCard>
+      <div className="flex h-full flex-col p-5">
+        <div className="flex items-center gap-2">
+          <NotebookText className="h-4 w-4 text-muted-foreground" strokeWidth={1.5} />
+          <h3 className="text-sm font-semibold text-foreground">Drafting Room</h3>
+        </div>
 
-      <div className="mt-3 flex flex-1 flex-col justify-center">
-        <p className="text-sm font-medium text-foreground">
-          This week's journal entry
-        </p>
-        <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
-          Unlocks every Friday or after 40 logged hours.
-        </p>
-      </div>
+        <div className="mt-3 flex flex-1 flex-col justify-center">
+          <p className="text-sm font-medium text-foreground">
+            This week's journal entry
+          </p>
+          <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+            Unlocks every Friday or after 40 logged hours.
+          </p>
+        </div>
 
-      <Button className="mt-3 h-9 w-full" size="sm" onClick={onDraft}>
-        <NotebookText className="h-3.5 w-3.5" />
-        Draft Weekly Journal
-        <ChevronRight className="h-3.5 w-3.5" />
-      </Button>
-    </div>
+        <Button className="mt-3 h-9 w-full" size="sm" onClick={onDraft}>
+          <NotebookText className="h-3.5 w-3.5" />
+          Draft Weekly Journal
+          <ChevronRight className="h-3.5 w-3.5" />
+        </Button>
+      </div>
+    </EditorialCard>
   );
 }
 
 /* -------------------------------------------------------------------------- */
-/*  Card 3 — Timesheet summary                                               */
+/*  Card 3 — Timesheet                                                       */
 /* -------------------------------------------------------------------------- */
 
 function TimesheetCard({
   timeLogs,
   userId,
-  accent,
+  accentHex,
   onView,
 }: {
   timeLogs: ReturnType<typeof useAppStore.getState>["timeLogs"];
   userId: string;
-  accent: BentoCardProps["accent"];
+  accentHex: { base: string; soft: string };
   onView: () => void;
 }) {
   const now = Date.now();
@@ -472,116 +396,97 @@ function TimesheetCard({
   const todayMs = today.reduce((sum, t) => sum + elapsedMs(t, now), 0);
 
   return (
-    <div className="flex h-full flex-col p-5">
-      <div className="flex items-center gap-2">
-        <span
-          className={cn(
-            "flex h-8 w-8 items-center justify-center rounded-lg",
-            accent.bg,
-            accent.text,
-          )}
+    <EditorialCard>
+      <div className="flex h-full flex-col p-5">
+        <div className="flex items-center gap-2">
+          <Timer className="h-4 w-4 text-muted-foreground" strokeWidth={1.5} />
+          <h3 className="text-sm font-semibold text-foreground">Timesheet</h3>
+        </div>
+
+        <div className="mt-3 flex flex-1 flex-col justify-center gap-2">
+          <div>
+            <p className="text-xs text-muted-foreground">This week</p>
+            <p className="text-2xl font-bold text-foreground">
+              {formatDuration(weekMs)}
+            </p>
+          </div>
+          <div className="flex items-center justify-between text-xs text-muted-foreground">
+            <span>Today: {formatDuration(todayMs)}</span>
+            <span>{today.length} session{today.length === 1 ? "" : "s"}</span>
+          </div>
+        </div>
+
+        <Button
+          variant="outline"
+          size="sm"
+          className="mt-3 h-8 w-full"
+          onClick={onView}
         >
-          <Timer className="h-4 w-4" strokeWidth={1.75} />
-        </span>
-        <h3 className="text-sm font-semibold text-foreground">Timesheet</h3>
+          View timesheet
+          <ChevronRight className="h-3.5 w-3.5" />
+        </Button>
       </div>
-
-      <div className="mt-3 flex flex-1 flex-col justify-center gap-3">
-        <div>
-          <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-            This week
-          </p>
-          <p className="font-mono text-2xl font-bold tabular-nums text-foreground">
-            {formatDuration(weekMs)}
-          </p>
-        </div>
-        <div className="flex items-center justify-between text-[11px] text-muted-foreground">
-          <span>Today: {formatDuration(todayMs)}</span>
-          <span>{today.length} session{today.length === 1 ? "" : "s"}</span>
-        </div>
-      </div>
-
-      <Button
-        variant="outline"
-        size="sm"
-        className="mt-3 h-8 w-full"
-        onClick={onView}
-      >
-        View timesheet
-        <ChevronRight className="h-3.5 w-3.5" />
-      </Button>
-    </div>
+    </EditorialCard>
   );
 }
 
 /* -------------------------------------------------------------------------- */
-/*  Card 4 — Evaluations (full-width banner on lg)                           */
+/*  Card 4 — Evaluations (full-width)                                        */
 /* -------------------------------------------------------------------------- */
 
 function EvaluationsCard({
   evaluations,
   studentId,
-  accent,
+  accentHex,
   onView,
 }: {
   evaluations: ReturnType<typeof useAppStore.getState>["evaluations"];
   studentId: string;
-  accent: BentoCardProps["accent"];
+  accentHex: { base: string; soft: string };
   onView: () => void;
 }) {
   const mine = evaluationsForStudent(evaluations, studentId);
-  const latest =
-    mine.find((e) => e.status === "submitted") ?? mine[0];
+  const latest = mine.find((e) => e.status === "submitted") ?? mine[0];
 
   return (
-    <div className="flex h-full flex-col p-5 sm:p-6">
-      <div className="flex items-center justify-between gap-3">
-        <div className="flex items-center gap-2">
-          <span
-            className={cn(
-              "flex h-8 w-8 items-center justify-center rounded-lg",
-              accent.bg,
-              accent.text,
-            )}
-          >
-            <FileText className="h-4 w-4" strokeWidth={1.75} />
-          </span>
-          <h3 className="text-sm font-semibold text-foreground">
-            Latest evaluation
-          </h3>
-        </div>
-        <Button variant="ghost" size="sm" className="h-7" onClick={onView}>
-          View all <ChevronRight className="h-3.5 w-3.5" />
-        </Button>
-      </div>
-
-      {latest ? (
-        <div className="mt-4 flex flex-col items-start gap-4 sm:flex-row sm:items-center sm:gap-6">
-          <div className="flex items-baseline gap-2">
-            <span
-              className={cn(
-                "font-mono text-4xl font-bold tabular-nums",
-                accent.text,
-              )}
-            >
-              {averageScore(latest).toFixed(1)}
-            </span>
-            <span className="text-xs text-muted-foreground">/ 5.0 average</span>
+    <EditorialCard>
+      <div className="flex h-full flex-col p-5 sm:p-6">
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <FileText className="h-4 w-4 text-muted-foreground" strokeWidth={1.5} />
+            <h3 className="text-sm font-semibold text-foreground">Latest evaluation</h3>
           </div>
-          <p className="text-xs text-muted-foreground">
-            {latest.status === "submitted"
-              ? "Submitted by your supervisor."
-              : `Status: ${latest.status}.`}
-          </p>
+          <Button variant="ghost" size="sm" className="h-7" onClick={onView}>
+            View all <ChevronRight className="h-3.5 w-3.5" />
+          </Button>
         </div>
-      ) : (
-        <div className="mt-4 flex flex-1 items-center justify-center py-4">
-          <p className="text-xs text-muted-foreground">
-            No evaluations yet — your supervisor hasn't submitted one this term.
-          </p>
-        </div>
-      )}
-    </div>
+
+        {latest ? (
+          <div className="mt-4 flex flex-col items-start gap-4 sm:flex-row sm:items-center sm:gap-6">
+            <div className="flex items-baseline gap-2">
+              <span
+                className="text-4xl font-bold"
+                style={{ color: accentHex.base }}
+              >
+                {averageScore(latest).toFixed(1)}
+              </span>
+              <span className="text-sm text-muted-foreground">/ 5.0 average</span>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              {latest.status === "submitted"
+                ? "Submitted by your supervisor."
+                : `Status: ${latest.status}.`}
+            </p>
+          </div>
+        ) : (
+          <div className="mt-4 flex flex-1 items-center justify-center py-4">
+            <p className="text-sm text-muted-foreground">
+              No evaluations yet — your supervisor hasn't submitted one this term.
+            </p>
+          </div>
+        )}
+      </div>
+    </EditorialCard>
   );
 }
 

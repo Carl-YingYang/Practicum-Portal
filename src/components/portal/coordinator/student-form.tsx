@@ -125,9 +125,10 @@ export function StudentForm({ studentId }: { studentId?: ViewParams["studentId"]
     if (!course) next.course = "Course is required.";
     if (!requiredHours.trim() || Number.isNaN(Number(requiredHours)) || Number(requiredHours) <= 0)
       next.requiredHours = "Required hours must be a positive number.";
-    if (!companyId) next.companyId = "Company is required.";
-    if (!position.trim()) next.position = "Position is required.";
-    if (!department) next.department = "Department is required.";
+    // NOTE: Company, Position, and Department are intentionally OPTIONAL here.
+    // Students can be added to the masterlist before OJT deployment (bulk-upload
+    // workflow). These fields are filled in later when the coordinator assigns
+    // a placement. The state-driven workspace gates features on supervisorId.
 
     // Duplicate prevention (only on create — skip the record being edited).
     if (!isEdit) {
@@ -192,16 +193,21 @@ export function StudentForm({ studentId }: { studentId?: ViewParams["studentId"]
     const supId = supervisorId;
     const startDateIso = startDate ? new Date(startDate + "T08:00:00").toISOString() : null;
     const endDateIso = endDate ? new Date(endDate + "T08:00:00").toISOString() : null;
+    // Resolve placement fields — default to neutral values when unassigned so
+    // the student is valid in the masterlist even before OJT deployment.
+    const resolvedDepartment: Department = (department || "Other") as Department;
+    const resolvedPosition = position.trim() || "Unassigned";
+    const resolvedCompanyId = companyId || "";
     if (isEdit && existing) {
       updateStudent(existing.id, {
         name: name.trim(),
         email: email.trim(),
         course,
         requiredHours: Number(requiredHours),
-        companyId,
+        companyId: resolvedCompanyId,
         supervisorId: supId,
-        position: position.trim(),
-        department: department as Department,
+        position: resolvedPosition,
+        department: resolvedDepartment,
         startDate: startDateIso,
         endDate: endDateIso,
         workMode,
@@ -217,10 +223,10 @@ export function StudentForm({ studentId }: { studentId?: ViewParams["studentId"]
         email: email.trim(),
         course,
         requiredHours: Number(requiredHours),
-        companyId,
+        companyId: resolvedCompanyId,
         supervisorId: supId,
-        position: position.trim(),
-        department: department as Department,
+        position: resolvedPosition,
+        department: resolvedDepartment,
         startDate: startDateIso,
         endDate: endDateIso,
         workMode,
@@ -317,16 +323,21 @@ export function StudentForm({ studentId }: { studentId?: ViewParams["studentId"]
         {/* Section 2 — Placement */}
         <SectionCard
           title="Placement"
-          description="Where the intern works and who mentors them."
+          description="Optional — assign now or come back later. Students without a supervisor see a locked workspace."
         >
           <div className="space-y-4">
             <div className="grid gap-4 sm:grid-cols-2">
-              <Field label="Company" required error={errors.companyId}>
-                <Select value={companyId} onValueChange={setCompanyId}>
+              <Field
+                label="Company"
+                error={errors.companyId}
+                hint="Leave blank if placement isn't assigned yet."
+              >
+                <Select value={companyId || UNASSIGNED} onValueChange={(v) => setCompanyId(v === UNASSIGNED ? "" : v)}>
                   <SelectTrigger className="w-full" aria-invalid={!!errors.companyId}>
-                    <SelectValue placeholder="Select company" />
+                    <SelectValue placeholder="Not yet assigned" />
                   </SelectTrigger>
                   <SelectContent>
+                    <SelectItem value={UNASSIGNED}>Not yet assigned</SelectItem>
                     {companies.map((c) => (
                       <SelectItem key={c.id} value={c.id}>
                         {c.name}
@@ -337,9 +348,8 @@ export function StudentForm({ studentId }: { studentId?: ViewParams["studentId"]
               </Field>
               <Field
                 label="Position"
-                required
                 error={errors.position}
-                hint="The intern's actual role title at the company."
+                hint="The intern's role title. Leave blank if unassigned."
               >
                 <Input
                   value={position}
@@ -348,15 +358,16 @@ export function StudentForm({ studentId }: { studentId?: ViewParams["studentId"]
                   aria-invalid={!!errors.position}
                 />
               </Field>
-              <Field label="Department" required error={errors.department}>
+              <Field label="Department" error={errors.department}>
                 <Select
-                  value={department}
-                  onValueChange={(v) => setDepartment(v as Department)}
+                  value={department || UNASSIGNED}
+                  onValueChange={(v) => setDepartment(v === UNASSIGNED ? "" : (v as Department))}
                 >
                   <SelectTrigger className="w-full" aria-invalid={!!errors.department}>
-                    <SelectValue placeholder="Select department" />
+                    <SelectValue placeholder="Not yet assigned" />
                   </SelectTrigger>
                   <SelectContent>
+                    <SelectItem value={UNASSIGNED}>Not yet assigned</SelectItem>
                     {DEPARTMENTS.map((d) => (
                       <SelectItem key={d} value={d}>
                         {d}

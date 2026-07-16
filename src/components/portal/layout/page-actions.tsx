@@ -26,7 +26,7 @@ import { useTheme } from "next-themes";
 import { ROLE_LABELS } from "@/lib/types";
 import { mockUsers } from "@/lib/mock-data";
 import { NotificationsDropdown } from "./notifications-dropdown";
-import { CustomizeSheet } from "@/components/portal/shared/CustomizeSheet";
+import { SchoolBrandingSheet } from "@/components/portal/shared/SchoolBrandingSheet";
 
 interface PageActionsProps {
   onOpenMobileNav: () => void;
@@ -194,7 +194,7 @@ export function PageActions({ onOpenMobileNav }: PageActionsProps) {
 
       {/* Supervisor-only theme editor (right-side Sheet). */}
       {role === "supervisor" && (
-        <CustomizeSheet open={customizeOpen} onOpenChange={setCustomizeOpen} />
+        <SchoolBrandingSheet open={customizeOpen} onOpenChange={setCustomizeOpen} />
       )}
     </div>
   );

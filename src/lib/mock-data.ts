@@ -8,6 +8,7 @@ import type {
   FormSubmission,
   Journal,
   Role,
+  School,
   SchoolIdentity,
   Student,
   Subscription,
@@ -42,6 +43,33 @@ export const defaultSchoolIdentity: SchoolIdentity = {
   address: "",
   themePreset: "azure-blue",
 };
+
+// ============================================================
+// Schools — per-school branding. "practo" is the system default
+// (flat hero slideshow, sage accent). "ust" is a branded demo.
+// Supervisors with multi-school interns see the practo default.
+// ============================================================
+export const schools: School[] = [
+  {
+    id: "practo",
+    name: "Practo",
+    shortName: "Practo",
+    tagline: "Practicum Management Portal",
+    accentColor: "sage",
+    heroImages: [], // empty = use curated default stock photos
+    isDefault: true,
+    visibleCards: ["time_clock", "drafting_room", "timesheet", "evaluations"],
+  },
+  {
+    id: "ust",
+    name: "University of Santo Tomas",
+    shortName: "UST",
+    tagline: "Pontifical and Royal University",
+    accentColor: "terracotta",
+    heroImages: [],
+    visibleCards: ["time_clock", "drafting_room", "timesheet", "evaluations"],
+  },
+];
 
 export const supervisors: Supervisor[] = [
   {
@@ -118,7 +146,7 @@ export const supervisors: Supervisor[] = [
   },
 ];
 
-export const students: Student[] = [
+const _studentsRaw: Omit<Student, "schoolId">[] = [
   {
     id: "s1",
     studentNumber: "2021-00123",
@@ -300,6 +328,12 @@ export const students: Student[] = [
     createdAt: "2025-03-10T08:00:00.000Z",
   },
 ];
+
+// Ensure every student has a schoolId (defaults to the Practo school).
+export const students: Student[] = _studentsRaw.map((s) => ({
+  ...s,
+  schoolId: "practo",
+}));
 
 export const evaluations: Evaluation[] = [
   {
@@ -932,7 +966,7 @@ export const activityLog: ActivityLog[] = [
 // Coordinators — university staff who manage the practicum program.
 // Seeded with the demo coordinator so the cohort starts non-empty.
 // ============================================================
-export const coordinators: Coordinator[] = [
+const _coordinatorsRaw: Omit<Coordinator, "schoolId">[] = [
   {
     id: "coord1",
     name: "Prof. Patricia Lim",
@@ -945,6 +979,12 @@ export const coordinators: Coordinator[] = [
     createdAt: "2025-01-10T08:00:00.000Z",
   },
 ];
+
+// Ensure every coordinator has a schoolId (defaults to the Practo school).
+export const coordinators: Coordinator[] = _coordinatorsRaw.map((c) => ({
+  ...c,
+  schoolId: "practo",
+}));
 
 // ============================================================
 // Mock login accounts — one per role for the demo.
