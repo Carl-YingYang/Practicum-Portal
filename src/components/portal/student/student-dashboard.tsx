@@ -1,16 +1,12 @@
 "use client";
 
 import { PageHeader } from "@/components/portal/layout/page-header";
-import { SectionCard } from "@/components/portal/shared/section-card";
 import { EmptyState } from "@/components/portal/shared/empty-state";
-import { ProgressRing } from "@/components/portal/shared/progress-ring";
-import { TimeClockView } from "@/components/portal/shared/time-clock-view";
 import { useInitialLoading } from "@/components/portal/shared/page-transition";
 import { StatCardSkeleton } from "@/components/portal/shared/skeletons";
 import { useAppStore } from "@/store/use-app-store";
-import { greeting, hoursPercent } from "@/lib/selectors";
+import { greeting } from "@/lib/selectors";
 import type { Student } from "@/lib/types";
-import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import {
@@ -20,14 +16,15 @@ import {
   UserCheck,
   Timer,
   NotebookText,
-  ChevronRight,
   Sparkles,
 } from "lucide-react";
-import { toast } from "sonner";
+// New theme-driven bento dashboard (Active state). Aliased to avoid an
+// export-name collision with this file's own `StudentDashboard` gate.
+import { StudentDashboard as BentoDashboard } from "./StudentDashboard";
 
 /**
  * ============================================================================
- * STATE-DRIVEN WORKSPACE — Student Dashboard
+ * STATE-DRIVEN WORKSPACE — Student Dashboard (gate)
  * ============================================================================
  *
  * Students enter the system via bulk upload, so they may have an account but
@@ -35,10 +32,11 @@ import { toast } from "sonner";
  * deployment state:
  *
  *   • LOCKED   (supervisorId == null) → Pending Deployment empty state.
- *   • ACTIVE   (supervisorId != null) → Time clock + Progress + Weekly Journal.
+ *   • ACTIVE   (supervisorId != null) → Theme-driven Bento dashboard
+ *     (slideshow + time clock + drafting room + timesheet + evaluations).
  *
  * The `isDeployed` mock toggle below lets you force either view for testing
- * without a real backend. Flip it to `true` to preview the ActiveWorkspace.
+ * without a real backend. Flip to `false` to preview the LockedWorkspace.
  * ============================================================================
  */
 
@@ -46,11 +44,8 @@ import { toast } from "sonner";
 // Temporary mock: when the backend is wired, derive this from the student's
 // real assignment: `const isDeployed = Boolean(student?.supervisorId);`
 // Set to `false` to preview the LockedWorkspace, `true` for the ActiveWorkspace.
-const isDeployed = false;
+const isDeployed = true;
 // ───────────────────────────────────────────────────────────────────────────
-
-/** BSCS OJT required-hour ceiling used by the progress ring. */
-const REQUIRED_HOURS_BSCS = 250;
 
 export function StudentDashboard() {
   const currentUser = useAppStore((s) => s.currentUser);
@@ -91,7 +86,7 @@ export function StudentDashboard() {
 
   // Branch on deployment state.
   return isDeployed ? (
-    <ActiveWorkspace student={student} />
+    <BentoDashboard />
   ) : (
     <LockedWorkspace student={student} firstName={firstName} />
   );
@@ -249,182 +244,6 @@ function PendingHint({
       >
         {pending ? "Pending" : "Ready"}
       </span>
-    </div>
-  );
-}
-
-/* ========================================================================== */
-/*  ACTIVE WORKSPACE — Execution Phase State                                  */
-/* ========================================================================== */
-
-interface ActiveWorkspaceProps {
-  student: Student;
-}
-
-function ActiveWorkspace({ student }: ActiveWorkspaceProps) {
-  const navigate = useAppStore((s) => s.navigate);
-
-  // Live progress against the 250-hour BSCS requirement.
-  const loggedHours = student.loggedHours;
-  const pct = hoursPercent(student);
-  const remaining = Math.max(0, REQUIRED_HOURS_BSCS - loggedHours);
-
-  const handleDraftJournal = () => {
-    toast.info("Opening weekly journal draft…", {
-      description: "A new journal entry is being prepared for this week.",
-    });
-    navigate("student.journal-new");
-  };
-
-  return (
-    <>
-      <PageHeader
-        breadcrumb="Dashboard"
-        title={`${greeting()}, ${student.name.split(" ")[0]}`}
-        description="Your practicum workspace is live. Clock in, track progress, and keep your journal current."
-      />
-
-      <div className="space-y-4">
-        {/* ── Responsive 2-column grid: Time Clock (Col 1) + Progress (Col 2) ── */}
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-          {/* Column 1 — Main Action: Time Clock */}
-          <div className="lg:col-span-1">
-            <TimeClockViewCompact />
-          </div>
-
-          {/* Column 2 — Progress: 250-hour BSCS ring + breakdown */}
-          <SectionCard
-            title="OJT Hour Progress"
-            description="BSCS practicum requirement"
-            contentClassName="p-5 sm:p-6"
-          >
-            <div className="flex flex-col items-center gap-5 sm:flex-row sm:items-center sm:gap-6">
-              {/* Progress ring */}
-              <div className="flex shrink-0 flex-col items-center">
-                <ProgressRing
-                  value={pct}
-                  size={148}
-                  strokeWidth={12}
-                  label="complete"
-                />
-              </div>
-
-              {/* Numeric breakdown */}
-              <div className="flex-1 space-y-3">
-                <div>
-                  <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-                    Hours Rendered
-                  </p>
-                  <p className="mt-0.5 font-mono text-3xl font-bold tabular-nums text-foreground">
-                    {loggedHours}
-                    <span className="text-base font-medium text-muted-foreground">
-                      {" "}
-                      / {REQUIRED_HOURS_BSCS}
-                    </span>
-                  </p>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    {loggedHours} hours rendered out of {REQUIRED_HOURS_BSCS}
-                  </p>
-                </div>
-
-                <div className="h-px w-full bg-border/60" />
-
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-                      Remaining
-                    </p>
-                    <p className="mt-0.5 font-mono text-lg font-semibold tabular-nums text-foreground">
-                      {remaining}h
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-                      Completion
-                    </p>
-                    <p className="mt-0.5 font-mono text-lg font-semibold tabular-nums text-foreground">
-                      {pct}%
-                    </p>
-                  </div>
-                </div>
-
-                {/* Status strip */}
-                <div
-                  className={cn(
-                    "flex items-center gap-2 rounded-lg border px-3 py-2 text-xs",
-                    pct >= 100
-                      ? "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900/50 dark:bg-emerald-950/30 dark:text-emerald-300"
-                      : pct >= 60
-                        ? "border-emerald-200 bg-emerald-50/60 text-emerald-700 dark:border-emerald-900/50 dark:bg-emerald-950/20 dark:text-emerald-300"
-                        : "border-amber-200 bg-amber-50/60 text-amber-700 dark:border-amber-900/50 dark:bg-amber-950/20 dark:text-amber-300"
-                  )}
-                >
-                  {pct >= 100 ? (
-                    <>
-                      <Sparkles className="h-3.5 w-3.5" />
-                      Requirement complete — outstanding work!
-                    </>
-                  ) : pct >= 60 ? (
-                    <>
-                      <Hourglass className="h-3.5 w-3.5" />
-                      On track — {remaining}h to go.
-                    </>
-                  ) : (
-                    <>
-                      <Hourglass className="h-3.5 w-3.5" />
-                      Just getting started — keep logging hours.
-                    </>
-                  )}
-                </div>
-              </div>
-            </div>
-          </SectionCard>
-        </div>
-
-        {/* ── Below the grid: Weekly Journal action card ── */}
-        <SectionCard
-          title="Weekly Journal"
-          description="Reflect on this week's practicum activities"
-          contentClassName="p-5 sm:p-6"
-        >
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex items-start gap-3">
-              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-teal-50 text-teal-600 dark:bg-teal-950/40 dark:text-teal-300">
-                <NotebookText className="h-5 w-5" strokeWidth={1.75} />
-              </span>
-              <div className="min-w-0">
-                <p className="text-sm font-medium text-foreground">
-                  This week's journal entry
-                </p>
-                <p className="mt-0.5 text-xs text-muted-foreground">
-                  Unlocks every Friday or after 40 logged hours.
-                </p>
-              </div>
-            </div>
-
-            <div className="flex shrink-0 flex-col items-stretch gap-1.5 sm:items-end">
-              <Button onClick={handleDraftJournal} className="h-10">
-                <NotebookText className="h-4 w-4" />
-                Draft Weekly Journal
-                <ChevronRight className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
-        </SectionCard>
-      </div>
-    </>
-  );
-}
-
-/**
- * Compact wrapper around the shared TimeClockView that strips its own
- * PageHeader (we already render one at the dashboard level) and constrains
- * it to a single grid column.
- */
-function TimeClockViewCompact() {
-  return (
-    <div className="h-full">
-      <TimeClockView breadcrumb="Time Clock" description="Clock in and out to track your practicum hours." />
     </div>
   );
 }
