@@ -1345,14 +1345,14 @@ export const SUBSCRIPTION_PLANS: SubscriptionPlan[] = [
 ];
 
 /**
- * Default (seed) subscription. The school is on the Growth tier at the default
- * ₱0.0667/hr rate. Seed invoices are usage-based (hours logged × rate) so the
- * demo shows realistic pay-per-hour billing.
+ * Default (seed) subscription. The institution is billed post-paid at the
+ * ₱0.15/intern-hour rate. Seed invoices are usage-based (hours × rate) so the
+ * demo shows realistic institutional billing.
  */
 export const defaultSubscription: Subscription = {
   planTier: "growth",
   status: "active",
-  hourlyRatePhp: 0.0667, // 1/15 → 15 hrs = ₱1.00
+  hourlyRatePhp: 0.15, // institutional post-paid rate
   billingCycle: "per-term",
   paymentMethod: "invoice",
   startedAt: "2024-06-02T00:00:00.000Z",
@@ -1363,7 +1363,7 @@ export const defaultSubscription: Subscription = {
       issuedAt: "2024-06-02T00:00:00.000Z",
       description: "Term 2024-2025 usage — 1,500 intern-hours",
       hours: 1_500,
-      amountPhp: 100, // 1,500 × ₱0.0667 ≈ ₱100
+      amountPhp: 225, // 1,500 × ₱0.15
       status: "paid",
     },
     {
@@ -1371,7 +1371,7 @@ export const defaultSubscription: Subscription = {
       issuedAt: "2024-08-15T00:00:00.000Z",
       description: "Mid-term usage — 737 intern-hours",
       hours: 737,
-      amountPhp: 49, // 737 × ₱0.0667 ≈ ₱49
+      amountPhp: 110.55, // 737 × ₱0.15
       status: "paid",
     },
   ],

@@ -97,7 +97,7 @@ export const navConfig: Record<Role, NavItem[]> = {
     { key: "evaluations", label: "Evaluations", shortLabel: "Evals", view: "coordinator.evaluations", icon: "allEvaluations", section: "Workflow" },
     { key: "journals", label: "Journals", shortLabel: "Journals", view: "coordinator.journals", icon: "allJournals", section: "Workflow" },
     { key: "reports", label: "Reports", shortLabel: "Reports", view: "coordinator.reports", icon: "reports", section: "Insights" },
-    { key: "subscription", label: "Subscription", shortLabel: "Billing", view: "coordinator.subscription", icon: "subscription", section: "Billing" },
+    { key: "subscription", label: "Billing", shortLabel: "Billing", view: "coordinator.subscription", icon: "subscription", section: "Billing" },
     { key: "settings", label: "School Settings", shortLabel: "Settings", view: "coordinator.settings-school", icon: "settings", section: "Configuration" },
   ],
 };
@@ -155,7 +155,7 @@ export const viewTitles: Record<ViewKey, string> = {
   "coordinator.bulk-create": "Bulk Create Users",
   "coordinator.coordinator-new": "Add Coordinator",
   "coordinator.settings-school": "School Settings",
-  "coordinator.subscription": "Subscription & Billing",
+  "coordinator.subscription": "Billing & Usage Summary",
   "coordinator.profile": "My Profile",
 };
 
@@ -228,6 +228,6 @@ export const secondaryNavItems: Record<Role, NavItem[]> = {
     { key: "evaluations", label: "Evaluations", shortLabel: "Evals", view: "coordinator.evaluations", icon: "allEvaluations" },
     { key: "journals", label: "Journals", shortLabel: "Journals", view: "coordinator.journals", icon: "allJournals" },
     { key: "reports", label: "Reports", shortLabel: "Reports", view: "coordinator.reports", icon: "reports" },
-    { key: "subscription", label: "Subscription", shortLabel: "Billing", view: "coordinator.subscription", icon: "subscription" },
+    { key: "subscription", label: "Billing", shortLabel: "Billing", view: "coordinator.subscription", icon: "subscription" },
   ],
 };
