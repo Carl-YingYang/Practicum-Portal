@@ -15,7 +15,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Avatar } from "@/components/portal/shared/avatar";
-import { BlurImage } from "@/components/portal/shared/blur-image";
 import { CredentialsDialog } from "@/components/portal/shared/credentials-dialog";
 import {
   GraduationCap,
@@ -24,23 +23,59 @@ import {
   ArrowRight,
   ArrowLeft,
   ShieldCheck,
+  ClipboardCheck,
+  FileText,
   Check,
   AlertCircle,
   UserPlus,
   Sun,
   Moon,
-  User,
-  Briefcase,
-  ClipboardList,
 } from "lucide-react";
 import { useTheme } from "next-themes";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
 // ============================================================
-// Login-page default theme — Azure Blue (default palette).
-// Re-asserted as inline CSS vars so the login ignores any
-// coordinator-configured school theme on :root.
+// Role carousel data — cycles on the left brand panel
+// ============================================================
+const roleSlides: {
+  role: Role;
+  icon: typeof ShieldCheck;
+  blurb: string;
+}[] = [
+  {
+    role: "supervisor",
+    icon: ClipboardCheck,
+    blurb: "Evaluate interns and approve weekly journals in minutes.",
+  },
+  {
+    role: "student",
+    icon: FileText,
+    blurb: "Submit weekly journals and track your practicum hours.",
+  },
+  {
+    role: "coordinator",
+    icon: ShieldCheck,
+    blurb: "Manage the cohort, assign supervisors, and export reports.",
+  },
+];
+
+const roleAccent: Record<Role, string> = {
+  student: "from-sky-400/30 to-sky-600/20",
+  supervisor: "from-amber-300/30 to-amber-500/20",
+  coordinator: "from-emerald-300/30 to-emerald-500/20",
+};
+
+// ============================================================
+// Login-page default theme — Azure Blue (default palette)
+// ----------------------------------------
+// The login page must NOT be affected by the coordinator-configured
+// school theme (which SchoolThemeProvider writes onto :root). We
+// re-assert the default Azure Blue palette as inline CSS variables
+// on the login wrapper. CSS custom properties cascade, so an inline
+// style on the login container overrides :root for everything inside
+// the login screen — while the authenticated portal still reads the
+// school theme from :root.
 // ============================================================
 const LOGIN_DEFAULT_THEME_VARS = {
   "--primary": "#266ca9",
@@ -69,49 +104,7 @@ const LOGIN_DEFAULT_THEME_VARS = {
 } as React.CSSProperties;
 
 // ============================================================
-// Enterprise brand gradient — deep professional blue.
-// #123B7A → #1E5AA8 (per enterprise SaaS spec).
-// ============================================================
-const HERO_GRADIENT =
-  "linear-gradient(135deg, #123B7A 0%, #1E5AA8 100%)";
-
-// Solid enterprise button colors (no gradient).
-const BTN_PRIMARY = "#2563EB";
-const BTN_PRIMARY_HOVER = "#1D4ED8";
-
-// ============================================================
-// Role metadata for the left hero panel's "Built for every
-// role" section — flat, minimal, professional cards.
-// ============================================================
-const ROLE_SHOWCASE: {
-  role: Role;
-  icon: React.ComponentType<{ className?: string; strokeWidth?: number }>;
-  label: string;
-  blurb: string;
-}[] = [
-  {
-    role: "student",
-    icon: User,
-    label: "Student",
-    blurb: "Track hours, journals & evaluations",
-  },
-  {
-    role: "supervisor",
-    icon: Briefcase,
-    label: "Company Supervisor",
-    blurb: "Approve logs & assess interns",
-  },
-  {
-    role: "coordinator",
-    icon: ClipboardList,
-    label: "Practicum Coordinator",
-    blurb: "Oversee cohorts & exports",
-  },
-];
-
-// ============================================================
-// Light / dark theme toggle — minimal circular button pinned
-// to the top-right corner of the auth panel.
+// Light / dark mode toggle — floating, top-right of login page
 // ============================================================
 function LoginThemeToggle() {
   const { theme, setTheme } = useTheme();
@@ -122,37 +115,254 @@ function LoginThemeToggle() {
       type="button"
       onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
       aria-label="Toggle light or dark mode"
-      className="absolute right-5 top-5 z-30 flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500 transition-colors duration-200 hover:text-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400 dark:hover:text-white"
+      className="fixed right-4 top-4 z-50 flex h-10 w-10 items-center justify-center rounded-full border border-border/60 bg-background/80 text-foreground shadow-sm backdrop-blur-md transition-colors hover:bg-muted supports-[backdrop-filter]:bg-background/65"
     >
       {mounted && theme === "dark" ? (
-        <Sun className="h-[18px] w-[18px]" strokeWidth={2} />
+        <Sun className="h-[18px] w-[18px]" strokeWidth={2.1} />
       ) : (
-        <Moon className="h-[18px] w-[18px]" strokeWidth={2} />
+        <Moon className="h-[18px] w-[18px]" strokeWidth={2.1} />
       )}
     </button>
   );
 }
 
 // ============================================================
-// Mobile brand — compact product mark shown ONLY on mobile/
-// tablet at the very top of the auth panel, so the login form
-// stays the primary focus on small screens (no big hero panel
-// pushing it down).
+// Auto-scrolling role carousel
+// ============================================================
+function RoleCarousel() {
+  const [index, setIndex] = React.useState(0);
+  const [paused, setPaused] = React.useState(false);
+
+  React.useEffect(() => {
+    if (paused) return;
+    const timer = setInterval(() => {
+      setIndex((i) => (i + 1) % roleSlides.length);
+    }, 4500);
+    return () => clearInterval(timer);
+  }, [paused]);
+
+  return (
+    <div
+      className="relative overflow-hidden rounded-md border border-white/10 bg-white/5 backdrop-blur-sm"
+      onMouseEnter={() => setPaused(true)}
+      onMouseLeave={() => setPaused(false)}
+    >
+      {/* Slide track */}
+      <div
+        className="flex transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)]"
+        style={{ transform: `translateX(-${index * 100}%)` }}
+      >
+        {roleSlides.map(({ role, icon: Icon, blurb }, i) => (
+          <div key={role} className="w-full shrink-0 px-5 py-5">
+            <div className="flex items-start gap-3.5">
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-white/12 ring-1 ring-white/20">
+                <Icon className="h-5 w-5 text-[#ADE1FB]" strokeWidth={2.2} />
+              </span>
+              <div className="min-w-0 flex-1 pt-0.5">
+                <p className="text-sm font-bold text-white">
+                  {ROLE_LABELS[role]}
+                </p>
+                <p className="mt-1 text-[13px] leading-relaxed text-white/70">
+                  {blurb}
+                </p>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Dot indicators */}
+      <div className="flex items-center justify-center gap-1.5 pb-3.5">
+        {roleSlides.map((_, i) => (
+          <button
+            key={i}
+            onClick={() => setIndex(i)}
+            aria-label={`Go to slide ${i + 1}`}
+            className={cn(
+              "h-1.5 rounded-full transition-all duration-300",
+              i === index
+                ? "w-6 bg-[#ADE1FB]"
+                : "w-1.5 bg-white/30 hover:bg-white/50"
+            )}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ============================================================
+// Hero slideshow — three cross-fading images on the brand panel.
+// ----------------------------------------
+// Uses plain <img> tags (NOT BlurImage) so there is no shimmer /
+// placeholder flash on reload or first paint. All three images
+// live in the DOM from the start with loading="eager", so the
+// browser fetches them together and every later cross-fade is
+// instant — no blank frame, no flicker.
+//
+// The fade is opacity-only (flat, simple, no slide/scale).
+// Swap the files in /public (login-hero-1/2/3.png) to replace.
+// ============================================================
+const HERO_SLIDES = [
+  "/login-hero-1.png",
+  "/login-hero-2.png",
+  "/login-hero-3.png",
+] as const;
+
+const HERO_FADE_MS = 1500;
+const HERO_INTERVAL_MS = 6000;
+
+function HeroSlideshow() {
+  const [active, setActive] = React.useState(0);
+
+  React.useEffect(() => {
+    // Defensive preload — even though the <img> tags below already
+    // fetch eagerly, this guarantees all three are cached before the
+    // first cycle change so the cross-fade is always clean.
+    HERO_SLIDES.forEach((src) => {
+      const img = new Image();
+      img.src = src;
+    });
+    const timer = setInterval(() => {
+      setActive((i) => (i + 1) % HERO_SLIDES.length);
+    }, HERO_INTERVAL_MS);
+    return () => clearInterval(timer);
+  }, []);
+
+  return (
+    <div className="pointer-events-none absolute inset-0">
+      {/* Three images — only opacity changes, flat cross-fade */}
+      {HERO_SLIDES.map((src, i) => (
+        <img
+          key={src}
+          src={src}
+          alt=""
+          aria-hidden="true"
+          loading="eager"
+          decoding="async"
+          // First image gets high priority so it paints on first load.
+          // The others load normally but still eagerly (in-DOM).
+          {...(i === 0 ? { fetchPriority: "high" as const } : {})}
+          style={{
+            transitionDuration: `${HERO_FADE_MS}ms`,
+            transitionTimingFunction: "ease-in-out",
+          }}
+          className={cn(
+            "absolute inset-0 h-full w-full object-cover transition-opacity ease-in-out",
+            i === active ? "opacity-100" : "opacity-0"
+          )}
+        />
+      ))}
+
+      {/* Navy overlays — keep text readable & blend photos into panel.
+          Left→right for the copy column, bottom→top for the footer. */}
+      <div
+        className="absolute inset-0"
+        style={{
+          background:
+            "linear-gradient(to right, rgba(15,37,115,0.88) 0%, rgba(15,37,115,0.55) 45%, rgba(15,37,115,0.30) 100%)",
+        }}
+      />
+      <div
+        className="absolute inset-0"
+        style={{
+          background:
+            "linear-gradient(to top, rgba(4,29,86,0.72) 0%, rgba(4,29,86,0) 35%, rgba(4,29,86,0) 65%, rgba(4,29,86,0.40) 100%)",
+        }}
+      />
+    </div>
+  );
+}
+
+// ============================================================
+// Left brand panel — shared by sign-in and register modes
+// ============================================================
+function BrandPanel() {
+  return (
+    <div className="relative hidden w-1/2 flex-col justify-between overflow-hidden p-12 text-white lg:flex">
+      {/* Background — default navy gradient (login is never school-branded) */}
+      <div className="bg-ici-navy-gradient absolute inset-0" />
+
+      {/* Three cross-fading hero images (replace files in /public to swap) */}
+      <HeroSlideshow />
+
+      {/* Texture & glow on top of the photos */}
+      <div className="bg-grid-texture pointer-events-none absolute inset-0 opacity-25" />
+      <div className="bg-ici-dots pointer-events-none absolute left-8 top-8 h-24 w-24 opacity-40" />
+      <div className="bg-ici-dots pointer-events-none absolute right-8 top-8 h-24 w-24 opacity-40" />
+      <div className="pointer-events-none absolute -left-24 top-1/3 h-72 w-72 rounded-full bg-[var(--blue-lightest)]/15 blur-3xl" />
+      <div className="pointer-events-none absolute -right-20 bottom-1/4 h-64 w-64 rounded-full bg-sky-400/10 blur-3xl" />
+
+      {/* Brand — compact product mark (no school name on login) */}
+      <div className="relative">
+        <div className="flex items-center gap-2.5">
+          <div className="flex h-9 w-9 items-center justify-center rounded-md bg-white/15 ring-1 ring-white/25 backdrop-blur-sm">
+            <GraduationCap className="h-5 w-5 text-[var(--blue-lightest)]" strokeWidth={2.4} />
+          </div>
+          <div className="min-w-0">
+            <p className="text-sm font-bold leading-tight tracking-tight">
+              Practicum Management
+            </p>
+            <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-white/55">
+              Practo Portal
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Motto + auto-scrolling role carousel */}
+      <div className="relative max-w-md space-y-6">
+        <div className="space-y-2.5">
+          <h1 className="text-[2rem] font-extrabold leading-[1.1] tracking-tight">
+            Practicum management,{" "}
+            <span className="text-[var(--blue-lightest)]">simplified.</span>
+          </h1>
+          <p className="text-[14.5px] font-medium leading-relaxed text-white/85">
+            One focused platform to evaluate interns, approve weekly journals,
+            and export practicum accreditation reports.
+          </p>
+        </div>
+
+        {/* Pale accent divider */}
+        <div className="h-1 w-14 rounded-full bg-[var(--blue-lightest)]" />
+
+        {/* Auto-scrolling role carousel */}
+        <div className="space-y-2.5">
+          <p className="text-[11px] font-semibold uppercase tracking-wider text-white/50">
+            Built for
+          </p>
+          <RoleCarousel />
+        </div>
+      </div>
+
+      {/* User Agreement link */}
+      <div className="relative">
+        <a
+          href="#"
+          onClick={(e) => e.preventDefault()}
+          className="text-xs font-medium text-white/60 transition-colors hover:text-white"
+        >
+          User Agreement
+        </a>
+      </div>
+    </div>
+  );
+}
+
+// ============================================================
+// Mobile brand — shown on small screens (top of the right panel)
 // ============================================================
 function MobileBrand() {
   return (
-    <div className="mb-6 flex animate-in fade-in slide-in-from-bottom-2 duration-500 items-center gap-2.5 lg:hidden">
-      <div
-        className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-lg text-white"
-        style={{ backgroundColor: BTN_PRIMARY }}
-      >
+    <div className="mb-7 flex items-center gap-2.5 lg:hidden">
+      <div className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-md bg-primary text-primary-foreground elev-sm">
         <GraduationCap className="h-5 w-5" strokeWidth={2.4} />
       </div>
       <div className="min-w-0">
-        <p className="truncate text-[14px] font-bold leading-tight text-slate-900 dark:text-slate-50">
+        <p className="truncate text-sm font-bold leading-tight text-foreground">
           Practicum Management
         </p>
-        <p className="truncate text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">
+        <p className="truncate text-[11px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
           Practo Portal
         </p>
       </div>
@@ -161,137 +371,10 @@ function MobileBrand() {
 }
 
 // ============================================================
-// LEFT HERO PANEL — desktop only (hidden on mobile/tablet so
-// the login form is primary on small screens).
-//
-// Enterprise treatment:
-//   • Base: deep blue gradient (#123B7A → #1E5AA8).
-//   • Extremely subtle dotted grid texture.
-//   • Hero image (BlurImage, /hero-students.png) at low opacity
-//     for cinematic depth — restored per request.
-//   • Soft radial glow.
-//   • Flat minimal role cards with subtle borders.
-//   • Footer pinned to the bottom.
-//   • Fade-in entrance animation.
-// ============================================================
-function HeroPanel() {
-  return (
-    <aside
-      className="relative hidden w-[42%] shrink-0 flex-col overflow-hidden lg:flex"
-      style={{ background: HERO_GRADIENT }}
-      aria-label="Practicum Management brand showcase"
-    >
-      {/* Extremely subtle dotted grid texture */}
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-0 opacity-[0.07]"
-        style={{
-          backgroundImage:
-            "radial-gradient(circle, rgb(255 255 255 / 0.9) 1px, transparent 1px)",
-          backgroundSize: "24px 24px",
-        }}
-      />
-
-      {/* Hero image — restored. Low opacity for cinematic depth. */}
-      <div className="pointer-events-none absolute inset-0 opacity-25">
-        <BlurImage
-          src="/hero-students.png"
-          alt=""
-          darkPlaceholder
-          eager
-          wrapperClassName="absolute inset-0 h-full w-full"
-          className="h-full w-full object-cover"
-        />
-      </div>
-
-      {/* Soft radial glow for depth */}
-      <div
-        aria-hidden
-        className="pointer-events-none absolute -right-20 top-1/4 h-80 w-80 rounded-full bg-[radial-gradient(circle,rgb(96_165_250/0.22),transparent_70%)] blur-2xl"
-      />
-      <div
-        aria-hidden
-        className="pointer-events-none absolute -left-16 bottom-1/4 h-72 w-72 rounded-full bg-[radial-gradient(circle,rgb(147_197_253/0.16),transparent_70%)] blur-2xl"
-      />
-
-      {/* Content — fills the panel, footer pinned to bottom */}
-      <div className="relative z-10 flex h-full min-h-screen flex-col justify-between px-12 py-14 text-white animate-in fade-in duration-700">
-        {/* Top — brand mark */}
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-white/10 ring-1 ring-white/15">
-            <GraduationCap className="h-5 w-5 text-white" strokeWidth={2.2} />
-          </div>
-          <div className="min-w-0">
-            <p className="text-[14px] font-bold leading-tight tracking-tight">
-              Practicum Management
-            </p>
-            <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-white/50">
-              Practo Portal
-            </p>
-          </div>
-        </div>
-
-        {/* Middle — headline + description + role cards */}
-        <div className="max-w-md py-8">
-          <p className="mb-3 text-[10px] font-semibold uppercase tracking-[0.18em] text-white/50">
-            Practicum, reimagined
-          </p>
-          <h2 className="text-[2.5rem] font-bold leading-[1.08] tracking-tight xl:text-[2.75rem]">
-            Practicum management,
-            <br />
-            simplified.
-          </h2>
-          <p className="mt-5 max-w-sm text-[14.5px] font-medium leading-relaxed text-white/80">
-            One focused workspace for students, supervisors, and coordinators —
-            track hours, approve journals, evaluate interns, and export
-            accreditation-ready reports.
-          </p>
-
-          {/* Built for every role — flat minimal cards */}
-          <div className="mt-9">
-            <p className="mb-4 text-[10px] font-semibold uppercase tracking-[0.16em] text-white/45">
-              Built for every role
-            </p>
-            <div className="space-y-2.5">
-              {ROLE_SHOWCASE.map(({ role, icon: Icon, label, blurb }) => (
-                <div
-                  key={role}
-                  className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/[0.04] px-3.5 py-3 transition-colors duration-200 hover:bg-white/[0.08]"
-                >
-                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-white/8 ring-1 ring-white/10">
-                    <Icon className="h-4 w-4 text-white/90" strokeWidth={2} />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-[13px] font-semibold leading-tight text-white">
-                      {label}
-                    </p>
-                    <p className="mt-0.5 truncate text-[11.5px] text-white/55">
-                      {blurb}
-                    </p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {/* Footer — pinned to the bottom */}
-        <div className="flex items-center justify-between border-t border-white/10 pt-5">
-          <p className="text-[11px] font-medium text-white/45">
-            © {new Date().getFullYear()} Practo Portal
-          </p>
-          <p className="text-[11px] font-medium text-white/45">
-            Enterprise Edition
-          </p>
-        </div>
-      </div>
-    </aside>
-  );
-}
-
-// ============================================================
-// Coordinator self-registration form (unchanged logic, restyled
-// to match the flat enterprise right-panel aesthetic).
+// Coordinator self-registration form
+// Shown on the login page. Only coordinators can self-register —
+// students and supervisors are still provisioned by a coordinator
+// from inside the portal.
 // ============================================================
 function CoordinatorRegisterForm({
   onBackToSignIn,
@@ -366,46 +449,50 @@ function CoordinatorRegisterForm({
   };
 
   return (
-    <div className="w-full">
+    <div className="w-full max-w-[400px]">
+      <MobileBrand />
+
       <button
         onClick={onBackToSignIn}
-        className="mb-6 inline-flex items-center gap-1.5 text-[13px] font-semibold text-slate-500 transition-colors duration-200 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100"
+        className="mb-4 inline-flex items-center gap-1.5 text-xs font-semibold text-muted-foreground transition-colors hover:text-foreground"
       >
-        <ArrowLeft className="h-4 w-4" />
+        <ArrowLeft className="h-3.5 w-3.5" />
         Back to sign in
       </button>
 
-      <div className="mb-8 animate-in fade-in slide-in-from-bottom-2 duration-500">
-        <div className="mb-5 flex h-11 w-11 items-center justify-center rounded-xl text-white" style={{ backgroundColor: BTN_PRIMARY }}>
+      <div className="mb-6">
+        <div className="mb-2 flex h-11 w-11 items-center justify-center rounded-md bg-primary/10 text-primary">
           <ShieldCheck className="h-5 w-5" strokeWidth={2.2} />
         </div>
-        <h2 className="text-[1.875rem] font-bold leading-[1.12] tracking-tight text-slate-900 dark:text-slate-50">
+        <h2 className="text-[1.625rem] font-bold tracking-tight text-foreground">
           Create coordinator account
         </h2>
-        <p className="mt-2.5 text-[14.5px] leading-relaxed text-slate-500 dark:text-slate-400">
+        <p className="mt-1.5 text-sm text-muted-foreground">
           University staff who run the practicum program can register here.
           Students and supervisors are added by a coordinator after sign-in.
         </p>
       </div>
 
-      <div className="mb-6 flex items-start gap-3 rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-800/50">
-        <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-white" style={{ backgroundColor: BTN_PRIMARY }}>
+      {/* Info banner — explains the power of a coordinator account */}
+      <div className="mb-5 flex items-start gap-3 rounded-md border border-primary/20 bg-primary/5 p-3.5">
+        <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
           <ShieldCheck className="h-4 w-4" strokeWidth={2.2} />
         </span>
         <div className="min-w-0">
-          <p className="text-[13px] font-semibold text-slate-700 dark:text-slate-200">
+          <p className="text-sm font-semibold text-foreground">
             Coordinator accounts have full access
           </p>
-          <p className="mt-0.5 text-[12px] leading-relaxed text-slate-500 dark:text-slate-400">
+          <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">
             Coordinators can manage students, supervisors, and other
-            coordinators, export reports, and configure practicum forms.
+            coordinators, export reports, and configure practicum forms. Only
+            register if you are an authorised university staff member.
           </p>
         </div>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-6">
-        <div className="space-y-2">
-          <Label htmlFor="reg-name" className="text-[13px] font-semibold text-slate-700 dark:text-slate-300">
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div className="space-y-1.5">
+          <Label htmlFor="reg-name" className="text-[13px] font-semibold">
             Full Name <span className="text-destructive">*</span>
           </Label>
           <Input
@@ -416,19 +503,19 @@ function CoordinatorRegisterForm({
               setErrors((p) => ({ ...p, name: "" }));
             }}
             placeholder="Prof. Patricia Lim"
-            className="h-[50px] rounded-[10px] border-[#E5E7EB] bg-white text-[15px] transition-colors duration-200 focus-visible:border-[#2563EB] focus-visible:ring-[#2563EB]/15 dark:border-slate-700 dark:bg-slate-800"
+            className="h-11"
             aria-invalid={!!errors.name}
           />
           {errors.name && (
-            <p className="flex items-center gap-1 text-[12px] text-destructive">
+            <p className="flex items-center gap-1 text-xs text-destructive">
               <AlertCircle className="h-3 w-3" />
               {errors.name}
             </p>
           )}
         </div>
 
-        <div className="space-y-2">
-          <Label htmlFor="reg-email" className="text-[13px] font-semibold text-slate-700 dark:text-slate-300">
+        <div className="space-y-1.5">
+          <Label htmlFor="reg-email" className="text-[13px] font-semibold">
             Email <span className="text-destructive">*</span>
           </Label>
           <Input
@@ -440,20 +527,20 @@ function CoordinatorRegisterForm({
               setErrors((p) => ({ ...p, email: "" }));
             }}
             placeholder="patricia.lim@university.edu"
-            className="h-[50px] rounded-[10px] border-[#E5E7EB] bg-white text-[15px] transition-colors duration-200 focus-visible:border-[#2563EB] focus-visible:ring-[#2563EB]/15 dark:border-slate-700 dark:bg-slate-800"
+            className="h-11"
             autoComplete="email"
             aria-invalid={!!errors.email}
           />
           {errors.email && (
-            <p className="flex items-center gap-1 text-[12px] text-destructive">
+            <p className="flex items-center gap-1 text-xs text-destructive">
               <AlertCircle className="h-3 w-3" />
               {errors.email}
             </p>
           )}
         </div>
 
-        <div className="space-y-2">
-          <Label htmlFor="reg-title" className="text-[13px] font-semibold text-slate-700 dark:text-slate-300">
+        <div className="space-y-1.5">
+          <Label htmlFor="reg-title" className="text-[13px] font-semibold">
             Title <span className="text-destructive">*</span>
           </Label>
           <Input
@@ -464,19 +551,19 @@ function CoordinatorRegisterForm({
               setErrors((p) => ({ ...p, title: "" }));
             }}
             placeholder="Practicum Coordinator"
-            className="h-[50px] rounded-[10px] border-[#E5E7EB] bg-white text-[15px] transition-colors duration-200 focus-visible:border-[#2563EB] focus-visible:ring-[#2563EB]/15 dark:border-slate-700 dark:bg-slate-800"
+            className="h-11"
             aria-invalid={!!errors.title}
           />
           {errors.title && (
-            <p className="flex items-center gap-1 text-[12px] text-destructive">
+            <p className="flex items-center gap-1 text-xs text-destructive">
               <AlertCircle className="h-3 w-3" />
               {errors.title}
             </p>
           )}
         </div>
 
-        <div className="space-y-2">
-          <Label className="text-[13px] font-semibold text-slate-700 dark:text-slate-300">
+        <div className="space-y-1.5">
+          <Label className="text-[13px] font-semibold">
             Academic Department <span className="text-destructive">*</span>
           </Label>
           <Select
@@ -486,7 +573,7 @@ function CoordinatorRegisterForm({
               setErrors((p) => ({ ...p, department: "" }));
             }}
           >
-            <SelectTrigger className="h-[50px] w-full rounded-[10px] border-[#E5E7EB] bg-white transition-colors duration-200 focus-visible:border-[#2563EB] focus-visible:ring-[#2563EB]/15 dark:border-slate-700 dark:bg-slate-800" aria-invalid={!!errors.department}>
+            <SelectTrigger className="h-11 w-full" aria-invalid={!!errors.department}>
               <SelectValue placeholder="Select department" />
             </SelectTrigger>
             <SelectContent>
@@ -498,34 +585,40 @@ function CoordinatorRegisterForm({
             </SelectContent>
           </Select>
           {errors.department && (
-            <p className="flex items-center gap-1 text-[12px] text-destructive">
+            <p className="flex items-center gap-1 text-xs text-destructive">
               <AlertCircle className="h-3 w-3" />
               {errors.department}
             </p>
           )}
         </div>
 
-        <Button
-          type="submit"
-          size="lg"
-          className="h-[50px] w-full rounded-[10px] text-[15px] font-semibold text-white shadow-sm transition-colors duration-200 hover:text-white"
-          style={{ backgroundColor: BTN_PRIMARY }}
-        >
+        <Button type="submit" size="lg" className="h-11 w-full">
           <UserPlus className="h-4 w-4" />
           Create Coordinator Account
         </Button>
       </form>
 
-      <div className="mt-7 text-center">
-        <p className="text-[13px] text-slate-500 dark:text-slate-400">
+      <div className="mt-5 text-center">
+        <p className="text-xs text-muted-foreground">
           Already have an account?{" "}
           <button
             onClick={onBackToSignIn}
-            className="font-semibold text-[#2563EB] underline-offset-2 transition-colors duration-200 hover:text-[#1D4ED8] hover:underline dark:text-blue-400"
+            className="font-semibold text-foreground underline-offset-2 hover:underline"
           >
             Sign in
           </button>
         </p>
+      </div>
+
+      {/* Mobile user agreement */}
+      <div className="mt-6 text-center lg:hidden">
+        <a
+          href="#"
+          onClick={(e) => e.preventDefault()}
+          className="text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
+        >
+          User Agreement
+        </a>
       </div>
 
       {createdCreds && (
@@ -539,6 +632,8 @@ function CoordinatorRegisterForm({
             toast.success("Coordinator account created", {
               description: `${createdCreds.name} can now sign in.`,
             });
+            // Reset the form and return to the sign-in screen so the new
+            // coordinator can immediately sign in with their credentials.
             setName("");
             setEmail("");
             setTitle("");
@@ -553,27 +648,7 @@ function CoordinatorRegisterForm({
 }
 
 // ============================================================
-// Main login screen — fullscreen enterprise split layout.
-//
-// Layout:
-//   • Page root — 100vw × 100vh, NO outer container, NO browser
-//     mockup, NO floating card. The page IS the layout.
-//   • DESKTOP (lg+): LEFT hero panel (42%) — deep blue gradient
-//     #123B7A → #1E5AA8 + dotted grid + hero image + flat role
-//     cards + footer pinned to bottom. RIGHT auth panel (58%) —
-//     pure white, vertically centered form (max-w 460px).
-//   • MOBILE/TABLET: HeroPanel is HIDDEN. The auth panel is
-//     full-width and the login form is the PRIMARY focus. A
-//     compact MobileBrand header sits at the top of the form.
-//   • Fade + slide-in entrance animations on both panels.
-//
-// ALL functional logic preserved exactly:
-//   • loginByCredentials(email, password) with ok/no-user/
-//     inactive/wrong-password states.
-//   • quickFill(role) demo autofill.
-//   • Coordinator register mode with validation + CredentialsDialog.
-//   • Email=username, Password=User ID helper text.
-//   • Forgot password link, coordinator register link.
+// Main login screen
 // ============================================================
 export function LoginScreen() {
   const loginByCredentials = useAppStore((s) => s.loginByCredentials);
@@ -632,17 +707,15 @@ export function LoginScreen() {
   if (mode === "register") {
     return (
       <div
-        className="flex min-h-screen w-full bg-white dark:bg-slate-950"
+        className="flex min-h-screen bg-background"
         style={LOGIN_DEFAULT_THEME_VARS}
       >
-        <HeroPanel />
-        {/* Right auth panel — full-width on mobile (login primary) */}
-        <div className="relative flex w-full flex-1 items-center justify-center bg-white px-6 py-10 dark:bg-slate-950 md:px-10 lg:w-[58%] lg:px-14">
-          <LoginThemeToggle />
-          <div className="w-full max-w-[460px] animate-in fade-in slide-in-from-bottom-3 duration-500">
-            <MobileBrand />
-            <CoordinatorRegisterForm onBackToSignIn={() => setMode("signin")} />
-          </div>
+        <LoginThemeToggle />
+        <BrandPanel />
+        <div className="flex w-full flex-col items-center justify-center px-4 py-10 lg:w-1/2">
+          <CoordinatorRegisterForm
+            onBackToSignIn={() => setMode("signin")}
+          />
         </div>
       </div>
     );
@@ -651,37 +724,33 @@ export function LoginScreen() {
   // ---- Default sign-in mode ----
   return (
     <div
-      className="flex min-h-screen w-full bg-white dark:bg-slate-950"
+      className="flex min-h-screen bg-background"
       style={LOGIN_DEFAULT_THEME_VARS}
     >
-      <HeroPanel />
+      <LoginThemeToggle />
 
-      {/* Right auth panel — full-width on mobile so login is primary */}
-      <div className="relative flex w-full flex-1 items-center justify-center bg-white px-6 py-10 dark:bg-slate-950 md:px-10 lg:w-[58%] lg:px-14">
-        <LoginThemeToggle />
+      {/* Left brand panel */}
+      <BrandPanel />
 
-        <div className="w-full max-w-[460px] animate-in fade-in slide-in-from-bottom-3 duration-500">
+      {/* Right form panel — clean flat white */}
+      <div className="flex w-full flex-col items-center justify-center px-4 py-10 lg:w-1/2">
+        <div className="w-full max-w-[400px]">
           <MobileBrand />
 
-          {/* Brand + headline */}
-          <div className="mb-8">
-            <h1 className="text-[2rem] font-bold leading-[1.1] tracking-tight text-slate-900 dark:text-slate-50 md:text-[2.25rem]">
-              Sign in
-            </h1>
-            <p className="mt-2.5 text-[14.5px] leading-relaxed text-slate-500 dark:text-slate-400">
-              Use your{" "}
-              <span className="font-semibold text-slate-700 dark:text-slate-200">email</span>{" "}
-              as username and your{" "}
-              <span className="font-semibold text-slate-700 dark:text-slate-200">User ID</span>{" "}
-              as password.
+          <div className="mb-7">
+            <h2 className="text-[1.625rem] font-bold tracking-tight text-foreground">
+              Sign in to your account
+            </h2>
+            <p className="mt-1.5 text-sm text-muted-foreground">
+              Use your <span className="font-medium text-foreground">email</span> as username and your{" "}
+              <span className="font-medium text-foreground">User ID</span> as password.
             </p>
           </div>
 
-          {/* Form */}
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="space-y-2">
-              <Label htmlFor="email" className="text-[13px] font-semibold text-slate-700 dark:text-slate-300">
-                Email
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-1.5">
+              <Label htmlFor="email" className="text-[13px] font-semibold">
+                Email <span className="font-normal text-muted-foreground">(username)</span>
               </Label>
               <Input
                 id="email"
@@ -693,19 +762,19 @@ export function LoginScreen() {
                   setEmail(e.target.value);
                   setError("");
                 }}
-                className="h-[50px] rounded-[10px] border-[#E5E7EB] bg-white text-[15px] transition-colors duration-200 focus-visible:border-[#2563EB] focus-visible:ring-[#2563EB]/15 dark:border-slate-700 dark:bg-slate-800"
+                className="h-11"
                 autoComplete="email"
               />
             </div>
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               <div className="flex items-center justify-between">
-                <Label htmlFor="password" className="text-[13px] font-semibold text-slate-700 dark:text-slate-300">
-                  Password
+                <Label htmlFor="password" className="text-[13px] font-semibold">
+                  Password <span className="font-normal text-muted-foreground">(your User ID)</span>
                 </Label>
                 <a
                   href="#"
                   onClick={(e) => e.preventDefault()}
-                  className="text-[13px] font-semibold text-[#2563EB] transition-colors duration-200 hover:text-[#1D4ED8] dark:text-blue-400"
+                  className="text-xs font-semibold text-muted-foreground transition-colors hover:text-primary"
                 >
                   Forgot password?
                 </a>
@@ -717,114 +786,129 @@ export function LoginScreen() {
                   placeholder="e.g. 2021-00123, EMP-001, COORD-001"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="h-[50px] rounded-[10px] border-[#E5E7EB] bg-white pr-12 text-[15px] transition-colors duration-200 focus-visible:border-[#2563EB] focus-visible:ring-[#2563EB]/15 dark:border-slate-700 dark:bg-slate-800"
+                  className="h-11 pr-11"
                   autoComplete="current-password"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPass((s) => !s)}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 transition-colors duration-200 hover:text-slate-700 dark:hover:text-slate-200"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground transition-colors hover:text-foreground"
                   aria-label={showPass ? "Hide password" : "Show password"}
                 >
                   {showPass ? (
-                    <EyeOff className="h-[18px] w-[18px]" />
+                    <EyeOff className="h-4 w-4" />
                   ) : (
-                    <Eye className="h-[18px] w-[18px]" />
+                    <Eye className="h-4 w-4" />
                   )}
                 </button>
               </div>
-              <p className="text-[12px] text-slate-400 dark:text-slate-500">
-                Students: student number · Supervisors: EMP ID · Coordinators: COORD ID
+              <p className="text-[11px] text-muted-foreground">
+                Students: your student number · Supervisors: your EMP ID · Coordinators: your COORD ID
               </p>
             </div>
 
             {error && (
-              <div className="flex items-start gap-2 rounded-[10px] border border-red-200 bg-red-50 p-3 dark:border-red-900 dark:bg-red-950/40" role="alert">
-                <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-red-500" />
-                <p className="text-[13px] text-red-700 dark:text-red-300">{error}</p>
-              </div>
+              <p className="text-sm text-destructive" role="alert">
+                {error}
+              </p>
             )}
 
-            <Button
-              type="submit"
-              size="lg"
-              className="h-[50px] w-full rounded-[10px] text-[15px] font-semibold text-white shadow-sm transition-colors duration-200 hover:text-white"
-              style={{ backgroundColor: BTN_PRIMARY }}
-            >
+            <Button type="submit" size="lg" className="h-11 w-full">
               Sign in
-              <ArrowRight className="h-[18px] w-[18px]" />
+              <ArrowRight className="h-4 w-4" />
             </Button>
           </form>
 
-          {/* Demo accounts divider */}
-          <div className="my-8">
-            <div className="relative flex items-center">
-              <span className="flex-1 border-t border-slate-200 dark:border-slate-700" />
-              <span className="px-4 text-[11px] font-semibold uppercase tracking-[0.1em] text-slate-400 dark:text-slate-500">
-                Demo — explore as
+          {/* Account help — students/supervisors contact their coordinator.
+              Coordinators can self-register via the link below. */}
+          <div className="mt-5 space-y-2 text-center">
+            <p className="text-xs text-muted-foreground">
+              Don&apos;t have an account?{" "}
+              <span className="font-medium text-foreground">
+                Students &amp; supervisors: contact your practicum coordinator.
               </span>
-              <span className="flex-1 border-t border-slate-200 dark:border-slate-700" />
+            </p>
+            <div className="flex items-center justify-center gap-2 text-xs">
+              <span className="text-muted-foreground">University staff?</span>
+              <button
+                onClick={() => setMode("register")}
+                className="inline-flex items-center gap-1 font-semibold text-primary underline-offset-2 hover:underline"
+              >
+                <ShieldCheck className="h-3.5 w-3.5" />
+                Create a coordinator account
+              </button>
             </div>
           </div>
 
-          {/* Demo account cards — clean selectable cards */}
-          <div className="space-y-3">
-            {mockUsers.map((u) => {
-              const isSelected = selectedRole === u.role;
-              return (
-                <button
-                  key={u.id}
-                  onClick={() => quickFill(u.role)}
-                  className={cn(
-                    "group flex w-full items-center gap-3.5 rounded-xl border bg-white p-3.5 text-left transition-colors duration-200 dark:bg-slate-900",
-                    isSelected
-                      ? "border-[#2563EB] bg-[#2563EB]/[0.03] dark:bg-[#2563EB]/[0.08]"
-                      : "border-[#E5E7EB] hover:border-[#93C5FD] dark:border-slate-700 dark:hover:border-slate-600"
-                  )}
-                >
-                  <Avatar name={u.name} size="md" color={u.avatarColor} />
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-[14px] font-semibold text-slate-800 dark:text-slate-100">
-                      {u.name}
-                    </p>
-                    <p className="truncate text-[12px] text-slate-500 dark:text-slate-400">
-                      {ROLE_LABELS[u.role]}
-                    </p>
-                    <p className="mt-0.5 truncate text-[11px] font-medium text-slate-400 dark:text-slate-500">
-                      ID: <span className="font-mono text-slate-500 dark:text-slate-400">{u.idNumber ?? "—"}</span>
-                    </p>
-                  </div>
-                  {isSelected ? (
-                    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-white" style={{ backgroundColor: BTN_PRIMARY }}>
-                      <Check className="h-4 w-4" strokeWidth={3} />
-                    </span>
-                  ) : (
-                    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-400 transition-colors duration-200 group-hover:bg-[#2563EB]/10 group-hover:text-[#2563EB] dark:bg-slate-800 dark:group-hover:bg-blue-900/30">
-                      <ArrowRight className="h-4 w-4 transition-transform duration-200 group-hover:translate-x-0.5" />
-                    </span>
-                  )}
-                </button>
-              );
-            })}
+          {/* Demo accounts */}
+          <div className="mt-8">
+            <div className="relative mb-4 text-center">
+              <span className="relative z-10 inline-block bg-background px-3 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+                Demo — explore as
+              </span>
+              <span className="absolute left-0 top-1/2 h-px w-full bg-border/70" />
+            </div>
+            <div className="space-y-2">
+              {mockUsers.map((u) => {
+                const isSelected = selectedRole === u.role;
+                return (
+                  <button
+                    key={u.id}
+                    onClick={() => quickFill(u.role)}
+                    className={cn(
+                      "group relative flex w-full items-center gap-3 rounded-md border bg-card p-3 text-left transition-all duration-200",
+                      isSelected
+                        ? "border-primary/50 ring-1 ring-primary/20 elev-sm"
+                        : "border-border/70 hover:border-border hover:bg-muted/30 elev-xs"
+                    )}
+                  >
+                    {/* Accent strip */}
+                    <span
+                      className={cn(
+                        "absolute inset-y-0 left-0 w-1 rounded-l-md bg-gradient-to-b opacity-0 transition-opacity",
+                        roleAccent[u.role],
+                        isSelected && "opacity-100"
+                      )}
+                    />
+                    <Avatar name={u.name} size="md" color={u.avatarColor} />
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-semibold text-foreground">
+                        {u.name}
+                      </p>
+                      <p className="truncate text-xs text-muted-foreground">
+                        {ROLE_LABELS[u.role]}
+                      </p>
+                      {/* Show the User ID (password) so the demo is explorable. */}
+                      <p className="mt-0.5 truncate text-[10.5px] font-medium text-muted-foreground/70">
+                        ID: <span className="font-mono text-foreground/80">{u.idNumber ?? "—"}</span>
+                      </p>
+                    </div>
+                    {isSelected ? (
+                      <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-primary-foreground">
+                        <Check className="h-3.5 w-3.5" strokeWidth={3} />
+                      </span>
+                    ) : (
+                      <ArrowRight className="h-4 w-4 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+            <p className="mt-3 text-center text-xs text-muted-foreground">
+              Pick an account to autofill — the User ID is filled in as your password.
+            </p>
           </div>
 
-          {/* Coordinator register link */}
-          <div className="mt-8 flex items-center justify-center gap-1.5 text-center text-[13px]">
-            <span className="text-slate-500 dark:text-slate-400">
-              University staff?
-            </span>
-            <button
-              onClick={() => setMode("register")}
-              className="inline-flex items-center gap-1 font-semibold text-[#2563EB] underline-offset-2 transition-colors duration-200 hover:text-[#1D4ED8] hover:underline dark:text-blue-400"
+          {/* Mobile user agreement */}
+          <div className="mt-6 text-center lg:hidden">
+            <a
+              href="#"
+              onClick={(e) => e.preventDefault()}
+              className="text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
             >
-              <ShieldCheck className="h-3.5 w-3.5" />
-              Create a coordinator account
-            </button>
+              User Agreement
+            </a>
           </div>
-
-          <p className="mt-8 text-center text-[12px] text-slate-400 dark:text-slate-500">
-            © {new Date().getFullYear()} Practo Portal · Practicum, reimagined.
-          </p>
         </div>
       </div>
     </div>
