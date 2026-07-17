@@ -22,17 +22,17 @@ export interface HeroSlide {
 /** Curated calm/OJT-themed defaults (used when school has no hero images). */
 const DEFAULT_SLIDES: HeroSlide[] = [
   {
-    src: "/ici-hero.jpg",
+    src: "https://images.unsplash.com/photo-1523240795612-9a054b0db644?auto=format&fit=crop&w=1280&q=70",
     alt: "Students collaborating in a bright workspace",
     caption: "Your practicum journey starts here",
   },
   {
-    src: "/ici-hero.jpg",
+    src: "https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?auto=format&fit=crop&w=1280&q=70",
     alt: "A calm desk with notebook and laptop in soft natural light",
     caption: "Track hours, write journals, grow",
   },
   {
-    src: "/ici-hero.jpg",
+    src: "https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?auto=format&fit=crop&w=1280&q=70",
     alt: "Open notebook with handwriting in warm light",
     caption: "Every hour logged, every week reflected",
   },

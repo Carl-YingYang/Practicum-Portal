@@ -50,6 +50,7 @@ import type { SchoolIdentity, SchoolThemePreset } from "@/lib/types";
 const LOGO_MAX = 128; // px
 const LOGO_MAX_BYTES = 30 * 1024; // 30 KB
 
+
 // Hero image — wider, larger byte budget (≤ 200KB data URL).
 const HERO_MAX_DIM = 1600; // px — wide hero, kept under 1600px on the long edge
 const HERO_MAX_BYTES = 200 * 1024; // 200 KB
@@ -109,7 +110,7 @@ export function SchoolIdentitySettings() {
       tagline: draft.tagline.trim(),
       address: draft.address.trim(),
       logoDataUrl: draft.logoDataUrl,
-      bannerDataUrl: undefined,
+      bannerDataUrl: draft.bannerDataUrl,
       themePreset: draft.themePreset,
       customColors: draft.customColors,
       accentColor: draft.accentColor,

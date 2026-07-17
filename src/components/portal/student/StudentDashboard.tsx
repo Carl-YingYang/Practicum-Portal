@@ -62,6 +62,7 @@ export function StudentDashboard() {
   const clockIn = useAppStore((s) => s.clockIn);
   const clockOut = useAppStore((s) => s.clockOut);
   const navigate = useAppStore((s) => s.navigate);
+  const schoolIdentity = useAppStore((s) => s.schoolIdentity);
 
   const { school } = useEffectiveSchool();
   const accentKey = school.accentColor as keyof typeof ACCENT_HEX;
@@ -91,7 +92,7 @@ export function StudentDashboard() {
     <div className="space-y-5" style={accentStyle}>
       {/* Hero — editorial, brand-driven, crossfade */}
       <HeroSlideshow
-        images={school.heroImages}
+        images={schoolIdentity.heroImage ? [schoolIdentity.heroImage] : school.heroImages}
         accentColor={accentKey}
         staticCaption={`${greeting()}, ${firstName} — welcome to ${school.name}.`}
       />

@@ -33,7 +33,6 @@ import { Avatar } from "@/components/portal/shared/avatar";
 import { ScoreBadge } from "@/components/portal/shared/badges";
 import { EmptyState } from "@/components/portal/shared/empty-state";
 import { JournalStatusCard } from "@/components/portal/shared/journal-status-card";
-import { SchoolIdentityCard } from "@/components/portal/shared/school-identity-card";
 import { SchoolIdentityModal } from "@/components/portal/shared/school-identity-modal";
 import { StatCardSkeleton, TableSkeleton } from "@/components/portal/shared/skeletons";
 import { useInitialLoading } from "@/components/portal/shared/page-transition";
@@ -86,7 +85,6 @@ export function SupervisorDashboard() {
             </span>
           }
         />
-        <div className="mb-4 h-[44px] animate-pulse rounded-xl bg-muted/60" />
         <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
           <StatCardSkeleton count={3} />
         </div>
@@ -131,12 +129,6 @@ export function SupervisorDashboard() {
         <StatCard label="Journals to Review" value={pendingJournals.length} icon={FileCheck2} tone="emerald" hint="Awaiting your approval" compact />
       </div>
 
-      {/* School identity card — mobile/tablet only (below KPIs).
-          On desktop it appears at the top of the My Interns column. */}
-      <div className="lg:hidden">
-        <SchoolIdentityCard variant="compact" interactive />
-      </div>
-
       {/* 2-col split: Pending my review (3fr) + My Interns (2fr) */}
       <div className="grid grid-cols-1 gap-3 lg:grid-cols-5">
         <div className="lg:col-span-3">
@@ -168,10 +160,6 @@ export function SupervisorDashboard() {
         </div>
 
         <div className="lg:col-span-2">
-          {/* Desktop-only school identity card at top of My Interns */}
-          <div className="hidden lg:block">
-            <SchoolIdentityCard variant="compact" interactive className="mb-3" />
-          </div>
           <div className="mb-3 flex items-center justify-between">
             <h2 className="text-sm font-semibold text-foreground">My Interns</h2>
             <Button variant="ghost" size="sm" className="h-7" onClick={() => navigate("supervisor.interns")}>
