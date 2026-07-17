@@ -100,6 +100,17 @@ export interface SchoolIdentity {
     /** Pale accent for highlights, hex. */
     light: string;
   };
+  /** Accent color for highlights — hex. One of: sage, terracotta, slate, sand, clay, or a custom hex. */
+  accentColor?: string;
+  /** Single hero image as data URL (JPEG/PNG, ≤ 200KB). Replaces the old 3-image slideshow. */
+  heroImage?: string;
+  /** Which dashboard cards are visible to students. */
+  visibleCards?: {
+    timeClock: boolean;
+    draftingRoom: boolean;
+    timesheet: boolean;
+    evaluations: boolean;
+  };
 }
 
 export interface User {

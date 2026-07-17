@@ -20,13 +20,11 @@ import {
   LogOut,
   UserCircle,
   ChevronDown,
-  Palette,
 } from "lucide-react";
 import { useTheme } from "next-themes";
 import { ROLE_LABELS } from "@/lib/types";
 import { mockUsers } from "@/lib/mock-data";
 import { NotificationsDropdown } from "./notifications-dropdown";
-import { SchoolBrandingSheet } from "@/components/portal/shared/SchoolBrandingSheet";
 
 interface PageActionsProps {
   onOpenMobileNav: () => void;
@@ -51,7 +49,6 @@ export function PageActions({ onOpenMobileNav }: PageActionsProps) {
   const loginAs = useAppStore((s) => s.loginAs);
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = React.useState(false);
-  const [customizeOpen, setCustomizeOpen] = React.useState(false);
   React.useEffect(() => setMounted(true), []);
 
   const role = currentUser?.role;
@@ -74,19 +71,6 @@ export function PageActions({ onOpenMobileNav }: PageActionsProps) {
         <div className="relative flex items-center">
           <NotificationsDropdown />
         </div>
-
-        {/* Supervisor only: customize workspace theme */}
-        {role === "supervisor" && (
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setCustomizeOpen(true)}
-            aria-label="Customize workspace"
-            className="h-8 w-8 text-foreground hover:bg-muted"
-          >
-            <Palette className="h-[16px] w-[16px]" strokeWidth={2.1} />
-          </Button>
-        )}
 
         {/* Divider */}
         <span className="mx-0.5 h-4 w-px bg-border/60" />
@@ -191,11 +175,6 @@ export function PageActions({ onOpenMobileNav }: PageActionsProps) {
           </DropdownMenu>
         )}
       </div>
-
-      {/* Supervisor-only theme editor (right-side Sheet). */}
-      {role === "supervisor" && (
-        <SchoolBrandingSheet open={customizeOpen} onOpenChange={setCustomizeOpen} />
-      )}
     </div>
   );
 }

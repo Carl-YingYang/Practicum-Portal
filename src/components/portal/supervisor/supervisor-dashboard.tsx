@@ -34,6 +34,7 @@ import { ScoreBadge } from "@/components/portal/shared/badges";
 import { EmptyState } from "@/components/portal/shared/empty-state";
 import { JournalStatusCard } from "@/components/portal/shared/journal-status-card";
 import { SchoolIdentityCard } from "@/components/portal/shared/school-identity-card";
+import { SchoolIdentityModal } from "@/components/portal/shared/school-identity-modal";
 import { StatCardSkeleton, TableSkeleton } from "@/components/portal/shared/skeletons";
 import { useInitialLoading } from "@/components/portal/shared/page-transition";
 import { Button } from "@/components/ui/button";
@@ -98,214 +99,138 @@ export function SupervisorDashboard() {
   }
 
   return (
-    <div>
-      <PageHeader
-        title={`${greeting()}, ${currentUser?.name?.split(" ")[0] ?? "Supervisor"}`}
-        description="Here's what needs your attention today."
-        actions={
-          <span className="inline-flex items-center rounded-full border border-teal-200 bg-teal-50 px-2.5 py-0.5 text-xs font-medium text-teal-800 dark:border-teal-900 dark:bg-teal-950/40 dark:text-teal-300">
-            Company Supervisor{company ? ` · ${company.name}` : ""}
-          </span>
-        }
-      />
-
-      <div className="space-y-4">
-        {/* KPI row — 3 cards. Stack on mobile/tablet (<1024px), one even row on desktop.
-            Explicit cols (not auto-fill) so cards always fill the row — no dead space. */}
-        <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
-          <StatCard
-            label="Assigned Interns"
-            value={interns.length}
-            icon={Users}
-            tone="teal"
-            hint={`${unevaluated.length} need evaluation`}
-            compact
+    <div className="space-y-3">
+      {/* Compact bg-mode hero — 3-layer fade technique.
+          Image → gradient overlay → white text bottom-anchored. */}
+      <div className="relative overflow-hidden rounded-xl" style={{ minHeight: 128 }}>
+        {schoolIdentity.heroImage ? (
+          <img
+            src={schoolIdentity.heroImage}
+            alt=""
+            className="hero-fade-in absolute inset-0 h-full w-full object-cover"
           />
-          <StatCard
-            label="Pending Evaluations"
-            value={unevaluated.length}
-            icon={ClipboardCheck}
-            tone="amber"
-            hint="Interns without a submitted eval"
-            compact
-          />
-          <StatCard
-            label="Journals to Review"
-            value={pendingJournals.length}
-            icon={FileCheck2}
-            tone="emerald"
-            hint="Awaiting your approval"
-            compact
-          />
+        ) : (
+          <div className="absolute inset-0 bg-gradient-to-br from-slate-800 via-slate-700 to-slate-900" />
+        )}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/35 to-black/40" />
+        <div className="relative z-10 flex flex-col justify-end p-4 sm:p-5" style={{ minHeight: 128 }}>
+          <p className="text-[11px] font-medium uppercase tracking-wider text-white/60">
+            {company ? company.name : "Company Supervisor"}
+          </p>
+          <h1 className="mt-0.5 text-lg font-bold leading-tight text-white sm:text-xl">
+            {greeting()}, {currentUser?.name?.split(" ")[0] ?? "Supervisor"}
+          </h1>
+          <p className="mt-0.5 text-xs text-white/70">Here's what needs your attention today.</p>
         </div>
+      </div>
 
-        {/* The school your interns are affiliated with — tappable strip; opens modal. */}
+      {/* KPI row — 3 cards, one even row on desktop, stacked on tablet/mobile */}
+      <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
+        <StatCard label="Assigned Interns" value={interns.length} icon={Users} tone="teal" hint={`${unevaluated.length} need evaluation`} compact />
+        <StatCard label="Pending Evaluations" value={unevaluated.length} icon={ClipboardCheck} tone="amber" hint="Interns without a submitted eval" compact />
+        <StatCard label="Journals to Review" value={pendingJournals.length} icon={FileCheck2} tone="emerald" hint="Awaiting your approval" compact />
+      </div>
+
+      {/* School identity card — mobile/tablet only (below KPIs).
+          On desktop it appears at the top of the My Interns column. */}
+      <div className="lg:hidden">
         <SchoolIdentityCard variant="compact" interactive />
+      </div>
 
-        {/* Pending my review — inline Approve / Return (no navigation). */}
-        <SectionCard
-          title="Pending my review"
-          description={`${pendingJournals.length} journal${pendingJournals.length === 1 ? "" : "s"} awaiting your approval.`}
-        >
-          {pendingJournals.length === 0 ? (
-            <EmptyState
-              icon={CheckCircle2}
-              title="You're all caught up"
-              description="No journals are waiting for your review right now."
-              tone="emerald"
-              compact
-            />
-          ) : (
-            <>
-              {/* Density budget (v3 §2.1): max 5, then scroll + View all. */}
-              <div className="max-h-[28rem] space-y-2.5 overflow-y-auto pr-1 [scrollbar-width:thin] [scrollbar-color:theme(colors.muted-foreground/40)_transparent]">
-                {pendingJournals.slice(0, 5).map((j) => {
-                  const stu = students.find((s) => s.id === j.studentId);
-                  return (
-                    <JournalStatusCard
-                      key={j.id}
-                      journal={j}
-                      role="supervisor"
-                      studentName={stu?.name}
-                      compact
-                    />
-                  );
-                })}
-              </div>
-              {pendingJournals.length > 5 && (
-                <div className="mt-2">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-8 w-full"
-                    onClick={() => navigate("supervisor.journals")}
-                  >
-                    View all {pendingJournals.length} pending
-                    <ArrowRight className="h-3.5 w-3.5" />
-                  </Button>
+      {/* 2-col split: Pending my review (3fr) + My Interns (2fr) */}
+      <div className="grid grid-cols-1 gap-3 lg:grid-cols-5">
+        <div className="lg:col-span-3">
+          <SectionCard
+            title="Pending my review"
+            description={`${pendingJournals.length} journal${pendingJournals.length === 1 ? "" : "s"} awaiting your approval.`}
+          >
+            {pendingJournals.length === 0 ? (
+              <EmptyState icon={CheckCircle2} title="You're all caught up" description="No journals are waiting for your review right now." tone="emerald" compact />
+            ) : (
+              <>
+                <div className="max-h-[28rem] space-y-2.5 overflow-y-auto pr-1 [scrollbar-width:thin] [scrollbar-color:theme(colors.muted-foreground/40)_transparent]">
+                  {pendingJournals.slice(0, 5).map((j) => {
+                    const stu = students.find((s) => s.id === j.studentId);
+                    return <JournalStatusCard key={j.id} journal={j} role="supervisor" studentName={stu?.name} compact />;
+                  })}
                 </div>
-              )}
-            </>
-          )}
-        </SectionCard>
-
-        {/* 2-col: My Interns + Recent Evaluations */}
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-          <div>
-            <div className="mb-3 flex items-center justify-between">
-              <h2 className="text-sm font-semibold text-foreground">My Interns</h2>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-7"
-                onClick={() => navigate("supervisor.interns")}
-              >
-                View all
-                <ArrowRight className="h-3.5 w-3.5" />
-              </Button>
-            </div>
-            {interns.length === 0 ? (
-              <EmptyState
-                icon={Users}
-                title="No interns assigned"
-                description="You don't have any interns assigned to you yet."
-                tone="slate"
-                compact
-              />
-            ) : (
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                {interns.slice(0, 4).map((s) => {
-                  const studentEvals = evaluationsForStudent(evaluations, s.id).filter(
-                    (e) => e.supervisorId === supervisorId
-                  );
-                  const submitted = studentEvals.find((e) => e.status === "submitted");
-                  return (
-                    <InternCard
-                      key={s.id}
-                      student={s}
-                      companyName={company?.name}
-                      schoolName={schoolIdentity.shortName}
-                      lastScore={submitted ? averageScore(submitted) : undefined}
-                      hasEvaluation={!!submitted}
-                      onOpen={() =>
-                        navigate("supervisor.intern-view", { studentId: s.id })
-                      }
-                      onEvaluate={() => {
-                        const draft = studentEvals.find((e) => e.status === "draft");
-                        if (submitted) {
-                          navigate("supervisor.intern-view", { studentId: s.id });
-                        } else if (draft) {
-                          navigate("supervisor.evaluation-new", {
-                            evaluationId: draft.id,
-                          });
-                        } else {
-                          navigate("supervisor.evaluation-new", {
-                            preselectStudentId: s.id,
-                          });
-                        }
-                      }}
-                      evaluateLabel={submitted ? "View" : "Evaluate"}
-                    />
-                  );
-                })}
-              </div>
+                {pendingJournals.length > 5 && (
+                  <div className="mt-2">
+                    <Button variant="ghost" size="sm" className="h-8 w-full" onClick={() => navigate("supervisor.journals")}>
+                      View all {pendingJournals.length} pending
+                      <ArrowRight className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                )}
+              </>
             )}
-          </div>
-
-          <div>
-            <div className="mb-3 flex items-center justify-between">
-              <h2 className="text-sm font-semibold text-foreground">Recent Evaluations</h2>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-7"
-                onClick={() => navigate("supervisor.evaluations")}
-              >
-                View all
-                <ArrowRight className="h-3.5 w-3.5" />
-              </Button>
-            </div>
-            {recentEvaluations.length === 0 ? (
-              <EmptyState
-                icon={FileText}
-                title="No submitted evaluations yet"
-                description="Once you submit an evaluation, it will appear here."
-                tone="slate"
-                compact
-              />
-            ) : (
-              <ul className="divide-y divide-border/60 overflow-hidden rounded-2xl border border-border/60 bg-card">
-                {recentEvaluations.map((e) => {
-                  const student = getStudent(students, e.studentId);
-                  if (!student) return null;
-                  return (
-                    <li
-                      key={e.id}
-                      className="flex cursor-pointer items-center gap-3 px-4 py-3 transition-colors hover:bg-muted/40"
-                      onClick={() =>
-                        navigate("supervisor.evaluation-view", {
-                          evaluationId: e.id,
-                        })
-                      }
-                    >
-                      <Avatar name={student.name} size="sm" />
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm font-medium text-foreground">
-                          {student.name}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {formatDate(e.submittedAt)}
-                        </p>
-                      </div>
-                      <ScoreBadge score={averageScore(e)} />
-                      <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground/60" />
-                    </li>
-                  );
-                })}
-              </ul>
-            )}
-          </div>
+          </SectionCard>
         </div>
+
+        <div className="lg:col-span-2">
+          {/* Desktop-only school identity card at top of My Interns */}
+          <div className="hidden lg:block">
+            <SchoolIdentityCard variant="compact" interactive className="mb-3" />
+          </div>
+          <div className="mb-3 flex items-center justify-between">
+            <h2 className="text-sm font-semibold text-foreground">My Interns</h2>
+            <Button variant="ghost" size="sm" className="h-7" onClick={() => navigate("supervisor.interns")}>
+              View all<ArrowRight className="h-3.5 w-3.5" />
+            </Button>
+          </div>
+          {interns.length === 0 ? (
+            <EmptyState icon={Users} title="No interns assigned" description="You don't have any interns assigned to you yet." tone="slate" compact />
+          ) : (
+            <ul className="divide-y divide-border/60 overflow-hidden rounded-xl border border-border/60 bg-card">
+              {interns.slice(0, 5).map((s) => {
+                const studentEvals = evaluationsForStudent(evaluations, s.id).filter((e) => e.supervisorId === supervisorId);
+                const submitted = studentEvals.find((e) => e.status === "submitted");
+                return (
+                  <li key={s.id} className="flex cursor-pointer items-center gap-2.5 px-3 py-2.5 transition-colors hover:bg-muted/40" onClick={() => navigate("supervisor.intern-view", { studentId: s.id })}>
+                    <Avatar name={s.name} size="sm" />
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-medium text-foreground">{s.name}</p>
+                      <p className="truncate text-[11px] text-muted-foreground">{company?.name ?? "No company"}</p>
+                    </div>
+                    {submitted && <ScoreBadge score={averageScore(submitted)} />}
+                    <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground/60" />
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </div>
+      </div>
+
+      {/* Recent Evaluations — compact slim full-width list */}
+      <div>
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="text-sm font-semibold text-foreground">Recent Evaluations</h2>
+          <Button variant="ghost" size="sm" className="h-7" onClick={() => navigate("supervisor.evaluations")}>
+            View all<ArrowRight className="h-3.5 w-3.5" />
+          </Button>
+        </div>
+        {recentEvaluations.length === 0 ? (
+          <EmptyState icon={FileText} title="No submitted evaluations yet" description="Once you submit an evaluation, it will appear here." tone="slate" compact />
+        ) : (
+          <ul className="divide-y divide-border/60 overflow-hidden rounded-xl border border-border/60 bg-card">
+            {recentEvaluations.map((e) => {
+              const student = getStudent(students, e.studentId);
+              if (!student) return null;
+              return (
+                <li key={e.id} className="flex cursor-pointer items-center gap-3 px-4 py-2.5 transition-colors hover:bg-muted/40" onClick={() => navigate("supervisor.evaluation-view", { evaluationId: e.id })}>
+                  <Avatar name={student.name} size="sm" />
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium text-foreground">{student.name}</p>
+                    <p className="text-xs text-muted-foreground">{formatDate(e.submittedAt)}</p>
+                  </div>
+                  <ScoreBadge score={averageScore(e)} />
+                  <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground/60" />
+                </li>
+              );
+            })}
+          </ul>
+        )}
       </div>
     </div>
   );

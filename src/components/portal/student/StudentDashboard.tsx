@@ -4,6 +4,7 @@ import * as React from "react";
 import { useAppStore } from "@/store/use-app-store";
 import { useEffectiveSchool } from "@/lib/use-effective-school";
 import { HeroSlideshow } from "@/components/portal/shared/HeroSlideshow";
+import { SchoolIdentityCard } from "@/components/portal/shared/school-identity-card";
 import { ProgressRing } from "@/components/portal/shared/progress-ring";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -63,7 +64,8 @@ export function StudentDashboard() {
   const navigate = useAppStore((s) => s.navigate);
 
   const { school } = useEffectiveSchool();
-  const accentHex = ACCENT_HEX[school.accentColor] ?? ACCENT_HEX.sage;
+  const accentKey = school.accentColor as keyof typeof ACCENT_HEX;
+  const accentHex = ACCENT_HEX[accentKey] ?? ACCENT_HEX.sage;
   const visible = school.visibleCards;
 
   const student = students.find((s) => s.id === currentUser?.studentId);
@@ -90,7 +92,7 @@ export function StudentDashboard() {
       {/* Hero — editorial, brand-driven, crossfade */}
       <HeroSlideshow
         images={school.heroImages}
-        accentColor={school.accentColor}
+        accentColor={accentKey}
         staticCaption={`${greeting()}, ${firstName} — welcome to ${school.name}.`}
       />
 
@@ -131,14 +133,12 @@ export function StudentDashboard() {
         )}
 
         {visible.includes("evaluations") && (
-          <div className="sm:col-span-2 lg:col-span-3">
-            <EvaluationsCard
-              evaluations={evaluations}
-              studentId={student.id}
-              accentHex={accentHex}
-              onView={() => navigate("student.evaluations")}
-            />
-          </div>
+          <EvaluationsCard
+            evaluations={evaluations}
+            studentId={student.id}
+            accentHex={accentHex}
+            onView={() => navigate("student.evaluations")}
+          />
         )}
       </div>
     </div>
@@ -350,6 +350,10 @@ function DraftingRoomCard({
 }) {
   return (
     <EditorialCard>
+      {/* School identity card as branded header strip */}
+      <div className="border-b border-border/40">
+        <SchoolIdentityCard variant="compact" interactive />
+      </div>
       <div className="flex h-full flex-col p-5">
         <div className="flex items-center gap-2">
           <NotebookText className="h-4 w-4 text-muted-foreground" strokeWidth={1.5} />
@@ -450,41 +454,37 @@ function EvaluationsCard({
 
   return (
     <EditorialCard>
-      <div className="flex h-full flex-col p-5 sm:p-6">
-        <div className="flex items-center justify-between gap-3">
-          <div className="flex items-center gap-2">
-            <FileText className="h-4 w-4 text-muted-foreground" strokeWidth={1.5} />
-            <h3 className="text-sm font-semibold text-foreground">Latest evaluation</h3>
-          </div>
-          <Button variant="ghost" size="sm" className="h-7" onClick={onView}>
-            View all <ChevronRight className="h-3.5 w-3.5" />
-          </Button>
+      <div className="flex h-full flex-col p-5">
+        <div className="flex items-center gap-2">
+          <FileText className="h-4 w-4 text-muted-foreground" strokeWidth={1.5} />
+          <h3 className="text-sm font-semibold text-foreground">Latest evaluation</h3>
         </div>
 
         {latest ? (
-          <div className="mt-4 flex flex-col items-start gap-4 sm:flex-row sm:items-center sm:gap-6">
-            <div className="flex items-baseline gap-2">
-              <span
-                className="text-4xl font-bold"
-                style={{ color: accentHex.base }}
-              >
+          <div className="mt-3 flex flex-1 flex-col justify-center gap-1">
+            <div className="flex items-baseline gap-1.5">
+              <span className="text-2xl font-bold" style={{ color: accentHex.base }}>
                 {averageScore(latest).toFixed(1)}
               </span>
-              <span className="text-sm text-muted-foreground">/ 5.0 average</span>
+              <span className="text-xs text-muted-foreground">/ 5.0 average</span>
             </div>
-            <p className="text-sm text-muted-foreground">
+            <p className="text-xs text-muted-foreground">
               {latest.status === "submitted"
                 ? "Submitted by your supervisor."
                 : `Status: ${latest.status}.`}
             </p>
           </div>
         ) : (
-          <div className="mt-4 flex flex-1 items-center justify-center py-4">
-            <p className="text-sm text-muted-foreground">
-              No evaluations yet — your supervisor hasn't submitted one this term.
+          <div className="mt-3 flex flex-1 items-center justify-center py-2">
+            <p className="text-xs text-muted-foreground">
+              No evaluations yet.
             </p>
           </div>
         )}
+
+        <Button variant="outline" size="sm" className="mt-3 h-8 w-full" onClick={onView}>
+          View all <ChevronRight className="h-3.5 w-3.5" />
+        </Button>
       </div>
     </EditorialCard>
   );

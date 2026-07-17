@@ -20,6 +20,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { Switch } from "@/components/ui/switch";
 import {
   School,
   Upload,
@@ -31,6 +32,11 @@ import {
   MapPin,
   AlertCircle,
   Loader2,
+  Image as ImageIcon,
+  Clock,
+  FileText,
+  CalendarRange,
+  ClipboardCheck,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -44,6 +50,19 @@ import type { SchoolIdentity, SchoolThemePreset } from "@/lib/types";
 const LOGO_MAX = 128; // px
 const LOGO_MAX_BYTES = 30 * 1024; // 30 KB
 
+// Hero image — wider, larger byte budget (≤ 200KB data URL).
+const HERO_MAX_DIM = 1600; // px — wide hero, kept under 1600px on the long edge
+const HERO_MAX_BYTES = 200 * 1024; // 200 KB
+
+// Accent color swatches — Facebook-page style warm editorial palette.
+const ACCENT_SWATCHES: { value: string; label: string; hex: string }[] = [
+  { value: "sage", label: "Sage", hex: "#84a98c" },
+  { value: "terracotta", label: "Terracotta", hex: "#c17a5a" },
+  { value: "slate", label: "Slate", hex: "#64748b" },
+  { value: "sand", label: "Sand", hex: "#d4b896" },
+  { value: "clay", label: "Clay", hex: "#a67c5a" },
+];
+
 export function SchoolIdentitySettings() {
   const schoolIdentity = useAppStore((s) => s.schoolIdentity);
   const updateSchoolIdentity = useAppStore((s) => s.updateSchoolIdentity);
@@ -52,7 +71,7 @@ export function SchoolIdentitySettings() {
   // Local draft so changes can be saved/cancelled as a unit.
   const [draft, setDraft] = React.useState<SchoolIdentity>(schoolIdentity);
   const [errors, setErrors] = React.useState<Record<string, string>>({});
-  const [busy, setBusy] = React.useState<"logo" | null>(null);
+  const [busy, setBusy] = React.useState<"logo" | "hero" | null>(null);
   const dirty = JSON.stringify(draft) !== JSON.stringify(schoolIdentity);
 
   React.useEffect(() => {
@@ -93,6 +112,9 @@ export function SchoolIdentitySettings() {
       bannerDataUrl: undefined,
       themePreset: draft.themePreset,
       customColors: draft.customColors,
+      accentColor: draft.accentColor,
+      heroImage: draft.heroImage,
+      visibleCards: draft.visibleCards,
     });
     toast.success("School identity saved", {
       description: "Students and supervisors will see the new branding.",
@@ -122,6 +144,28 @@ export function SchoolIdentitySettings() {
       });
     } catch (e) {
       toast.error("Logo upload failed", {
+        description: e instanceof Error ? e.message : "Unknown error.",
+      });
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const handleHeroUpload = async (file: File) => {
+    setBusy("hero");
+    try {
+      const out = await resizeAndCompress(file, {
+        maxDim: HERO_MAX_DIM,
+        quality: 0.82,
+        mime: "image/jpeg",
+        maxBytes: HERO_MAX_BYTES,
+      });
+      set("heroImage", out.dataUrl);
+      toast.success("Hero image ready", {
+        description: `${out.width}×${out.height} · ${formatBytes(out.bytes)}`,
+      });
+    } catch (e) {
+      toast.error("Hero image upload failed", {
         description: e instanceof Error ? e.message : "Unknown error.",
       });
     } finally {
@@ -377,6 +421,186 @@ export function SchoolIdentitySettings() {
               )}
             </div>
           </SectionCard>
+
+          {/* ---- Section 4: Accent Color ---- */}
+          <SectionCard
+            title="Accent Color"
+            description="Editorial highlight color used on dashboard heroes, charts, and emphasis chips."
+            contentClassName="p-4"
+          >
+            <div className="flex flex-wrap items-center gap-2.5">
+              {ACCENT_SWATCHES.map((sw) => {
+                const active = (draft.accentColor ?? "terracotta") === sw.value;
+                return (
+                  <button
+                    key={sw.value}
+                    type="button"
+                    onClick={() => set("accentColor", sw.value)}
+                    aria-pressed={active}
+                    aria-label={`${sw.label} accent`}
+                    className={cn(
+                      "group flex flex-col items-center gap-1.5 rounded-lg border p-2 transition-all",
+                      active
+                        ? "border-primary ring-1 ring-primary/30 bg-primary/5"
+                        : "border-border hover:border-border/80 hover:bg-muted/30"
+                    )}
+                  >
+                    <span
+                      className="relative flex h-9 w-9 items-center justify-center rounded-full ring-1 ring-black/5"
+                      style={{ backgroundColor: sw.hex }}
+                    >
+                      {active && (
+                        <span className="absolute inset-0 flex items-center justify-center">
+                          <Check className="h-4 w-4 text-white" strokeWidth={3} />
+                        </span>
+                      )}
+                    </span>
+                    <span className="text-[11px] font-medium text-foreground">{sw.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+            <p className="mt-2 text-xs text-muted-foreground">
+              Current: <span className="font-semibold text-foreground capitalize">{draft.accentColor ?? "terracotta"}</span>
+            </p>
+          </SectionCard>
+
+          {/* ---- Section 5: Hero Image ---- */}
+          <SectionCard
+            title="Hero Image"
+            description="Single wide image shown on the login + dashboard heroes. Optimized to ≤ 200KB JPEG."
+            contentClassName="p-4"
+          >
+            <div className="space-y-3">
+              {/* 21:9 aspect ratio preview with fade-veil overlay matching the live hero */}
+              <div className="relative aspect-[21/9] w-full overflow-hidden rounded-lg border border-border bg-muted/30">
+                {draft.heroImage ? (
+                  <>
+                    <img
+                      src={draft.heroImage}
+                      alt="Hero preview"
+                      className="absolute inset-0 h-full w-full object-cover"
+                    />
+                    {/* Fade-veil overlay — matches the live hero gradient (darkest at bottom) */}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/35 to-black/40" />
+                    {/* Brand text sample */}
+                    <div className="absolute inset-x-0 bottom-0 p-3 text-white">
+                      <p className="text-sm font-bold leading-tight drop-shadow-sm">
+                        {draft.name || "School Name"}
+                      </p>
+                      <p className="text-[11px] text-white/80 drop-shadow-sm">
+                        {draft.tagline || "Tagline"}
+                      </p>
+                    </div>
+                  </>
+                ) : (
+                  <div className="flex h-full w-full flex-col items-center justify-center gap-1.5 text-muted-foreground">
+                    <ImageIcon className="h-8 w-8 opacity-40" />
+                    <p className="text-xs">No hero image — gradient fallback will be used</p>
+                  </div>
+                )}
+              </div>
+
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                <UploadButton
+                  accept="image/png,image/jpeg"
+                  onFile={handleHeroUpload}
+                  busy={busy === "hero"}
+                  label={draft.heroImage ? "Replace hero image" : "Upload hero image"}
+                  hint="PNG or JPG, 21:9 or wider preferred. Compressed to ≤ 200KB."
+                />
+                {draft.heroImage && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-destructive hover:text-destructive"
+                    onClick={() => set("heroImage", undefined)}
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                    Remove
+                  </Button>
+                )}
+              </div>
+            </div>
+          </SectionCard>
+
+          {/* ---- Section 6: Visible Dashboard Cards ---- */}
+          <SectionCard
+            title="Visible Dashboard Cards"
+            description="Choose which cards students see on their bento dashboard."
+            contentClassName="p-4"
+          >
+            <div className="grid gap-2 sm:grid-cols-2">
+              <VisibleCardsToggle
+                icon={<Clock className="h-4 w-4 text-primary" />}
+                label="Time Clock"
+                description="Clock in / out + live timer"
+                checked={draft.visibleCards?.timeClock ?? true}
+                onChange={(v) =>
+                  set("visibleCards", {
+                    ...(draft.visibleCards ?? {
+                      timeClock: true,
+                      draftingRoom: true,
+                      timesheet: true,
+                      evaluations: true,
+                    }),
+                    timeClock: v,
+                  })
+                }
+              />
+              <VisibleCardsToggle
+                icon={<FileText className="h-4 w-4 text-primary" />}
+                label="Drafting Room"
+                description="Weekly journal drafting"
+                checked={draft.visibleCards?.draftingRoom ?? true}
+                onChange={(v) =>
+                  set("visibleCards", {
+                    ...(draft.visibleCards ?? {
+                      timeClock: true,
+                      draftingRoom: true,
+                      timesheet: true,
+                      evaluations: true,
+                    }),
+                    draftingRoom: v,
+                  })
+                }
+              />
+              <VisibleCardsToggle
+                icon={<CalendarRange className="h-4 w-4 text-primary" />}
+                label="Timesheet"
+                description="Logged hours breakdown"
+                checked={draft.visibleCards?.timesheet ?? true}
+                onChange={(v) =>
+                  set("visibleCards", {
+                    ...(draft.visibleCards ?? {
+                      timeClock: true,
+                      draftingRoom: true,
+                      timesheet: true,
+                      evaluations: true,
+                    }),
+                    timesheet: v,
+                  })
+                }
+              />
+              <VisibleCardsToggle
+                icon={<ClipboardCheck className="h-4 w-4 text-primary" />}
+                label="Evaluations"
+                description="Latest supervisor evaluation"
+                checked={draft.visibleCards?.evaluations ?? true}
+                onChange={(v) =>
+                  set("visibleCards", {
+                    ...(draft.visibleCards ?? {
+                      timeClock: true,
+                      draftingRoom: true,
+                      timesheet: true,
+                      evaluations: true,
+                    }),
+                    evaluations: v,
+                  })
+                }
+              />
+            </div>
+          </SectionCard>
         </div>
       </div>
 
@@ -489,14 +713,14 @@ function UploadButton({
 // ============================================================
 function ColorPicker({
   label,
-  hint,
   value,
   onChange,
+  hint,
 }: {
   label: string;
-  hint?: string;
   value: string;
   onChange: (v: string) => void;
+  hint?: string;
 }) {
   return (
     <div>
@@ -517,6 +741,36 @@ function ColorPicker({
         />
       </div>
       {hint && <p className="mt-1 text-[11px] text-muted-foreground">{hint}</p>}
+    </div>
+  );
+}
+
+// ============================================================
+// Visible cards toggle — icon + label + description + switch
+// ============================================================
+function VisibleCardsToggle({
+  icon,
+  label,
+  description,
+  checked,
+  onChange,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  description: string;
+  checked: boolean;
+  onChange: (v: boolean) => void;
+}) {
+  return (
+    <div className="flex items-center gap-3 rounded-lg border border-border/60 bg-card p-3">
+      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary/10">
+        {icon}
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className="text-sm font-medium text-foreground">{label}</p>
+        <p className="truncate text-xs text-muted-foreground">{description}</p>
+      </div>
+      <Switch checked={checked} onCheckedChange={onChange} />
     </div>
   );
 }

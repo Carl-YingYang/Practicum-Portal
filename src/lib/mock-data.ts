@@ -42,6 +42,9 @@ export const defaultSchoolIdentity: SchoolIdentity = {
   tagline: "Practicum Management",
   address: "",
   themePreset: "azure-blue",
+  accentColor: "terracotta",
+  heroImage: undefined,
+  visibleCards: { timeClock: true, draftingRoom: true, timesheet: true, evaluations: true },
 };
 
 // ============================================================

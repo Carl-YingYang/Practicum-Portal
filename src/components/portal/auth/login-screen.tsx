@@ -192,82 +192,56 @@ function RoleCarousel() {
 }
 
 // ============================================================
-// Hero slideshow — three cross-fading images on the brand panel.
+// Hero — single image with 3-layer fade technique.
 // ----------------------------------------
-// Uses plain <img> tags (NOT BlurImage) so there is no shimmer /
-// placeholder flash on reload or first paint. All three images
-// live in the DOM from the start with loading="eager", so the
-// browser fetches them together and every later cross-fade is
-// instant — no blank frame, no flicker.
+// Layer 1: Background image (absolute inset-0 object-cover)
+// Layer 2: Gradient overlay (from-black/85 via-black/35 to-black/40)
+// Layer 3: Content (relative z-10 text-white, bottom-anchored)
 //
-// The fade is opacity-only (flat, simple, no slide/scale).
-// Swap the files in /public (login-hero-1/2/3.png) to replace.
+// CSS-only fade-in-on-load: opacity 0→1, blur 24px→0, scale 1.05→1
+// over 900ms ease-out. No animation library.
+//
+// Uses plain <img> (NOT BlurImage) so there is no shimmer / placeholder
+// flash on reload. Swap /public/hero-students.png to replace.
 // ============================================================
-const HERO_SLIDES = [
-  "/login-hero-1.png",
-  "/login-hero-2.png",
-  "/login-hero-3.png",
-] as const;
+const HERO_IMAGE = "/login-hero-1.png";
 
-const HERO_FADE_MS = 1500;
-const HERO_INTERVAL_MS = 6000;
-
-function HeroSlideshow() {
-  const [active, setActive] = React.useState(0);
+function HeroImage() {
+  const [loaded, setLoaded] = React.useState(false);
 
   React.useEffect(() => {
-    // Defensive preload — even though the <img> tags below already
-    // fetch eagerly, this guarantees all three are cached before the
-    // first cycle change so the cross-fade is always clean.
-    HERO_SLIDES.forEach((src) => {
-      const img = new Image();
-      img.src = src;
-    });
-    const timer = setInterval(() => {
-      setActive((i) => (i + 1) % HERO_SLIDES.length);
-    }, HERO_INTERVAL_MS);
-    return () => clearInterval(timer);
+    // Trigger fade-in on mount.
+    const t = setTimeout(() => setLoaded(true), 50);
+    return () => clearTimeout(t);
   }, []);
 
   return (
-    <div className="pointer-events-none absolute inset-0">
-      {/* Three images — only opacity changes, flat cross-fade */}
-      {HERO_SLIDES.map((src, i) => (
-        <img
-          key={src}
-          src={src}
-          alt=""
-          aria-hidden="true"
-          loading="eager"
-          decoding="async"
-          // First image gets high priority so it paints on first load.
-          // The others load normally but still eagerly (in-DOM).
-          {...(i === 0 ? { fetchPriority: "high" as const } : {})}
-          style={{
-            transitionDuration: `${HERO_FADE_MS}ms`,
-            transitionTimingFunction: "ease-in-out",
-          }}
-          className={cn(
-            "absolute inset-0 h-full w-full object-cover transition-opacity ease-in-out",
-            i === active ? "opacity-100" : "opacity-0"
-          )}
-        />
-      ))}
-
-      {/* Navy overlays — keep text readable & blend photos into panel.
-          Left→right for the copy column, bottom→top for the footer. */}
-      <div
-        className="absolute inset-0"
-        style={{
-          background:
-            "linear-gradient(to right, rgba(15,37,115,0.88) 0%, rgba(15,37,115,0.55) 45%, rgba(15,37,115,0.30) 100%)",
-        }}
+    <div className="pointer-events-none absolute inset-0 overflow-hidden">
+      {/* Layer 1 — background image with CSS-only fade-in */}
+      <img
+        src={HERO_IMAGE}
+        alt=""
+        aria-hidden="true"
+        loading="eager"
+        decoding="async"
+        fetchPriority="high"
+        className={cn(
+          "absolute inset-0 h-full w-full object-cover transition-all duration-[900ms] ease-out",
+          loaded
+            ? "opacity-100 blur-0 scale-100"
+            : "opacity-0 blur-2xl scale-105"
+        )}
       />
+
+      {/* Layer 2 — gradient overlay (3-layer fade technique).
+          Darkest at the bottom where the text sits, lighter at top. */}
+      <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/35 to-black/40" />
+      {/* Left-to-right veil for the copy column */}
       <div
         className="absolute inset-0"
         style={{
           background:
-            "linear-gradient(to top, rgba(4,29,86,0.72) 0%, rgba(4,29,86,0) 35%, rgba(4,29,86,0) 65%, rgba(4,29,86,0.40) 100%)",
+            "linear-gradient(to right, rgba(15,37,115,0.55) 0%, rgba(15,37,115,0.25) 50%, rgba(15,37,115,0.10) 100%)",
         }}
       />
     </div>
@@ -283,8 +257,8 @@ function BrandPanel() {
       {/* Background — default navy gradient (login is never school-branded) */}
       <div className="bg-ici-navy-gradient absolute inset-0" />
 
-      {/* Three cross-fading hero images (replace files in /public to swap) */}
-      <HeroSlideshow />
+      {/* Single hero image with 3-layer fade (replace /public/hero-students.png to swap) */}
+      <HeroImage />
 
       {/* Texture & glow on top of the photos */}
       <div className="bg-grid-texture pointer-events-none absolute inset-0 opacity-25" />
