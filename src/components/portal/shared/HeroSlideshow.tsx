@@ -22,17 +22,17 @@ export interface HeroSlide {
 /** Curated calm/OJT-themed defaults (used when school has no hero images). */
 const DEFAULT_SLIDES: HeroSlide[] = [
   {
-    src: "https://images.unsplash.com/photo-1523240795612-9a054b0db644?auto=format&fit=crop&w=1280&q=70",
+    src: "/ici-hero.jpg",
     alt: "Students collaborating in a bright workspace",
     caption: "Your practicum journey starts here",
   },
   {
-    src: "https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?auto=format&fit=crop&w=1280&q=70",
+    src: "/ici-hero.jpg",
     alt: "A calm desk with notebook and laptop in soft natural light",
     caption: "Track hours, write journals, grow",
   },
   {
-    src: "https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?auto=format&fit=crop&w=1280&q=70",
+    src: "/ici-hero.jpg",
     alt: "Open notebook with handwriting in warm light",
     caption: "Every hour logged, every week reflected",
   },
@@ -85,7 +85,7 @@ export function HeroSlideshow({
     <div
       className={cn(
         "relative w-full overflow-hidden rounded-2xl border border-border/40 bg-muted/30",
-        "aspect-[21/9] min-h-[200px]",
+        "aspect-[3000/1374] min-h-[280px]",
         className,
       )}
       role="region"

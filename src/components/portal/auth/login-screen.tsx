@@ -204,7 +204,7 @@ function RoleCarousel() {
 // Uses plain <img> (NOT BlurImage) so there is no shimmer / placeholder
 // flash on reload. Swap /public/hero-students.png to replace.
 // ============================================================
-const HERO_IMAGE = "/login-hero-1.png";
+const HERO_IMAGE = "/ici-hero.jpg";
 
 function HeroImage() {
   const [loaded, setLoaded] = React.useState(false);
