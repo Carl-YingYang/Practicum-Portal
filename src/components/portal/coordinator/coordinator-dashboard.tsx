@@ -263,7 +263,7 @@ export function CoordinatorDashboard() {
           }
         />
         <div className="mb-4 h-11 animate-pulse rounded-xl bg-muted/60" />
-        <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
           <StatCardSkeleton count={4} />
         </div>
         <div className="mt-4 grid gap-3 lg:grid-cols-3">
@@ -324,8 +324,9 @@ export function CoordinatorDashboard() {
       />
 
       <div className="space-y-5">
-        {/* KPIs — 4 cards. 2-up on phone, 4-up sm+. */}
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4">
+        {/* KPIs — 4 cards. 2×2 on mobile/tablet (<1024px), one even row of 4 on desktop.
+            Explicit cols (not auto-fill) so cards always fill the row — no dead space. */}
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
           <StatCard
             label="Total Students"
             value={students.length}

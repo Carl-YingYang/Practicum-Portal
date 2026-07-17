@@ -86,7 +86,7 @@ export function SupervisorDashboard() {
           }
         />
         <div className="mb-4 h-[44px] animate-pulse rounded-xl bg-muted/60" />
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
           <StatCardSkeleton count={3} />
         </div>
         <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
@@ -110,8 +110,9 @@ export function SupervisorDashboard() {
       />
 
       <div className="space-y-4">
-        {/* KPI row */}
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        {/* KPI row — 3 cards. Stack on mobile/tablet (<1024px), one even row on desktop.
+            Explicit cols (not auto-fill) so cards always fill the row — no dead space. */}
+        <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
           <StatCard
             label="Assigned Interns"
             value={interns.length}
