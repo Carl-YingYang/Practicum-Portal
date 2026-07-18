@@ -1,37 +1,44 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
+import { Toaster as SonnerToaster } from "@/components/ui/sonner";
+import { ThemeProvider } from "@/components/theme-provider";
+import { SchoolThemeProvider } from "@/components/portal/shared/school-theme-provider";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+// ICI College uses 'Helvetica Neue', Helvetica, Arial, sans-serif.
+// We load Inter as a high-quality web-font fallback for systems that
+// lack Helvetica Neue (Linux/Android), so the look stays consistent
+// everywhere while Apple devices get the real Helvetica Neue.
+const inter = Inter({
+  variable: "--font-inter",
   subsets: ["latin"],
+  display: "swap",
 });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+const jetbrains = JetBrains_Mono({
+  variable: "--font-jetbrains",
   subsets: ["latin"],
+  display: "swap",
 });
 
 export const metadata: Metadata = {
-  title: "Z.ai Code Scaffold - AI-Powered Development",
-  description: "Modern Next.js scaffold optimized for AI-powered development with Z.ai. Built with TypeScript, Tailwind CSS, and shadcn/ui.",
-  keywords: ["Z.ai", "Next.js", "TypeScript", "Tailwind CSS", "shadcn/ui", "AI development", "React"],
-  authors: [{ name: "Z.ai Team" }],
+  title: "Practo | Practicum Management",
+  description:
+    "Practo — a focused practicum management platform for coordinators, supervisors, and students. Journals, timesheets, evaluations, and accreditation in one place.",
+  keywords: [
+    "Practo",
+    "Practicum",
+    "Internship",
+    "Evaluation",
+    "Portal",
+    "University",
+    "Supervisor",
+    "Coordinator",
+  ],
+  authors: [{ name: "Practo" }],
   icons: {
-    icon: "https://z-cdn.chatglm.cn/z-ai/static/logo.svg",
-  },
-  openGraph: {
-    title: "Z.ai Code Scaffold",
-    description: "AI-powered development with modern React stack",
-    url: "https://chat.z.ai",
-    siteName: "Z.ai",
-    type: "website",
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "Z.ai Code Scaffold",
-    description: "AI-powered development with modern React stack",
+    icon: "/logo.svg",
   },
 };
 
@@ -43,10 +50,24 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased bg-background text-foreground`}
+        className={`${inter.variable} ${jetbrains.variable} antialiased bg-background text-foreground`}
+        style={{
+          fontFamily:
+            "'Helvetica Neue', Helvetica, Arial, var(--font-inter), sans-serif",
+        }}
       >
-        {children}
-        <Toaster />
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="light"
+          enableSystem
+          disableTransitionOnChange
+        >
+          <SchoolThemeProvider>
+            {children}
+            <Toaster />
+            <SonnerToaster position="top-right" richColors closeButton />
+          </SchoolThemeProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

@@ -6,8 +6,10 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: var(--font-inter), "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --font-heading: var(--font-inter), "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --font-mono: var(--font-jetbrains), ui-monospace, monospace;
+
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -16,15 +18,23 @@
   --color-sidebar-primary: var(--sidebar-primary);
   --color-sidebar-foreground: var(--sidebar-foreground);
   --color-sidebar: var(--sidebar);
+
+  /* Topbar — blue chrome (matches sidebar) */
+  --color-topbar: var(--topbar);
+  --color-topbar-foreground: var(--topbar-foreground);
+  --color-topbar-border: var(--topbar-border);
+
   --color-chart-5: var(--chart-5);
   --color-chart-4: var(--chart-4);
   --color-chart-3: var(--chart-3);
   --color-chart-2: var(--chart-2);
   --color-chart-1: var(--chart-1);
+
   --color-ring: var(--ring);
   --color-input: var(--input);
   --color-border: var(--border);
   --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
   --color-accent-foreground: var(--accent-foreground);
   --color-accent: var(--accent);
   --color-muted-foreground: var(--muted-foreground);
@@ -37,86 +47,828 @@
   --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
+
+  /* Blueprint semantic tokens */
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-danger: var(--danger);
+  --color-danger-foreground: var(--danger-foreground);
+  --color-info: var(--info);
+  --color-info-foreground: var(--info-foreground);
+
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
 }
 
+/* ============================================================
+   BLUE CHROME + NEUTRAL PAGE — MODERN PROFESSIONAL
+   ────────────────────────────────────────────────────────────
+   CONCEPT: Only the header + sidebar are BLUE. The page content
+   is pure neutral (white in light, near-black in dark).
+
+   Light mode:
+   - Header + Sidebar = lighter blue (#266CA9 vibrant)
+   - Page bg = pure white #FFFFFF
+   - Cards = white with hairline border
+   - Text = near-black #0A0A0A
+
+   Dark mode:
+   - Header + Sidebar = darker blue (#041D56 deep navy)
+   - Page bg = near-black #0A0A0A (NOT blue — pure neutral)
+   - Cards = dark gray #141414
+   - Text = near-white #FAFAFA
+
+   Palette (monochromatic blue from @indelibleconcepts):
+   - #ADE1FB  Lightest  — active item highlight, pale accent
+   - #266CA9  Medium    — LIGHT mode chrome (header + sidebar)
+   - #0F2573  Deep      — brand/deep
+   - #041D56  Darker    — DARK mode chrome (header + sidebar)
+   - #01082D  Darkest   — deep text accent
+   ============================================================ */
 :root {
-  --radius: 0.625rem;
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.646 0.222 41.116);
-  --chart-2: oklch(0.6 0.118 184.704);
-  --chart-3: oklch(0.398 0.07 227.392);
-  --chart-4: oklch(0.828 0.189 84.429);
-  --chart-5: oklch(0.769 0.188 70.08);
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  --radius: 0.375rem; /* 6px — sharp, professional corners */
+
+  /* ---- PAGE SURFACES — pure neutral (NOT blue) ---- */
+  --background: #ffffff;
+  --foreground: #0a0a0a;
+  --card: #ffffff;
+  --card-foreground: #0a0a0a;
+  --popover: #ffffff;
+  --popover-foreground: #0a0a0a;
+
+  /* ---- Brand — vibrant blue (buttons, links in page) ---- */
+  --primary: #266ca9;
+  --primary-foreground: #ffffff;
+
+  /* ---- Secondary — neutral light gray ---- */
+  --secondary: #f4f4f5;
+  --secondary-foreground: #18181b;
+
+  /* ---- Muted — neutral ---- */
+  --muted: #f4f4f5;
+  --muted-foreground: #71717a;
+
+  /* ---- Accent — pale blue (soft fill for badges) ---- */
+  --accent: #e8f1fb;
+  --accent-foreground: #266ca9;
+
+  /* ---- Semantic ---- */
+  --destructive: #dc2626;
+  --destructive-foreground: #ffffff;
+  --success: #16a34a;
+  --success-foreground: #ffffff;
+  --warning: #ea580c;
+  --warning-foreground: #ffffff;
+  --danger: #dc2626;
+  --danger-foreground: #ffffff;
+  --info: #266ca9;
+  --info-foreground: #ffffff;
+
+  /* ---- Page borders — neutral hairline ---- */
+  --border: #e4e4e7;
+  --input: #d4d4d8;
+  --ring: #266ca9;
+
+  /* ---- Chart palette ---- */
+  --chart-1: #266ca9;
+  --chart-2: #ade1fb;
+  --chart-3: #0f2573;
+  --chart-4: #71717a;
+  --chart-5: #041d56;
+
+  /* ---- SIDEBAR — LIGHTER BLUE CHROME ---- */
+  --sidebar: #266ca9;
+  --sidebar-foreground: #ffffff;
+  --sidebar-primary: #ade1fb;
+  --sidebar-primary-foreground: #041d56;
+  --sidebar-accent: rgba(255, 255, 255, 0.14);
+  --sidebar-accent-foreground: #ffffff;
+  --sidebar-border: rgba(255, 255, 255, 0.16);
+  --sidebar-ring: #ade1fb;
+
+  /* ---- TOPBAR — LIGHTER BLUE CHROME (matches sidebar) ---- */
+  --topbar: #266ca9;
+  --topbar-foreground: #ffffff;
+  --topbar-border: rgba(255, 255, 255, 0.16);
+
+  /* ---- Blue brand tokens (raw, for gradients) ---- */
+  --blue-lightest: #ade1fb;
+  --blue-light: #5a9fd4;
+  --blue: #266ca9;
+  --blue-deep: #0f2573;
+  --blue-darker: #041d56;
+  --blue-darkest: #01082d;
+
+  /* ---- Backwards-compat aliases ---- */
+  --navy: #266ca9;
+  --navy-deep: #0f2573;
+  --navy-darker: #041d56;
+  --navy-light: #ade1fb;
+  --gold: #ade1fb;
+  --gold-light: #ade1fb;
+  --gold-soft: #e8f1fb;
+
+  /* ---- Soft shadows (neutral, subtle) ---- */
+  --shadow-xs: 0 1px 2px 0 rgba(0, 0, 0, 0.04);
+  --shadow-sm: 0 1px 3px 0 rgba(0, 0, 0, 0.06), 0 1px 2px -1px rgba(0, 0, 0, 0.04);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.07), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -4px rgba(0, 0, 0, 0.05);
+  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.10), 0 8px 10px -6px rgba(0, 0, 0, 0.05);
+  --shadow-card: var(--shadow-xs);
+  --shadow-card-hover: var(--shadow-sm);
+
+  /* ---- Easing curves ---- */
+  --ease-calm: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --ease-emphasis: cubic-bezier(0.16, 1, 0.3, 1);
+
+  /* ============================================================
+     FLUID DESIGN TOKENS — clamp()-based type/spacing/layout
+     Scales smoothly with viewport, no breakpoint jumps.
+     ============================================================ */
+
+  /* Fluid type scale */
+  --fs-2xs: clamp(0.625rem, 0.6rem + 0.1vw, 0.75rem);
+  --fs-xs: clamp(0.7rem, 0.67rem + 0.15vw, 0.8rem);
+  --fs-sm: clamp(0.8rem, 0.76rem + 0.2vw, 0.9rem);
+  --fs-base: clamp(0.875rem, 0.83rem + 0.25vw, 1rem);
+  --fs-lg: clamp(1rem, 0.94rem + 0.3vw, 1.15rem);
+  --fs-xl: clamp(1.15rem, 1.07rem + 0.4vw, 1.4rem);
+  --fs-2xl: clamp(1.4rem, 1.3rem + 0.5vw, 1.75rem);
+  --fs-3xl: clamp(1.75rem, 1.6rem + 0.7vw, 2.25rem);
+
+  /* Fluid spacing */
+  --sp-0: 0;
+  --sp-1: clamp(0.25rem, 0.23rem + 0.1vw, 0.35rem);
+  --sp-2: clamp(0.5rem, 0.47rem + 0.15vw, 0.65rem);
+  --sp-3: clamp(0.75rem, 0.7rem + 0.25vw, 1rem);
+  --sp-4: clamp(1rem, 0.93rem + 0.35vw, 1.4rem);
+  --sp-5: clamp(1.5rem, 1.4rem + 0.5vw, 2rem);
+  --sp-6: clamp(2rem, 1.85rem + 0.75vw, 2.75rem);
+  --sp-7: clamp(2.5rem, 2.3rem + 1vw, 3.5rem);
+  --sp-8: clamp(3rem, 2.75rem + 1.25vw, 4.25rem);
+
+  /* Fluid layout */
+  --sidebar-w: clamp(220px, 16vw, 256px);
+  --content-pad-x: clamp(1rem, 0.85rem + 0.75vw, 2rem);
+  --content-pad-y: clamp(1rem, 0.9rem + 0.5vw, 1.5rem);
+  --content-max: clamp(1024px, 96vw, 1680px);
 }
 
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.488 0.243 264.376);
-  --chart-2: oklch(0.696 0.17 162.48);
-  --chart-3: oklch(0.769 0.188 70.08);
-  --chart-4: oklch(0.627 0.265 303.9);
-  --chart-5: oklch(0.645 0.246 16.439);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+  /* ---- PAGE SURFACES — pure neutral near-black (NOT blue) ---- */
+  --background: #0a0a0a;
+  --foreground: #fafafa;
+  --card: #141414;
+  --card-foreground: #fafafa;
+  --popover: #141414;
+  --popover-foreground: #fafafa;
+
+  /* ---- Brand — vibrant blue (buttons, links in page) ---- */
+  --primary: #266ca9;
+  --primary-foreground: #ffffff;
+
+  /* ---- Secondary — neutral dark gray ---- */
+  --secondary: #1c1c1f;
+  --secondary-foreground: #e4e4e7;
+
+  /* ---- Muted ---- */
+  --muted: #1c1c1f;
+  --muted-foreground: #a1a1aa;
+
+  /* ---- Accent — dark blue tint ---- */
+  --accent: #0f2573;
+  --accent-foreground: #ade1fb;
+
+  /* ---- Semantic ---- */
+  --destructive: #f87171;
+  --destructive-foreground: #0a0a0a;
+  --success: #34d399;
+  --success-foreground: #0a0a0a;
+  --warning: #fbbf24;
+  --warning-foreground: #0a0a0a;
+  --danger: #f87171;
+  --danger-foreground: #0a0a0a;
+  --info: #5a9fd4;
+  --info-foreground: #0a0a0a;
+
+  /* ---- Page borders — visible on dark ---- */
+  --border: #27272a;
+  --input: #3f3f46;
+  --ring: #266ca9;
+
+  /* ---- Chart ---- */
+  --chart-1: #266ca9;
+  --chart-2: #ade1fb;
+  --chart-3: #5a9fd4;
+  --chart-4: #a1a1aa;
+  --chart-5: #f87171;
+
+  /* ---- SIDEBAR — DARKER BLUE CHROME ---- */
+  --sidebar: #041d56;
+  --sidebar-foreground: #e8eef9;
+  --sidebar-primary: #266ca9;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: rgba(255, 255, 255, 0.08);
+  --sidebar-accent-foreground: #ade1fb;
+  --sidebar-border: rgba(255, 255, 255, 0.10);
+  --sidebar-ring: #266ca9;
+
+  /* ---- TOPBAR — DARKER BLUE CHROME (matches sidebar) ---- */
+  --topbar: #041d56;
+  --topbar-foreground: #e8eef9;
+  --topbar-border: rgba(255, 255, 255, 0.10);
+
+  /* ---- Soft shadows on dark ---- */
+  --shadow-xs: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
+  --shadow-sm: 0 1px 3px 0 rgba(0, 0, 0, 0.4), 0 1px 2px -1px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.45), 0 2px 4px -2px rgba(0, 0, 0, 0.35);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.5), 0 4px 6px -4px rgba(0, 0, 0, 0.4);
+  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.6), 0 8px 10px -6px rgba(0, 0, 0, 0.45);
+  --shadow-card: var(--shadow-sm);
+  --shadow-card-hover: var(--shadow-md);
+}
+
+/* ============================================================
+   FLUID GRID UTILITIES — Tailwind v4 @utility directive
+   Top-level (NOT inside @layer utilities — those get tree-shaken).
+   ============================================================ */
+@utility grid-fluid-stats {
+  display: grid;
+  gap: var(--sp-3);
+  grid-template-columns: repeat(auto-fit, minmax(clamp(150px, 22vw, 220px), 1fr));
+}
+
+@utility grid-fluid-cards {
+  display: grid;
+  gap: var(--sp-3);
+  grid-template-columns: repeat(auto-fit, minmax(clamp(200px, 28vw, 280px), 1fr));
+}
+
+@utility grid-fluid-list {
+  display: grid;
+  gap: var(--sp-3);
+  grid-template-columns: repeat(auto-fit, minmax(clamp(240px, 32vw, 340px), 1fr));
+}
+
+@utility grid-fluid-bento {
+  display: grid;
+  gap: var(--sp-3);
+  grid-template-columns: repeat(auto-fit, minmax(clamp(180px, 24vw, 260px), 1fr));
+}
+
+@utility grid-fluid-duo {
+  display: grid;
+  gap: var(--sp-3);
+  grid-template-columns: repeat(auto-fit, minmax(clamp(280px, 42vw, 480px), 1fr));
+}
+
+/* ============================================================
+   HERO FADE-IN — CSS-only image reveal (opacity + blur + scale)
+   Used by Login hero + Facebook-style School modal cover photo.
+   ============================================================ */
+@keyframes hero-fade-in {
+  from {
+    opacity: 0;
+    filter: blur(12px) scale(1.05);
+  }
+  to {
+    opacity: 1;
+    filter: blur(0) scale(1);
+  }
 }
 
 @layer base {
   * {
     @apply border-border outline-ring/50;
   }
+
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground antialiased;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
+
+  /* ICI uses the same sans-serif for headings and body */
+  h1,
+  h2,
+  h3,
+  h4 {
+    font-family: "Helvetica Neue", Helvetica, Arial, var(--font-inter), sans-serif;
+    letter-spacing: -0.015em;
+    font-weight: 700;
+  }
+
+  /* Slim scrollbars — ICI-clean */
+  .scroll-area-custom {
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
+  }
+
+  .scroll-area-custom::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  .scroll-area-custom::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .scroll-area-custom::-webkit-scrollbar-thumb {
+    background-color: var(--border);
+    border-radius: 9999px;
+    border: 2px solid transparent;
+    background-clip: content-box;
+  }
+
+  .scroll-area-custom::-webkit-scrollbar-thumb:hover {
+    background-color: var(--muted-foreground);
+    background-clip: content-box;
+  }
+}
+
+/* ============================================================
+   Utility classes — elevation, glass, gradients, ICI brand
+   All use var() so they auto-adapt to dark mode.
+   ============================================================ */
+@layer utilities {
+  .elev-xs {
+    box-shadow: var(--shadow-xs);
+  }
+  .elev-sm {
+    box-shadow: var(--shadow-sm);
+  }
+  .elev-md {
+    box-shadow: var(--shadow-md);
+  }
+  .elev-lg {
+    box-shadow: var(--shadow-lg);
+  }
+  .elev-xl {
+    box-shadow: var(--shadow-xl);
+  }
+  .elev-card {
+    box-shadow: var(--shadow-card);
+  }
+  .elev-card-hover {
+    box-shadow: var(--shadow-card-hover);
+  }
+
+  /* Blue gradient — hero panels, login left side, footer
+     Monochromatic blue: deep navy → vibrant blue → darker navy */
+  .bg-ici-navy-gradient {
+    background-image:
+      radial-gradient(circle at 15% 20%, color-mix(in srgb, var(--blue-lightest) 14%, transparent) 0, transparent 42%),
+      radial-gradient(circle at 85% 80%, color-mix(in srgb, var(--blue) 22%, transparent) 0, transparent 38%),
+      linear-gradient(135deg, var(--blue-deep) 0%, var(--blue) 55%, var(--blue-darker) 100%);
+  }
+
+  .dark .bg-ici-navy-gradient {
+    background-image:
+      radial-gradient(circle at 15% 20%, color-mix(in srgb, var(--blue-lightest) 12%, transparent) 0, transparent 42%),
+      radial-gradient(circle at 85% 80%, color-mix(in srgb, var(--blue) 18%, transparent) 0, transparent 38%),
+      linear-gradient(135deg, var(--blue-darker) 0%, var(--blue-deep) 55%, var(--blue-darkest) 100%);
+  }
+
+  /* Backwards-compat alias */
+  .bg-brand-gradient {
+    background-image:
+      radial-gradient(circle at 15% 20%, color-mix(in srgb, var(--blue-lightest) 14%, transparent) 0, transparent 42%),
+      radial-gradient(circle at 85% 80%, color-mix(in srgb, var(--blue) 22%, transparent) 0, transparent 38%),
+      linear-gradient(135deg, var(--blue-deep) 0%, var(--blue) 55%, var(--blue-darker) 100%);
+  }
+
+  .dark .bg-brand-gradient {
+    background-image:
+      radial-gradient(circle at 15% 20%, color-mix(in srgb, var(--blue-lightest) 12%, transparent) 0, transparent 42%),
+      radial-gradient(circle at 85% 80%, color-mix(in srgb, var(--blue) 18%, transparent) 0, transparent 38%),
+      linear-gradient(135deg, var(--blue-darker) 0%, var(--blue-deep) 55%, var(--blue-darkest) 100%);
+  }
+
+  /* Glassmorphism — sticky surfaces */
+  .glass {
+    background-color: color-mix(in srgb, var(--background) 78%, transparent);
+    backdrop-filter: saturate(180%) blur(14px);
+    -webkit-backdrop-filter: saturate(180%) blur(14px);
+  }
+
+  .dark .glass {
+    background-color: color-mix(in srgb, var(--background) 82%, transparent);
+  }
+
+  /* Subtle grid texture for brand panels */
+  .bg-grid-texture {
+    background-image:
+      linear-gradient(to right, rgba(255, 255, 255, 0.06) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(255, 255, 255, 0.06) 1px, transparent 1px);
+    background-size: 36px 36px;
+  }
+
+  /* ICI dotted corner pattern */
+  .bg-ici-dots {
+    background-image: radial-gradient(circle, rgba(255, 255, 255, 0.15) 1px, transparent 1px);
+    background-size: 18px 18px;
+  }
+
+  /* Blue accent line (was gold — now monochromatic) */
+  .border-gold-top {
+    border-top: 3px solid var(--blue);
+  }
+
+  .border-gold-bottom {
+    border-bottom: 3px solid var(--blue);
+  }
+
+  .dark .border-gold-top {
+    border-top-color: var(--blue-lightest);
+  }
+
+  .dark .border-gold-bottom {
+    border-bottom-color: var(--blue-lightest);
+  }
+
+  /* Hairline divider */
+  .hairline {
+    border-color: color-mix(in srgb, var(--border) 80%, transparent);
+  }
+
+  /* Focus ring utility */
+  .focus-ring {
+    @apply outline-none focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background;
+  }
+
+  /* Text hierarchy helpers */
+  .text-primary-strong {
+    color: var(--foreground);
+  }
+
+  .text-secondary {
+    color: color-mix(in srgb, var(--foreground) 72%, transparent);
+  }
+
+  .text-tertiary {
+    color: var(--muted-foreground);
+  }
+
+  .text-navy {
+    color: var(--blue);
+  }
+
+  .dark .text-navy {
+    color: var(--blue-lightest);
+  }
+
+  .text-gold {
+    color: var(--blue);
+  }
+
+  .dark .text-gold {
+    color: var(--blue-lightest);
+  }
+
+  /* ============================================================
+     LQIP — Low Quality Image Loading with blur-up effect
+     ============================================================ */
+  .lqip-wrapper {
+    position: relative;
+    overflow: hidden;
+    background: linear-gradient(110deg, #ececec 8%, #f5f5f5 18%, #ececec 33%);
+    background-size: 200% 100%;
+    animation: lqip-shimmer 1.4s linear infinite;
+  }
+
+  .dark .lqip-wrapper {
+    background: linear-gradient(110deg, #1c2d4a 8%, #243752 18%, #1c2d4a 33%);
+    background-size: 200% 100%;
+  }
+
+  .lqip-wrapper.is-dark {
+    background: linear-gradient(110deg, #14315e 8%, #1e3a6b 18%, #14315e 33%);
+    background-size: 200% 100%;
+  }
+
+  .lqip-wrapper.is-loaded {
+    animation: none;
+    background: transparent;
+  }
+
+  .lqip-img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    opacity: 0;
+    filter: blur(18px);
+    transform: scale(1.04);
+    transition:
+      opacity 520ms var(--ease-calm),
+      filter 520ms var(--ease-calm),
+      transform 520ms var(--ease-calm);
+  }
+
+  .lqip-img.is-loaded {
+    opacity: 1;
+    filter: blur(0);
+    transform: scale(1);
+  }
+
+  .lqip-blur-placeholder {
+    position: absolute;
+    inset: 0;
+    background: inherit;
+    filter: blur(24px);
+    transform: scale(1.1);
+    opacity: 1;
+    transition: opacity 520ms var(--ease-calm);
+    pointer-events: none;
+  }
+
+  .lqip-wrapper.is-loaded .lqip-blur-placeholder {
+    opacity: 0;
+  }
+}
+
+@keyframes lqip-shimmer {
+  to {
+    background-position: -200% 0;
+  }
+}
+
+/* ============================================================
+   Enhanced focus rings for accessibility
+   ============================================================ */
+@layer base {
+  button:focus-visible,
+  a:focus-visible,
+  [role="button"]:focus-visible,
+  input:focus-visible,
+  select:focus-visible,
+  textarea:focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
+}
+
+/* ============================================================
+   Component polish — flat ICI-style cards & inputs
+   All use var() so they adapt to dark mode automatically.
+   ============================================================ */
+@layer components {
+  /* Card — flat with hairline border, minimal shadow */
+  .card-refined {
+    box-shadow: var(--shadow-card);
+    transition: box-shadow 220ms var(--ease-calm), transform 220ms var(--ease-calm),
+      border-color 220ms var(--ease-calm);
+  }
+
+  .card-refined.is-interactive:hover {
+    box-shadow: var(--shadow-card-hover);
+    border-color: color-mix(in srgb, var(--primary) 28%, var(--border));
+    transform: translateY(-1px);
+  }
+
+  /* Input focus — uses primary (navy in light, lighter navy in dark) */
+  .input-refined {
+    transition: border-color 180ms var(--ease-calm), box-shadow 180ms var(--ease-calm),
+      background-color 180ms var(--ease-calm);
+  }
+
+  .input-refined:focus-visible,
+  .input-refined:focus {
+    border-color: color-mix(in srgb, var(--primary) 60%, var(--input));
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 14%, transparent);
+    outline: none;
+  }
+
+  /* Pale blue CTA button — soft secondary action */
+  .btn-ici-gold {
+    background-color: var(--accent);
+    color: var(--accent-foreground);
+    font-weight: 600;
+    border-radius: var(--radius);
+    transition: background-color 180ms var(--ease-calm), transform 180ms var(--ease-calm),
+      box-shadow 180ms var(--ease-calm);
+  }
+
+  .btn-ici-gold:hover {
+    background-color: color-mix(in srgb, var(--accent) 85%, var(--blue));
+    box-shadow: 0 4px 12px -2px color-mix(in srgb, var(--blue) 30%, transparent);
+    transform: translateY(-1px);
+  }
+
+  .btn-ici-gold:active {
+    transform: translateY(0);
+  }
+
+  /* Vibrant blue CTA button — primary action */
+  .btn-ici-navy {
+    background-color: var(--primary);
+    color: var(--primary-foreground);
+    font-weight: 600;
+    border-radius: var(--radius);
+    transition: background-color 180ms var(--ease-calm), transform 180ms var(--ease-calm),
+      box-shadow 180ms var(--ease-calm);
+  }
+
+  .btn-ici-navy:hover {
+    background-color: color-mix(in srgb, var(--primary) 85%, var(--blue-deep));
+    box-shadow: 0 4px 12px -2px color-mix(in srgb, var(--primary) 40%, transparent);
+    transform: translateY(-1px);
+  }
+
+  .btn-ici-navy:active {
+    transform: translateY(0);
+  }
+
+  /* Section header — blue text with lighter blue underline */
+  .ici-section-header {
+    position: relative;
+    padding-bottom: 0.5rem;
+    color: var(--primary);
+    font-weight: 700;
+  }
+
+  .ici-section-header::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    bottom: 0;
+    width: 40px;
+    height: 3px;
+    background-color: var(--accent);
+    border-radius: 2px;
+  }
+}
+
+/* Print styles */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+
+  .print-area {
+    box-shadow: none !important;
+    border: none !important;
+    max-width: none !important;
+    padding: 0 !important;
+  }
+
+  body {
+    background: #ffffff !important;
+  }
+
+  .page-break-before {
+    break-before: page;
+    page-break-before: always;
+  }
+
+  .cover-page {
+    break-after: page;
+    page-break-after: always;
+  }
+
+  section {
+    break-inside: avoid-page;
+  }
+
+  @page {
+    margin: 1.5cm;
+  }
+}
+
+/* ============================================================
+   Mobile UX polish — view transitions + scroll behavior
+   ============================================================ */
+@keyframes portal-view-enter {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.view-enter {
+  animation: portal-view-enter 220ms var(--ease-calm);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .view-enter {
+    animation: none;
+  }
+
+  html {
+    scroll-behavior: auto !important;
+  }
+}
+
+@media (pointer: coarse) {
+  html {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  body {
+    overscroll-behavior-y: none;
+  }
+}
+
+.no-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+@supports (padding-top: env(safe-area-inset-top)) {
+  .topbar-safe-top {
+    padding-top: env(safe-area-inset-top, 0px);
+  }
+}
+
+/* ============================================================
+   FLUID DESIGN TOKENS — YouTube-style compact scaling
+   clamp(min, preferred-vw, max) for smooth fluid reflow
+   ============================================================ */
+:root {
+  /* Fluid type scale */
+  --fs-2xs: clamp(0.625rem, 0.6rem + 0.1vw, 0.75rem);
+  --fs-xs: clamp(0.7rem, 0.67rem + 0.15vw, 0.8rem);
+  --fs-sm: clamp(0.8rem, 0.76rem + 0.2vw, 0.9rem);
+  --fs-base: clamp(0.875rem, 0.83rem + 0.25vw, 1rem);
+  --fs-lg: clamp(1rem, 0.94rem + 0.3vw, 1.15rem);
+  --fs-xl: clamp(1.15rem, 1.07rem + 0.4vw, 1.4rem);
+  --fs-2xl: clamp(1.4rem, 1.3rem + 0.5vw, 1.75rem);
+  --fs-3xl: clamp(1.75rem, 1.6rem + 0.7vw, 2.25rem);
+
+  /* Fluid spacing */
+  --sp-0: 0;
+  --sp-1: clamp(0.25rem, 0.23rem + 0.1vw, 0.35rem);
+  --sp-2: clamp(0.5rem, 0.47rem + 0.15vw, 0.65rem);
+  --sp-3: clamp(0.75rem, 0.7rem + 0.25vw, 1rem);
+  --sp-4: clamp(1rem, 0.93rem + 0.35vw, 1.4rem);
+  --sp-5: clamp(1.5rem, 1.4rem + 0.5vw, 2rem);
+  --sp-6: clamp(2rem, 1.85rem + 0.75vw, 2.75rem);
+  --sp-7: clamp(2.5rem, 2.3rem + 1vw, 3.5rem);
+  --sp-8: clamp(3rem, 2.75rem + 1.25vw, 4.25rem);
+
+  /* Fluid layout */
+  --sidebar-w: clamp(220px, 16vw, 256px);
+  --content-pad-x: clamp(1rem, 0.85rem + 0.75vw, 2rem);
+  --content-pad-y: clamp(1rem, 0.9rem + 0.5vw, 1.5rem);
+  --content-max: clamp(1024px, 96vw, 1680px);
+}
+
+/* ============================================================
+   FLUID GRID UTILITIES — Tailwind v4 @utility directive
+   (guaranteed emission — @layer utilities gets tree-shaken
+   when class names collide with built-in prefixes)
+   ============================================================ */
+@utility grid-fluid-stats {
+  display: grid;
+  gap: var(--sp-3);
+  grid-template-columns: repeat(auto-fit, minmax(clamp(150px, 22vw, 220px), 1fr));
+}
+
+@utility grid-fluid-cards {
+  display: grid;
+  gap: var(--sp-3);
+  grid-template-columns: repeat(auto-fit, minmax(clamp(200px, 28vw, 280px), 1fr));
+}
+
+@utility grid-fluid-list {
+  display: grid;
+  gap: var(--sp-3);
+  grid-template-columns: repeat(auto-fit, minmax(clamp(240px, 32vw, 340px), 1fr));
+}
+
+@utility grid-fluid-bento {
+  display: grid;
+  gap: var(--sp-3);
+  grid-template-columns: repeat(auto-fit, minmax(clamp(180px, 24vw, 260px), 1fr));
+}
+
+@utility grid-fluid-duo {
+  display: grid;
+  gap: var(--sp-3);
+  grid-template-columns: repeat(auto-fit, minmax(clamp(280px, 42vw, 480px), 1fr));
+}
+
+/* Hero fade-in — CSS-only, no animation library */
+@keyframes hero-fade-in {
+  from { opacity: 0; filter: blur(12px) scale(1.05); }
+  to { opacity: 1; filter: blur(0) scale(1); }
+}
+
+.hero-fade-in {
+  animation: hero-fade-in 900ms ease-out forwards;
 }
