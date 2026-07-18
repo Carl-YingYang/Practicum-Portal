@@ -22,6 +22,7 @@ import {
   totalCompletedTimeMs,
   formatDuration,
 } from "@/lib/selectors";
+import { RATING_ANCHORS } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import {
@@ -35,6 +36,7 @@ import {
 } from "lucide-react";
 import { AccreditationDocument } from "@/components/portal/shared/accreditation-document";
 import { mockUsers } from "@/lib/mock-data";
+import { downloadPdfReport } from "@/lib/client-pdf";
 
 export function StudentReports() {
   const currentUser = useAppStore((s) => s.currentUser);
@@ -78,6 +80,211 @@ export function StudentReports() {
   // Coordinator name (for the accreditation sign-off page)
   const coordinator = mockUsers.find((u) => u.role === "coordinator");
   const coordinatorName = coordinator?.name ?? "Practicum Coordinator";
+
+  // ---------- Real PDF download builders ----------
+  const buildEvaluationPdf = () => {
+    if (!latestEval) return;
+    const avg = averageScore(latestEval);
+    downloadPdfReport({
+      filename: `evaluation-report-${student.studentNumber}`,
+      title: "Evaluation Report",
+      subtitle: `${student.name} · ${student.studentNumber} · ${student.course} · Term ${latestEval.term}`,
+      meta: [
+        { label: "Student", value: student.name },
+        { label: "Student No.", value: student.studentNumber },
+        { label: "Company", value: company?.name ?? "—" },
+        { label: "Supervisor", value: supervisor?.name ?? "—" },
+        { label: "Term", value: latestEval.term },
+        { label: "Average", value: `${avg.toFixed(2)} / 5` },
+      ],
+      sections: [
+        {
+          heading: "Criteria Scores",
+          table: {
+            head: ["Criterion", "Anchor", "Score"],
+            body: [
+              [
+                "Quality of Work",
+                latestEval.qualityOfWork > 0 ? RATING_ANCHORS[latestEval.qualityOfWork] : "—",
+                latestEval.qualityOfWork > 0 ? `${latestEval.qualityOfWork}/5` : "—",
+              ],
+              [
+                "Job Knowledge",
+                latestEval.jobKnowledge > 0 ? RATING_ANCHORS[latestEval.jobKnowledge] : "—",
+                latestEval.jobKnowledge > 0 ? `${latestEval.jobKnowledge}/5` : "—",
+              ],
+              [
+                "Dependability",
+                latestEval.dependability > 0 ? RATING_ANCHORS[latestEval.dependability] : "—",
+                latestEval.dependability > 0 ? `${latestEval.dependability}/5` : "—",
+              ],
+            ],
+            foot: ["Overall Average", "", avg.toFixed(2)],
+            align: ["left", "left", "center"],
+          },
+        },
+        {
+          heading: "Supervisor Comments",
+          paragraphs: [
+            { label: "Strengths", text: latestEval.strengths || "—" },
+            { label: "Areas for Improvement", text: latestEval.weaknesses || "—" },
+            { label: "Recommendations", text: latestEval.recommendations || "—" },
+          ],
+        },
+        {
+          heading: "Sign-off",
+          keyValue: [
+            { label: "Supervisor", value: supervisor?.name ?? "—" },
+            { label: "Submitted", value: formatDate(latestEval.submittedAt) },
+          ],
+          paragraphs: [
+            { label: "Supervisor signature", text: " " },
+            { label: "Date", text: " " },
+          ],
+        },
+      ],
+    });
+  };
+
+  const buildJournalPdf = () => {
+    downloadPdfReport({
+      filename: `journal-report-${student.studentNumber}`,
+      title: "Journal Compliance Report",
+      subtitle: `${student.name} · ${student.studentNumber} · ${approvedJournals.length} approved journals`,
+      meta: [
+        { label: "Student", value: student.name },
+        { label: "Course", value: student.course },
+        { label: "Company", value: company?.name ?? "—" },
+        { label: "Required", value: `${student.requiredHours}h` },
+        { label: "Logged", value: `${student.loggedHours}h` },
+        { label: "Completion", value: `${pct}%` },
+      ],
+      sections:
+        approvedJournals.length === 0
+          ? [{ paragraphs: [{ text: "No approved journals on record." }] }]
+          : [
+              {
+                heading: `Approved Journals (${approvedJournals.length})`,
+                table: {
+                  head: ["#", "Date", "Week of", "Hours"],
+                  body: approvedJournals.map((j, i) => [
+                    i + 1,
+                    formatDate(j.date),
+                    weekOfLabel(j.date),
+                    `${j.hours}h`,
+                  ]),
+                  foot: [
+                    "",
+                    "",
+                    "Total",
+                    `${approvedJournals.reduce((s, j) => s + j.hours, 0)}h`,
+                  ],
+                  align: ["center", "left", "left", "right"],
+                },
+              },
+            ],
+    });
+  };
+
+  const buildAccreditationPdf = () => {
+    const approvedCount = myJournals.filter((j) => j.status === "approved").length;
+    const submittedEval = myEvaluations.find((e) => e.status === "submitted");
+    const evalAvg = submittedEval ? averageScore(submittedEval) : 0;
+    downloadPdfReport({
+      filename: `accreditation-document-${student.studentNumber}`,
+      title: "Practicum Accreditation Document",
+      subtitle: `${student.name} · ${student.studentNumber} · ${student.course} · Term 2024-2025`,
+      meta: [
+        { label: "Student", value: student.name },
+        { label: "Student No.", value: student.studentNumber },
+        { label: "Company", value: company?.name ?? "—" },
+        { label: "Supervisor", value: supervisor?.name ?? "—" },
+        { label: "Coordinator", value: coordinatorName },
+        { label: "Term", value: "2024-2025" },
+      ],
+      sections: [
+        {
+          heading: "1. Practicum Summary",
+          keyValue: [
+            { label: "Course", value: student.course },
+            { label: "Required hours", value: `${student.requiredHours}h` },
+            { label: "Logged hours", value: `${student.loggedHours}h` },
+            { label: "Completion", value: `${pct}%` },
+            { label: "Tracked (clock-in/out)", value: formatDuration(myTotalMs) },
+            { label: "Approved journals", value: String(approvedCount) },
+          ],
+        },
+        {
+          heading: "2. Weekly Journal Index",
+          table:
+            approvedJournals.length === 0
+              ? undefined
+              : {
+                  head: ["#", "Date", "Week of", "Hours", "Status"],
+                  body: myJournals.map((j, i) => [
+                    i + 1,
+                    formatDate(j.date),
+                    weekOfLabel(j.date),
+                    `${j.hours}h`,
+                    j.status.toUpperCase(),
+                  ]),
+                  foot: [
+                    "",
+                    "",
+                    "Total",
+                    `${myJournals.reduce((s, j) => s + j.hours, 0)}h`,
+                    "",
+                  ],
+                  align: ["center", "left", "left", "right", "center"],
+                },
+          paragraphs:
+            approvedJournals.length === 0
+              ? [{ text: "No journal entries on record." }]
+              : undefined,
+        },
+        {
+          heading: "3. Evaluation Results",
+          keyValue: submittedEval
+            ? [
+                { label: "Supervisor", value: supervisor?.name ?? "—" },
+                { label: "Submitted", value: formatDate(submittedEval.submittedAt) },
+                {
+                  label: "Quality of Work",
+                  value: submittedEval.qualityOfWork > 0 ? `${submittedEval.qualityOfWork}/5` : "—",
+                },
+                {
+                  label: "Job Knowledge",
+                  value: submittedEval.jobKnowledge > 0 ? `${submittedEval.jobKnowledge}/5` : "—",
+                },
+                {
+                  label: "Dependability",
+                  value: submittedEval.dependability > 0 ? `${submittedEval.dependability}/5` : "—",
+                },
+                { label: "Overall average", value: `${evalAvg.toFixed(2)} / 5` },
+              ]
+            : [{ label: "Status", value: "No submitted evaluation" }],
+        },
+        {
+          heading: "4. Tools & Integration",
+          keyValue: [
+            { label: "Jibble", value: toolsConfig?.jibble ? "Connected" : "Not connected" },
+            { label: "Google Workspace", value: toolsConfig?.google ? "Connected" : "Not connected" },
+          ],
+        },
+        {
+          heading: "5. Sign-off",
+          paragraphs: [
+            { label: "Student signature", text: " " },
+            { label: "Supervisor signature", text: " " },
+            { label: "Coordinator signature", text: ` ` },
+            { label: "Date", text: " " },
+          ],
+        },
+      ],
+      footer:
+        "Practicum Evaluation Portal · Official Accreditation Document · Confidential",
+    });
+  };
 
   return (
     <>
@@ -368,6 +575,8 @@ export function StudentReports() {
         onOpenChange={setEvalPdfOpen}
         title="Evaluation Report"
         subtitle={`${student.name} · Term ${latestEval?.term ?? ""}`}
+        onDownloadPdf={buildEvaluationPdf}
+        downloadFilename={`evaluation-report-${student.studentNumber}.pdf`}
       >
         {latestEval ? (
           <EvaluationDocument
@@ -387,6 +596,8 @@ export function StudentReports() {
         onOpenChange={setJournalPdfOpen}
         title="Journal Compliance Report"
         subtitle={`${student.name} · ${approvedJournals.length} approved journals`}
+        onDownloadPdf={buildJournalPdf}
+        downloadFilename={`journal-report-${student.studentNumber}.pdf`}
       >
         <JournalReportDocument
           studentName={student.name}
@@ -405,6 +616,8 @@ export function StudentReports() {
         onOpenChange={setAccreditationOpen}
         title="Accreditation Document"
         subtitle={`${student.name} · ${student.studentNumber} · ${company?.name ?? ""}`}
+        onDownloadPdf={buildAccreditationPdf}
+        downloadFilename={`accreditation-document-${student.studentNumber}.pdf`}
       >
         <AccreditationDocument
           student={student}

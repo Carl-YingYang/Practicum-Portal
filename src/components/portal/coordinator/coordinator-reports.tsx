@@ -40,6 +40,7 @@ import {
   Timer,
 } from "lucide-react";
 import { toast } from "sonner";
+import { downloadPdfReport } from "@/lib/client-pdf";
 
 type ReportKind =
   | "all-evaluations"
@@ -93,6 +94,232 @@ export function CoordinatorReports() {
 
   const evalStudent = getStudent(students, evalStudentId);
   const journalStudent = getStudent(students, journalStudentId);
+
+  // ---------- Real PDF download builders ----------
+  const buildAllEvaluationsPdf = () => {
+    const submitted = evaluations
+      .filter((e) => e.status === "submitted")
+      .map((e) => {
+        const st = getStudent(students, e.studentId);
+        const sup = getSupervisor(supervisors, e.supervisorId);
+        const company = st ? getCompany(companies, st.companyId) : undefined;
+        return {
+          id: e.id,
+          studentName: st?.name ?? "Unknown",
+          studentNumber: st?.studentNumber ?? "",
+          supervisorName: sup?.name ?? "—",
+          companyName: company?.name ?? "—",
+          avg: averageScore(e),
+          date: e.submittedAt ?? e.createdAt,
+        };
+      })
+      .sort((a, b) => (a.date < b.date ? 1 : -1));
+    downloadPdfReport({
+      filename: "all-evaluations-bundle",
+      title: "All Evaluations — Cohort Bundle",
+      subtitle: `${submitted.length} submitted evaluations · Term 2024-2025`,
+      meta: [
+        { label: "Students", value: String(students.length) },
+        { label: "Submitted", value: String(submitted.length) },
+        { label: "Term", value: "2024-2025" },
+      ],
+      sections: [
+        {
+          table: {
+            head: ["Student", "Supervisor", "Company", "Avg", "Date"],
+            body: submitted.map((r) => [
+              `${r.studentName}\n${r.studentNumber}`,
+              r.supervisorName,
+              r.companyName,
+              r.avg > 0 ? r.avg.toFixed(2) : "—",
+              formatDate(r.date),
+            ]),
+            align: ["left", "left", "left", "center", "left"],
+          },
+        },
+      ],
+    });
+  };
+
+  const buildJournalCompliancePdf = () => {
+    const rows = students.map((s) => {
+      const sj = journalsForStudent(journals, s.id);
+      const sup = getSupervisor(supervisors, s.supervisorId);
+      const company = getCompany(companies, s.companyId);
+      return {
+        id: s.id,
+        name: s.name,
+        studentNumber: s.studentNumber,
+        companyName: company?.name ?? "—",
+        supervisorName: sup?.name ?? "—",
+        approved: sj.filter((j) => j.status === "approved").length,
+        pending: sj.filter((j) => j.status === "pending").length,
+        rejected: sj.filter((j) => j.status === "rejected").length,
+        draft: sj.filter((j) => j.status === "draft").length,
+        loggedHours: s.loggedHours,
+        requiredHours: s.requiredHours,
+      };
+    });
+    downloadPdfReport({
+      filename: "journal-compliance-report",
+      title: "Journal Compliance Report",
+      subtitle: `${students.length} students · Term 2024-2025`,
+      meta: [
+        { label: "Students", value: String(students.length) },
+        {
+          label: "Approved",
+          value: String(rows.reduce((s, r) => s + r.approved, 0)),
+        },
+        {
+          label: "Pending",
+          value: String(rows.reduce((s, r) => s + r.pending, 0)),
+        },
+      ],
+      sections: [
+        {
+          table: {
+            head: [
+              "Student",
+              "Supervisor",
+              "Appr",
+              "Pend",
+              "Rej",
+              "Draft",
+              "Hours",
+            ],
+            body: rows.map((r) => [
+              `${r.name}\n${r.studentNumber}`,
+              r.supervisorName,
+              r.approved,
+              r.pending,
+              r.rejected,
+              r.draft,
+              `${r.loggedHours}/${r.requiredHours}h`,
+            ]),
+            align: [
+              "left",
+              "left",
+              "center",
+              "center",
+              "center",
+              "center",
+              "center",
+            ],
+          },
+        },
+      ],
+    });
+  };
+
+  const buildPerStudentEvalPdf = () => {
+    if (!evalStudent) return;
+    const evals = evaluationsForStudent(evaluations, evalStudent.id);
+    const submitted = evals.find((e) => e.status === "submitted");
+    const avg = submitted ? averageScore(submitted) : 0;
+    const companyName = getCompany(companies, evalStudent.companyId)?.name ?? "—";
+    const supervisorName =
+      getSupervisor(supervisors, evalStudent.supervisorId)?.name ?? "—";
+    downloadPdfReport({
+      filename: `evaluation-${evalStudent.studentNumber}`,
+      title: `Evaluation Report — ${evalStudent.name}`,
+      subtitle: `${evalStudent.studentNumber} · ${evalStudent.course} · ${companyName} · Term 2024-2025`,
+      meta: [
+        { label: "Student No.", value: evalStudent.studentNumber },
+        { label: "Course", value: evalStudent.course },
+        { label: "Company", value: companyName },
+        { label: "Supervisor", value: supervisorName },
+        { label: "Submitted", value: submitted ? formatDate(submitted.submittedAt) : "—" },
+        { label: "Average", value: avg > 0 ? avg.toFixed(2) : "—" },
+      ],
+      sections: submitted
+        ? [
+            {
+              heading: "Criteria Scores",
+              table: {
+                head: ["Criterion", "Anchor", "Score"],
+                body: [
+                  [
+                    "Quality of Work",
+                    submitted.qualityOfWork > 0 ? RATING_ANCHORS[submitted.qualityOfWork] : "—",
+                    submitted.qualityOfWork > 0 ? `${submitted.qualityOfWork}/5` : "—",
+                  ],
+                  [
+                    "Job Knowledge",
+                    submitted.jobKnowledge > 0 ? RATING_ANCHORS[submitted.jobKnowledge] : "—",
+                    submitted.jobKnowledge > 0 ? `${submitted.jobKnowledge}/5` : "—",
+                  ],
+                  [
+                    "Dependability",
+                    submitted.dependability > 0 ? RATING_ANCHORS[submitted.dependability] : "—",
+                    submitted.dependability > 0 ? `${submitted.dependability}/5` : "—",
+                  ],
+                ],
+                foot: ["Overall Average", "", avg > 0 ? avg.toFixed(2) : "—"],
+                align: ["left", "left", "center"],
+              },
+            },
+            {
+              heading: "Supervisor Comments",
+              paragraphs: [
+                { label: "Strengths", text: submitted.strengths || "—" },
+                {
+                  label: "Areas for Improvement",
+                  text: submitted.weaknesses || "—",
+                },
+                { label: "Recommendations", text: submitted.recommendations || "—" },
+              ],
+            },
+          ]
+        : [
+            {
+              paragraphs: [
+                { text: "No submitted evaluation on record for this student." },
+              ],
+            },
+          ],
+    });
+  };
+
+  const buildPerStudentJournalPdf = () => {
+    if (!journalStudent) return;
+    const studentJournals = journalsForStudent(journals, journalStudent.id);
+    const companyName = getCompany(companies, journalStudent.companyId)?.name ?? "—";
+    const supervisorName =
+      getSupervisor(supervisors, journalStudent.supervisorId)?.name ?? "—";
+    downloadPdfReport({
+      filename: `journal-report-${journalStudent.studentNumber}`,
+      title: `Journal Report — ${journalStudent.name}`,
+      subtitle: `${journalStudent.studentNumber} · ${journalStudent.course} · ${companyName}`,
+      meta: [
+        { label: "Student No.", value: journalStudent.studentNumber },
+        { label: "Course", value: journalStudent.course },
+        { label: "Company", value: companyName },
+        { label: "Supervisor", value: supervisorName },
+        {
+          label: "Entries",
+          value: String(studentJournals.length),
+        },
+        {
+          label: "Hours",
+          value: `${journalStudent.loggedHours}/${journalStudent.requiredHours}h (${hoursPercent(journalStudent)}%)`,
+        },
+      ],
+      sections:
+        studentJournals.length === 0
+          ? [{ paragraphs: [{ text: "No journal entries on record." }] }]
+          : studentJournals.map((j) => ({
+              heading: `${weekLabel(j.date)} · ${formatDate(j.date)} · ${j.hours}h`,
+              keyValue: [{ label: "Status", value: j.status.toUpperCase() }],
+              paragraphs: [
+                { label: "Tasks", text: j.tasks || "—" },
+                { label: "Learnings", text: j.learnings || "—" },
+                ...(j.status === "rejected" && j.rejectionReason
+                  ? [{ label: "Rejection reason", text: j.rejectionReason }]
+                  : []),
+              ],
+            })),
+    });
+  };
 
   return (
     <div>
@@ -232,6 +459,8 @@ export function CoordinatorReports() {
         onOpenChange={(o) => !o && setActiveReport(null)}
         title="All Evaluations Bundle"
         subtitle="All submitted evaluations across the cohort"
+        onDownloadPdf={buildAllEvaluationsPdf}
+        downloadFilename="all-evaluations-bundle.pdf"
       >
         <AllEvaluationsPrintDoc
           students={students}
@@ -247,6 +476,8 @@ export function CoordinatorReports() {
         onOpenChange={(o) => !o && setActiveReport(null)}
         title="Journal Compliance Report"
         subtitle="Per-student journal status summary"
+        onDownloadPdf={buildJournalCompliancePdf}
+        downloadFilename="journal-compliance-report.pdf"
       >
         <JournalCompliancePrintDoc
           students={students}
@@ -262,6 +493,8 @@ export function CoordinatorReports() {
         onOpenChange={(o) => !o && setActiveReport(null)}
         title={`Evaluation — ${evalStudent?.name ?? ""}`}
         subtitle={evalStudent ? `${evalStudent.studentNumber} · Term 2024-2025` : ""}
+        onDownloadPdf={buildPerStudentEvalPdf}
+        downloadFilename={evalStudent ? `evaluation-${evalStudent.studentNumber}.pdf` : undefined}
       >
         {evalStudent && (
           <PerStudentEvalPrintDoc
@@ -281,6 +514,8 @@ export function CoordinatorReports() {
         onOpenChange={(o) => !o && setActiveReport(null)}
         title={`Journal Report — ${journalStudent?.name ?? ""}`}
         subtitle={journalStudent ? `${journalStudent.studentNumber}` : ""}
+        onDownloadPdf={buildPerStudentJournalPdf}
+        downloadFilename={journalStudent ? `journal-report-${journalStudent.studentNumber}.pdf` : undefined}
       >
         {journalStudent && (
           <PerStudentJournalPrintDoc

@@ -32,6 +32,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { RATING_ANCHORS } from "@/lib/types";
 import type { Student, Evaluation, Journal } from "@/lib/types";
+import { downloadPdfReport } from "@/lib/client-pdf";
 
 type ReportType = "evaluation-summary" | "journal-report" | "time-log-report";
 
@@ -95,6 +96,121 @@ export function SupervisorReports() {
       : openReport === "time-log-report"
       ? "Per-Intern Time Log Report"
       : "";
+
+  // ---------- Real PDF download builders ----------
+  const buildEvaluationSummaryPdf = () => {
+    downloadPdfReport({
+      filename: "evaluation-summary-all-interns",
+      title: "Evaluation Summary — All Interns",
+      subtitle: `${interns.length} interns · ${evalSummary.filter((r) => r.evaluation).length} evaluated · Term 2024-2025`,
+      meta: [
+        { label: "Interns", value: String(interns.length) },
+        {
+          label: "Evaluated",
+          value: String(evalSummary.filter((r) => r.evaluation).length),
+        },
+        { label: "Term", value: "2024-2025" },
+      ],
+      sections: [
+        {
+          table: {
+            head: [
+              "Intern",
+              "Student No.",
+              "Course",
+              "Company",
+              "Quality",
+              "Job Knwl.",
+              "Depend.",
+              "Avg",
+            ],
+            body: evalSummary.map(({ student, companyName, evaluation }) => [
+              student.name,
+              student.studentNumber,
+              student.course,
+              companyName ?? "—",
+              evaluation ? `${evaluation.qualityOfWork}/5` : "—",
+              evaluation ? `${evaluation.jobKnowledge}/5` : "—",
+              evaluation ? `${evaluation.dependability}/5` : "—",
+              evaluation ? averageScore(evaluation).toFixed(2) : "—",
+            ]),
+            align: [
+              "left",
+              "left",
+              "left",
+              "left",
+              "center",
+              "center",
+              "center",
+              "center",
+            ],
+          },
+          paragraphs: [
+            {
+              label: "Rating anchors",
+              text: "1 = Poor · 2 = Below Expectations · 3 = Meets Expectations · 4 = Exceeds · 5 = Outstanding",
+            },
+          ],
+        },
+      ],
+    });
+  };
+
+  const buildJournalReportPdf = () => {
+    downloadPdfReport({
+      filename: "per-intern-journal-report",
+      title: "Per-Intern Journal Report",
+      subtitle: `${interns.length} interns · ${journalReport.reduce((s, r) => s + r.approvedJournals.length, 0)} approved journals · Term 2024-2025`,
+      meta: [
+        { label: "Interns", value: String(interns.length) },
+        {
+          label: "Approved Journals",
+          value: String(
+            journalReport.reduce((s, r) => s + r.approvedJournals.length, 0),
+          ),
+        },
+        { label: "Term", value: "2024-2025" },
+      ],
+      sections: journalReport.map(
+        ({ student, companyName, approvedJournals, totalApprovedHours }) => ({
+          heading: `${student.name} · ${student.studentNumber}`,
+          keyValue: [
+            { label: "Course", value: student.course },
+            { label: "Company", value: companyName ?? "—" },
+            {
+              label: "Approved hours",
+              value: `${totalApprovedHours}h / ${student.requiredHours}h (${hoursPercent(student)}%)`,
+            },
+            {
+              label: "Remaining",
+              value: `${Math.max(0, student.requiredHours - totalApprovedHours)}h`,
+            },
+          ],
+          table:
+            approvedJournals.length > 0
+              ? {
+                  head: ["Date", "Week", "Hours"],
+                  body: approvedJournals.map((j) => [
+                    formatDate(j.date),
+                    weekLabel(j.date),
+                    `${j.hours}h`,
+                  ]),
+                  foot: [
+                    "Total",
+                    "",
+                    `${approvedJournals.reduce((s, j) => s + j.hours, 0)}h`,
+                  ],
+                  align: ["left", "left", "right"],
+                }
+              : undefined,
+          paragraphs:
+            approvedJournals.length === 0
+              ? [{ text: "No approved journals on file." }]
+              : undefined,
+        }),
+      ),
+    });
+  };
 
   return (
     <div>
@@ -245,7 +361,21 @@ export function SupervisorReports() {
         open={open}
         onOpenChange={(o) => !o && close()}
         title={reportTitle}
-        subtitle="Print-ready · Use the print dialog to save as PDF."
+        subtitle="Print-ready · Download a real PDF or print to paper."
+        onDownloadPdf={
+          openReport === "evaluation-summary"
+            ? buildEvaluationSummaryPdf
+            : openReport === "journal-report"
+              ? buildJournalReportPdf
+              : undefined
+        }
+        downloadFilename={
+          openReport === "evaluation-summary"
+            ? "evaluation-summary-all-interns.pdf"
+            : openReport === "journal-report"
+              ? "per-intern-journal-report.pdf"
+              : undefined
+        }
       >
         {openReport === "evaluation-summary" && (
           <EvaluationSummaryPrint

@@ -9,7 +9,7 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Printer, Download, Loader2 } from "lucide-react";
+import { Printer, Download, Loader2, Check } from "lucide-react";
 import { toast } from "sonner";
 
 interface PdfPreviewModalProps {
@@ -18,12 +18,25 @@ interface PdfPreviewModalProps {
   title: string;
   subtitle?: string;
   children: React.ReactNode;
+  /**
+   * Real PDF download handler. When provided, the "Download PDF" button
+   * calls this instead of falling back to `window.print()`. The parent
+   * typically builds a `PdfReportSpec` from the same data shown in the
+   * preview and calls `downloadPdfReport(spec)` — producing a real .pdf
+   * file that lands in the user's downloads folder.
+   */
+  onDownloadPdf?: () => void | Promise<void>;
+  /** Optional download filename hint (used in toast messages). */
+  downloadFilename?: string;
 }
 
 /**
- * Print-styled preview modal. "Download" simulates PDF generation then
- * opens the browser print dialog (wet signatures happen outside the system,
- * per blueprint — so on-screen review must match what prints).
+ * Print-styled preview modal. "Download PDF" produces a real downloadable
+ * .pdf file when `onDownloadPdf` is provided (preferred). "Print" opens the
+ * browser print dialog (for physical printing / save-as-PDF fallback).
+ *
+ * Wet signatures happen outside the system per blueprint — on-screen review
+ * matches what prints/downloads.
  */
 export function PdfPreviewModal({
   open,
@@ -31,19 +44,41 @@ export function PdfPreviewModal({
   title,
   subtitle,
   children,
+  onDownloadPdf,
+  downloadFilename,
 }: PdfPreviewModalProps) {
   const [preparing, setPreparing] = React.useState(false);
+  const [done, setDone] = React.useState(false);
 
-  const handleDownload = () => {
+  const handleDownload = async () => {
+    if (preparing) return;
     setPreparing(true);
-    setTimeout(() => {
-      setPreparing(false);
-      onOpenChange(false);
-      toast.success("PDF ready", {
-        description: "Opening print dialog…",
+    setDone(false);
+    try {
+      // Brief delay for UX realism (the PDF build itself is synchronous
+      // and near-instant for these report sizes).
+      await new Promise((r) => setTimeout(r, 350));
+      if (onDownloadPdf) {
+        await onDownloadPdf();
+      } else {
+        // Fallback: open the browser print dialog (legacy behaviour).
+        window.print();
+      }
+      setDone(true);
+      toast.success("PDF downloaded", {
+        description: downloadFilename
+          ? `${downloadFilename} saved to your downloads.`
+          : "Check your downloads folder.",
       });
-      setTimeout(() => window.print(), 200);
-    }, 900);
+      setTimeout(() => setDone(false), 2200);
+    } catch (err) {
+      console.error("[PdfPreviewModal] download failed", err);
+      toast.error("Couldn't generate the PDF", {
+        description: "Please try the Print button as a fallback.",
+      });
+    } finally {
+      setPreparing(false);
+    }
   };
 
   return (
@@ -60,7 +95,7 @@ export function PdfPreviewModal({
             {children}
           </div>
         </div>
-        <div className="flex items-center justify-end gap-2 border-t border-border px-5 py-3">
+        <div className="flex flex-wrap items-center justify-end gap-2 border-t border-border px-5 py-3">
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Close
           </Button>
@@ -71,10 +106,12 @@ export function PdfPreviewModal({
           <Button onClick={handleDownload} disabled={preparing}>
             {preparing ? (
               <Loader2 className="h-4 w-4 animate-spin" />
+            ) : done ? (
+              <Check className="h-4 w-4" />
             ) : (
               <Download className="h-4 w-4" />
             )}
-            {preparing ? "Preparing…" : "Download PDF"}
+            {preparing ? "Generating…" : done ? "Downloaded" : "Download PDF"}
           </Button>
         </div>
       </DialogContent>

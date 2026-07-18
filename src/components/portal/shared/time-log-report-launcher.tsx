@@ -14,8 +14,9 @@ import { TimeLogReportDocument } from "@/components/portal/shared/time-log-repor
 import { Button } from "@/components/ui/button";
 import { Calendar, FileDown, Timer } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { formatDuration } from "@/lib/selectors";
+import { formatDuration, formatDate, formatTime } from "@/lib/selectors";
 import type { StudentTimeReportRow } from "@/components/portal/shared/time-log-report-document";
+import { downloadPdfReport } from "@/lib/client-pdf";
 
 export type TimeLogRangeKey = "7d" | "30d" | "90d" | "term" | "all";
 
@@ -136,6 +137,94 @@ export function TimeLogReportLauncher({
 
   const rangeLabel =
     RANGE_OPTIONS.find((o) => o.key === range)?.label ?? "All time";
+
+  // ---------- Real PDF download builder ----------
+  const buildTimeLogPdf = () => {
+    // Helper: Monday-of-the-week key for a session date.
+    const weekOf = (iso: string) => {
+      const d = new Date(iso);
+      if (Number.isNaN(d.getTime())) return "";
+      const day = d.getDay();
+      const diff = day === 0 ? -6 : 1 - day;
+      const monday = new Date(d);
+      monday.setDate(d.getDate() + diff);
+      return monday.toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+      });
+    };
+
+    const safeFilename =
+      title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") ||
+      "time-log-report";
+
+    downloadPdfReport({
+      filename: `${safeFilename}-${range}`,
+      title,
+      subtitle: `${subtitle ? subtitle + " · " : ""}${rangeLabel} · ${filteredSessions} session${
+        filteredSessions === 1 ? "" : "s"
+      }`,
+      meta: effectiveStats,
+      sections: filteredRows.map((r) => {
+        const studentTotalMs = r.sessions.reduce(
+          (s, t) => s + (t.durationMs ?? 0),
+          0,
+        );
+        return {
+          heading: `${r.student.name} · ${r.student.studentNumber}`,
+          keyValue: [
+            { label: "Course", value: r.student.course },
+            { label: "Company", value: r.companyName ?? "—" },
+            { label: "Supervisor", value: r.supervisorName ?? "—" },
+            {
+              label: "Sessions",
+              value: String(r.sessions.length),
+            },
+            {
+              label: "Tracked",
+              value: formatDuration(studentTotalMs),
+            },
+            {
+              label: "Required",
+              value: `${r.student.requiredHours}h`,
+            },
+          ],
+          table:
+            r.sessions.length === 0
+              ? undefined
+              : {
+                  head: ["Date", "Week of", "Clock In", "Clock Out", "Duration"],
+                  body: r.sessions
+                    .slice()
+                    .sort(
+                      (a, b) =>
+                        new Date(a.clockInAt).getTime() -
+                        new Date(b.clockInAt).getTime(),
+                    )
+                    .map((t) => [
+                      formatDate(t.clockInAt),
+                      weekOf(t.clockInAt),
+                      formatTime(t.clockInAt),
+                      t.clockOutAt ? formatTime(t.clockOutAt) : "—",
+                      t.durationMs ? formatDuration(t.durationMs) : "—",
+                    ]),
+                  foot: [
+                    "Total",
+                    "",
+                    "",
+                    "",
+                    formatDuration(studentTotalMs),
+                  ],
+                  align: ["left", "left", "left", "left", "right"],
+                },
+          paragraphs:
+            r.sessions.length === 0
+              ? [{ text: "No sessions in this range." }]
+              : undefined,
+        };
+      }),
+    });
+  };
 
   return (
     <>
@@ -272,6 +361,8 @@ export function TimeLogReportLauncher({
         subtitle={`${subtitle ? subtitle + " · " : ""}${rangeLabel} · ${filteredSessions} session${
           filteredSessions === 1 ? "" : "s"
         }`}
+        onDownloadPdf={buildTimeLogPdf}
+        downloadFilename={`${title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")}-${range}.pdf`}
       >
         <TimeLogReportDocument
           title={title}
