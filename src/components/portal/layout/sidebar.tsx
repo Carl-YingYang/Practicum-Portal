@@ -16,6 +16,7 @@ import {
 import {
   GraduationCap,
   PanelLeftClose,
+  PanelLeftOpen,
   ChevronRight,
 } from "lucide-react";
 
@@ -112,44 +113,70 @@ export function Sidebar({ collapsed, onToggleCollapse }: SidebarProps) {
         collapsed ? "w-[68px]" : "w-[248px]"
       )}
     >
-      {/* Brand block — logo + shortName. The whole block toggles collapse;
-          school details are now surfaced via the dashboard's tappable
-          SchoolIdentityCard banner instead. */}
-      <button
-        onClick={onToggleCollapse}
-        className="group relative flex h-14 w-full shrink-0 items-center gap-2.5 border-b border-sidebar-border px-3.5 text-left transition-colors hover:bg-white/[0.04] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-primary/40"
-        aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-        title={collapsed ? schoolIdentity.name : "Toggle sidebar"}
-      >
-        <div className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-[5px] bg-white/15 ring-1 ring-white/20 transition-transform duration-200 group-hover:scale-[1.04]">
-          {hasLogo ? (
-            <img
-              src={schoolIdentity.logoDataUrl}
-              alt={`${schoolIdentity.name} logo`}
-              className="h-full w-full rounded-[5px] object-contain p-0.5"
-            />
-          ) : (
-            <GraduationCap className="h-[16px] w-[16px] text-sidebar-primary" strokeWidth={2.4} />
+      {/* Header — brand + dedicated toggle button.
+          Clean separation: the logo/name is display-only, the toggle is a
+          distinct, always-visible button (matches the minimal IDE-sidebar
+          pattern the user referenced). */}
+      <div className="shrink-0 border-b border-sidebar-border">
+        <div
+          className={cn(
+            "flex items-center gap-2.5",
+            collapsed ? "h-14 justify-center px-2" : "h-14 px-3.5"
+          )}
+        >
+          <div
+            className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-[5px] bg-white/15 ring-1 ring-white/20"
+            title={collapsed ? schoolIdentity.name : undefined}
+          >
+            {hasLogo ? (
+              <img
+                src={schoolIdentity.logoDataUrl}
+                alt={`${schoolIdentity.name} logo`}
+                className="h-full w-full rounded-[5px] object-contain p-0.5"
+              />
+            ) : (
+              <GraduationCap
+                className="h-[16px] w-[16px] text-sidebar-primary"
+                strokeWidth={2.4}
+              />
+            )}
+          </div>
+          {!collapsed && (
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-[14px] font-bold leading-tight tracking-[-0.01em] text-sidebar-foreground">
+                {schoolIdentity.shortName || schoolIdentity.name}
+              </p>
+              <p className="truncate text-[9.5px] font-semibold uppercase tracking-[0.12em] text-sidebar-foreground/40">
+                {schoolIdentity.tagline}
+              </p>
+            </div>
+          )}
+          {/* Toggle button — expanded state: sits at the right edge of the
+              header row, clearly distinct from the brand. */}
+          {!collapsed && (
+            <button
+              onClick={onToggleCollapse}
+              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-[5px] text-sidebar-foreground/50 transition-colors hover:bg-white/[0.08] hover:text-sidebar-foreground/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-primary/40"
+              aria-label="Collapse sidebar"
+              title="Collapse"
+            >
+              <PanelLeftClose className="h-[15px] w-[15px]" strokeWidth={2.2} />
+            </button>
           )}
         </div>
-        {!collapsed && (
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-[14px] font-bold leading-tight tracking-[-0.01em] text-sidebar-foreground">
-              {schoolIdentity.shortName || schoolIdentity.name}
-            </p>
-            <p className="truncate text-[9.5px] font-semibold uppercase tracking-[0.12em] text-sidebar-foreground/40">
-              {schoolIdentity.tagline}
-            </p>
-          </div>
+        {/* Toggle button — collapsed state: a dedicated full-width row below
+            the logo, so the expand affordance is always obvious. */}
+        {collapsed && (
+          <button
+            onClick={onToggleCollapse}
+            className="flex h-9 w-full items-center justify-center border-t border-sidebar-border/60 text-sidebar-foreground/50 transition-colors hover:bg-white/[0.06] hover:text-sidebar-foreground/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-primary/40"
+            aria-label="Expand sidebar"
+            title="Expand"
+          >
+            <PanelLeftOpen className="h-[15px] w-[15px]" strokeWidth={2.2} />
+          </button>
         )}
-        <PanelLeftClose
-          className={cn(
-            "h-[15px] w-[15px] shrink-0 text-sidebar-foreground/50 transition-transform hover:text-sidebar-foreground/80",
-            collapsed && "rotate-180"
-          )}
-          strokeWidth={2.2}
-        />
-      </button>
+      </div>
 
       {/* Grouped nav — section labels + crisper active states. */}
       <ScrollArea className="flex-1">
