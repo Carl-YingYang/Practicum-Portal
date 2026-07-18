@@ -22,6 +22,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { ClipboardCheck, Download, Printer } from "lucide-react";
 import { StarRating } from "@/components/portal/shared/star-rating";
+import { EvaluationRadar } from "@/components/portal/shared/evaluation-radar";
 import { toast } from "sonner";
 
 export function EvaluationView() {
@@ -59,6 +60,12 @@ export function EvaluationView() {
   const supervisor = getSupervisor(supervisors, evaluation.supervisorId);
   const avg = averageScore(evaluation);
   const isDraft = evaluation.status === "draft";
+
+  // Find prior evaluation for comparison radar (same student, earlier date).
+  const priorEvaluations = evaluationsForStudent(evaluations, student.id)
+    .filter((e) => e.id !== evaluation.id && e.status !== "draft")
+    .filter((e) => (e.submittedAt ?? e.createdAt) < (evaluation.submittedAt ?? evaluation.createdAt));
+  const previousEvaluation = priorEvaluations[0] ?? null;
 
   return (
     <>
@@ -104,6 +111,7 @@ export function EvaluationView() {
         course={student.course}
         companyName={company?.name}
         supervisorName={supervisor?.name}
+        previousEvaluation={previousEvaluation}
       />
 
       <PdfPreviewModal
@@ -132,6 +140,7 @@ interface EvaluationReportCardProps {
   course: string;
   companyName?: string;
   supervisorName?: string;
+  previousEvaluation?: Evaluation | null;
 }
 
 /**
@@ -145,6 +154,7 @@ export function EvaluationReportCard({
   course,
   companyName,
   supervisorName,
+  previousEvaluation,
 }: EvaluationReportCardProps) {
   const avg = averageScore(evaluation);
 
@@ -216,45 +226,81 @@ export function EvaluationReportCard({
 
         {/* Criteria scores */}
         <div>
-          <h3 className="mb-3 text-sm font-semibold text-foreground">
-            Criteria scores
-          </h3>
-          <div className="space-y-4">
-            {RATING_CRITERIA.map((c) => {
-              const score = evaluation[c.key];
-              return (
-                <div
-                  key={c.key}
-                  className="rounded-lg border border-border p-4"
-                >
-                  <div className="mb-2 flex items-center justify-between gap-3">
-                    <div>
-                      <p className="text-sm font-medium text-foreground">
-                        {c.label}
-                      </p>
-                      <p className="text-xs text-muted-foreground">{c.hint}</p>
+          <div className="mb-3 flex items-center justify-between">
+            <h3 className="text-sm font-semibold text-foreground">
+              Criteria scores
+            </h3>
+            {previousEvaluation && (
+              <span className="text-[11px] font-medium text-muted-foreground">
+                vs. previous term
+              </span>
+            )}
+          </div>
+          <div className="grid gap-4 lg:grid-cols-5">
+            <div className="lg:col-span-2">
+              <div className="rounded-lg border border-border bg-muted/20 p-3">
+                <EvaluationRadar
+                  evaluation={evaluation}
+                  comparison={previousEvaluation}
+                  height={240}
+                />
+              </div>
+            </div>
+            <div className="space-y-4 lg:col-span-3">
+              {RATING_CRITERIA.map((c) => {
+                const score = evaluation[c.key];
+                const prevScore = previousEvaluation?.[c.key];
+                const delta =
+                  prevScore != null && score > 0 && prevScore > 0
+                    ? score - prevScore
+                    : null;
+                return (
+                  <div
+                    key={c.key}
+                    className="rounded-lg border border-border p-4"
+                  >
+                    <div className="mb-2 flex items-center justify-between gap-3">
+                      <div>
+                        <p className="text-sm font-medium text-foreground">
+                          {c.label}
+                        </p>
+                        <p className="text-xs text-muted-foreground">{c.hint}</p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {score > 0 && (
+                          <div className="hidden sm:block">
+                            <StarRating value={score} size={13} showValue={false} />
+                          </div>
+                        )}
+                        <span className="text-xs text-muted-foreground">
+                          {RATING_ANCHORS[score] ?? "—"}
+                        </span>
+                        <ScoreBadge score={score} />
+                        {delta != null && delta !== 0 && (
+                          <span
+                            className={
+                              delta > 0
+                                ? "rounded bg-emerald-100 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300"
+                                : "rounded bg-red-100 px-1.5 py-0.5 text-[10px] font-semibold text-red-700 dark:bg-red-950/60 dark:text-red-300"
+                            }
+                            title={`Previous: ${prevScore}/5`}
+                          >
+                            {delta > 0 ? "+" : ""}
+                            {delta.toFixed(1)}
+                          </span>
+                        )}
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      {score > 0 && (
-                        <div className="hidden sm:block">
-                          <StarRating value={score} size={13} showValue={false} />
-                        </div>
-                      )}
-                      <span className="text-xs text-muted-foreground">
-                        {RATING_ANCHORS[score] ?? "—"}
-                      </span>
-                      <ScoreBadge score={score} />
-                    </div>
+                    {score > 0 && (
+                      <div className="mb-2 sm:hidden">
+                        <StarRating value={score} size={13} showValue={false} />
+                      </div>
+                    )}
+                    <ProgressBar value={(score / 5) * 100} />
                   </div>
-                  {score > 0 && (
-                    <div className="mb-2 sm:hidden">
-                      <StarRating value={score} size={13} showValue={false} />
-                    </div>
-                  )}
-                  <ProgressBar value={(score / 5) * 100} />
-                </div>
-              );
-            })}
+                );
+              })}
+            </div>
           </div>
         </div>
 

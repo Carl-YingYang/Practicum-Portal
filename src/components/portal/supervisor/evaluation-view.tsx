@@ -35,6 +35,7 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { RATING_CRITERIA, RATING_ANCHORS } from "@/lib/types";
 import { StarRating } from "@/components/portal/shared/star-rating";
+import { EvaluationRadar } from "@/components/portal/shared/evaluation-radar";
 
 export function EvaluationView() {
   const viewParams = useAppStore((s) => s.viewParams);
@@ -234,40 +235,47 @@ export function EvaluationView() {
       {/* Criteria */}
       <div className="mt-6">
         <SectionCard title="Criteria ratings" description="1–5 scale with anchor labels.">
-          <ul className="divide-y divide-border">
-            {RATING_CRITERIA.map((c) => {
-              const score = evaluation[c.key];
-              return (
-                <li
-                  key={c.key}
-                  className="flex flex-col gap-2 py-3 first:pt-0 last:pb-0 sm:flex-row sm:items-center sm:justify-between"
-                >
-                  <div className="min-w-0">
-                    <p className="text-sm font-semibold text-foreground">
-                      {c.label}
-                    </p>
-                    <p className="text-xs text-muted-foreground">{c.hint}</p>
-                    {score > 0 && (
-                      <div className="mt-1.5 sm:hidden">
-                        <StarRating value={score} size={14} showValue={false} />
-                      </div>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <span className="hidden rounded-md bg-muted px-2 py-0.5 text-xs text-muted-foreground sm:inline">
-                      {score > 0 ? RATING_ANCHORS[score] : "Not rated"}
-                    </span>
-                    {score > 0 && (
-                      <div className="hidden sm:block">
-                        <StarRating value={score} size={14} showValue={false} />
-                      </div>
-                    )}
-                    <ScoreBadge score={score} />
-                  </div>
-                </li>
-              );
-            })}
-          </ul>
+          <div className="grid gap-4 lg:grid-cols-5">
+            <div className="lg:col-span-2">
+              <div className="rounded-lg border border-border bg-muted/20 p-3">
+                <EvaluationRadar evaluation={evaluation} height={240} />
+              </div>
+            </div>
+            <ul className="divide-y divide-border lg:col-span-3">
+              {RATING_CRITERIA.map((c) => {
+                const score = evaluation[c.key];
+                return (
+                  <li
+                    key={c.key}
+                    className="flex flex-col gap-2 py-3 first:pt-0 last:pb-0 sm:flex-row sm:items-center sm:justify-between"
+                  >
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-foreground">
+                        {c.label}
+                      </p>
+                      <p className="text-xs text-muted-foreground">{c.hint}</p>
+                      {score > 0 && (
+                        <div className="mt-1.5 sm:hidden">
+                          <StarRating value={score} size={14} showValue={false} />
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <span className="hidden rounded-md bg-muted px-2 py-0.5 text-xs text-muted-foreground sm:inline">
+                        {score > 0 ? RATING_ANCHORS[score] : "Not rated"}
+                      </span>
+                      {score > 0 && (
+                        <div className="hidden sm:block">
+                          <StarRating value={score} size={14} showValue={false} />
+                        </div>
+                      )}
+                      <ScoreBadge score={score} />
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
         </SectionCard>
       </div>
 

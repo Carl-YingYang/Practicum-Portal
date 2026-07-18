@@ -25,6 +25,8 @@ import {
   TrendingUp,
   Play,
   Square,
+  FileSpreadsheet,
+  FileType2,
 } from "lucide-react";
 import {
   activeTimeLog,
@@ -42,6 +44,7 @@ import {
 } from "@/lib/selectors";
 import { ROLE_LABELS, type Role, type TimeLog } from "@/lib/types";
 import { toast } from "sonner";
+import { downloadCsv, downloadPdfReport } from "@/lib/client-pdf";
 import { cn } from "@/lib/utils";
 
 /** Hook that re-renders every `intervalMs` (default 1s) — used for the live timer. */
@@ -244,6 +247,93 @@ export function TimeClockView({ breadcrumb, description }: TimeClockViewProps) {
 
       {tab === "timesheet" ? (
         <div className="space-y-4">
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                const head = ["Date", "Clock In", "Clock Out", "Duration (hrs)", "Note"];
+                const body = allLogs.map((log) => {
+                  const start = new Date(log.clockInAt);
+                  const end = log.clockOutAt ? new Date(log.clockOutAt) : null;
+                  const durHrs =
+                    end != null
+                      ? ((end.getTime() - start.getTime()) / 3_600_000).toFixed(2)
+                      : "";
+                  return [
+                    start.toLocaleDateString("en-US"),
+                    formatTime(log.clockInAt),
+                    end ? formatTime(end.toISOString()) : "—",
+                    durHrs,
+                    log.note ?? "",
+                  ];
+                });
+                const file = downloadCsv(
+                  `timesheet-${new Date().toISOString().slice(0, 10)}`,
+                  head,
+                  body,
+                );
+                toast.success("Timesheet exported", {
+                  description: `${allLogs.length} session${allLogs.length === 1 ? "" : "s"} exported to ${file}`,
+                });
+              }}
+              disabled={allLogs.length === 0}
+            >
+              <FileSpreadsheet className="h-4 w-4" />
+              Export CSV
+            </Button>
+            <Button
+              size="sm"
+              onClick={() => {
+                const totalMs = totalCompletedTimeMs(allLogs);
+                const totalHrs = (totalMs / 3_600_000).toFixed(2);
+                const entityLabel = isStudent
+                  ? `${student?.name ?? "Student"} · ${student?.studentNumber ?? ""}`
+                  : `${roleLabel} time tracking`;
+                const file = downloadPdfReport({
+                  filename: `timesheet-${new Date().toISOString().slice(0, 10)}`,
+                  title: "Practicum Timesheet",
+                  subtitle: `${entityLabel} · Generated ${new Date().toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short" })}`,
+                  meta: [
+                    { label: "Total Sessions", value: String(allLogs.length) },
+                    { label: "Total Hours", value: `${totalHrs} h` },
+                    { label: "Period", value: `${new Date().toLocaleDateString("en-US", { month: "long", year: "numeric" })}` },
+                  ],
+                  sections: [
+                    {
+                      heading: "Clock-in / Clock-out Sessions",
+                      table: {
+                        head: ["Date", "Clock In", "Clock Out", "Duration", "Note"],
+                        body: allLogs.map((log) => {
+                          const start = new Date(log.clockInAt);
+                          const end = log.clockOutAt ? new Date(log.clockOutAt) : null;
+                          const durHrs =
+                            end != null
+                              ? `${((end.getTime() - start.getTime()) / 3_600_000).toFixed(2)} h`
+                              : "—";
+                          return [
+                            start.toLocaleDateString("en-US"),
+                            formatTime(log.clockInAt),
+                            end ? formatTime(end.toISOString()) : "—",
+                            durHrs,
+                            log.note ?? "—",
+                          ];
+                        }),
+                        foot: [["Total", "", "", `${totalHrs} h`, ""]],
+                      },
+                    },
+                  ],
+                });
+                toast.success("Timesheet PDF downloaded", {
+                  description: `${file} saved to your downloads`,
+                });
+              }}
+              disabled={allLogs.length === 0}
+            >
+              <FileType2 className="h-4 w-4" />
+              Export PDF
+            </Button>
+          </div>
           <JibbleTimesheetGrid
             sessions={allLogs}
             entityLabel={

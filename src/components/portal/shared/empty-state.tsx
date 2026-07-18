@@ -58,7 +58,7 @@ export function EmptyState({
     >
       <span
         className={cn(
-          "mb-4 flex items-center justify-center rounded-2xl",
+          "empty-halo mb-4 flex items-center justify-center rounded-2xl",
           compact ? "h-10 w-10" : "h-12 w-12",
           toneChip[tone]
         )}

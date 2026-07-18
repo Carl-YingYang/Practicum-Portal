@@ -21,6 +21,7 @@ import {
 } from "@/components/portal/shared/badges";
 import { Avatar } from "@/components/portal/shared/avatar";
 import { StarRating } from "@/components/portal/shared/star-rating";
+import { EvaluationRadar } from "@/components/portal/shared/evaluation-radar";
 import { Button } from "@/components/ui/button";
 import { AlertCircle, Download, FileText } from "lucide-react";
 import { toast } from "sonner";
@@ -128,35 +129,42 @@ export function EvaluationView({ evaluationId }: { evaluationId?: string }) {
             <h3 className="mb-2 text-sm font-semibold text-foreground">
               Performance Ratings
             </h3>
-            <div className="space-y-2">
-              {scores.map((s) => (
-                <div
-                  key={s.label}
-                  className="flex items-center justify-between rounded-md border border-border bg-muted/20 px-3 py-2"
-                >
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium text-foreground">{s.label}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {s.value > 0 ? RATING_ANCHORS[s.value] : "Not rated"}
-                    </p>
-                    {s.value > 0 && (
-                      <div className="mt-1.5 sm:hidden">
-                        <StarRating value={s.value} size={13} showValue={false} />
-                      </div>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-3">
-                    {s.value > 0 && (
-                      <div className="hidden sm:block">
-                        <StarRating value={s.value} size={14} showValue={false} />
-                      </div>
-                    )}
-                    <span className="font-mono text-sm font-semibold tabular-nums text-foreground">
-                      {s.value > 0 ? `${s.value}/5` : "—"}
-                    </span>
-                  </div>
+            <div className="grid gap-3 lg:grid-cols-5">
+              <div className="lg:col-span-2">
+                <div className="rounded-md border border-border bg-muted/20 p-3">
+                  <EvaluationRadar evaluation={evaluation} height={220} />
                 </div>
-              ))}
+              </div>
+              <div className="space-y-2 lg:col-span-3">
+                {scores.map((s) => (
+                  <div
+                    key={s.label}
+                    className="flex items-center justify-between rounded-md border border-border bg-muted/20 px-3 py-2"
+                  >
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-foreground">{s.label}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {s.value > 0 ? RATING_ANCHORS[s.value] : "Not rated"}
+                      </p>
+                      {s.value > 0 && (
+                        <div className="mt-1.5 sm:hidden">
+                          <StarRating value={s.value} size={13} showValue={false} />
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-3">
+                      {s.value > 0 && (
+                        <div className="hidden sm:block">
+                          <StarRating value={s.value} size={14} showValue={false} />
+                        </div>
+                      )}
+                      <span className="font-mono text-sm font-semibold tabular-nums text-foreground">
+                        {s.value > 0 ? `${s.value}/5` : "—"}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
 

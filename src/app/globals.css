@@ -883,3 +883,104 @@
 .hero-fade-in {
   animation: hero-fade-in 900ms ease-out forwards;
 }
+
+/* ============================================================
+   STYLING POLISH — micro-interactions & decorative accents
+   ============================================================ */
+
+/* Table row hover accent — subtle left border indicator */
+.row-accent {
+  position: relative;
+  transition: background-color 180ms var(--ease-calm);
+}
+.row-accent::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background-color: var(--primary);
+  transform: scaleY(0);
+  transform-origin: center;
+  transition: transform 220ms var(--ease-calm);
+}
+.row-accent:hover::before {
+  transform: scaleY(1);
+}
+
+/* Decorative section heading — small dot accent before the text */
+.heading-accent {
+  position: relative;
+  padding-left: 0.75rem;
+}
+.heading-accent::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 3px;
+  height: 70%;
+  background: linear-gradient(180deg, var(--primary), color-mix(in srgb, var(--primary) 50%, transparent));
+  border-radius: 2px;
+}
+
+/* Gradient surface tint — adds a subtle primary-tinted wash to a container */
+.gradient-tint {
+  background-image:
+    radial-gradient(ellipse at top left, color-mix(in srgb, var(--primary) 6%, transparent), transparent 50%),
+    radial-gradient(ellipse at bottom right, color-mix(in srgb, var(--primary) 4%, transparent), transparent 50%);
+}
+.dark .gradient-tint {
+  background-image:
+    radial-gradient(ellipse at top left, color-mix(in srgb, var(--primary) 14%, transparent), transparent 50%),
+    radial-gradient(ellipse at bottom right, color-mix(in srgb, var(--primary) 8%, transparent), transparent 50%);
+}
+
+/* Soft pulse animation for live indicators (e.g. active clock-in dot) */
+@keyframes portal-soft-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.55; transform: scale(0.85); }
+}
+.dot-pulse {
+  animation: portal-soft-pulse 1.8s var(--ease-calm) infinite;
+}
+
+/* Subtle entrance animation for list items — staggered reveal */
+@keyframes portal-item-rise {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.item-rise {
+  animation: portal-item-rise 320ms var(--ease-calm) backwards;
+}
+
+/* Empty state illustration accent — gentle gradient halo behind the icon */
+.empty-halo {
+  position: relative;
+}
+.empty-halo::before {
+  content: "";
+  position: absolute;
+  inset: -20% -10%;
+  background: radial-gradient(circle at center, color-mix(in srgb, var(--primary) 10%, transparent), transparent 65%);
+  filter: blur(12px);
+  z-index: -1;
+  pointer-events: none;
+}
+
+/* Stat number — gradient text for emphasis */
+.stat-number-gradient {
+  background: linear-gradient(135deg, var(--foreground), color-mix(in srgb, var(--primary) 70%, var(--foreground)));
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+}
+
+/* Subtle gradient divider */
+.gradient-divider {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--primary) 35%, var(--border)), transparent);
+}

@@ -8,6 +8,7 @@ import {
   EvaluationStatusBadge,
   ScoreBadge,
 } from "@/components/portal/shared/badges";
+import { StarRating } from "@/components/portal/shared/star-rating";
 import { useAppStore } from "@/store/use-app-store";
 import {
   averageScore,
@@ -71,7 +72,17 @@ export function EvaluationsList() {
     {
       key: "average",
       header: "Average",
-      cell: (e) => <ScoreBadge score={averageScore(e)} />,
+      cell: (e) => {
+        const score = averageScore(e);
+        return (
+          <div className="flex items-center justify-center gap-2">
+            <span className="hidden md:inline">
+              <StarRating value={score} size={12} showValue={false} animate={false} />
+            </span>
+            <ScoreBadge score={score} />
+          </div>
+        );
+      },
       align: "center",
       sortValue: (e) => averageScore(e),
     },
@@ -136,7 +147,10 @@ export function EvaluationsList() {
                   <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
                     Average
                   </span>
-                  <ScoreBadge score={score} />
+                  <div className="flex items-center gap-2">
+                    <StarRating value={score} size={11} showValue={false} animate={false} />
+                    <ScoreBadge score={score} />
+                  </div>
                 </div>
                 <div
                   className={cn(

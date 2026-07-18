@@ -260,7 +260,7 @@ export function DataTable<T>({
                   key={getRowId(row)}
                   onClick={() => onRowClick?.(row)}
                   className={cn(
-                    "h-[56px] border-border/70 transition-colors",
+                    "row-accent h-[56px] border-border/70 transition-colors",
                     onRowClick && "cursor-pointer hover:bg-muted/50",
                     accent === "amber" &&
                       "bg-amber-50/40 dark:bg-amber-950/15",

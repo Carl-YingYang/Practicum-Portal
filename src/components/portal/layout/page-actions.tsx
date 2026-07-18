@@ -20,6 +20,7 @@ import {
   LogOut,
   UserCircle,
   ChevronDown,
+  Search,
 } from "lucide-react";
 import { useTheme } from "next-themes";
 import { ROLE_LABELS } from "@/lib/types";
@@ -28,6 +29,7 @@ import { NotificationsDropdown } from "./notifications-dropdown";
 
 interface PageActionsProps {
   onOpenMobileNav: () => void;
+  onOpenPalette?: () => void;
 }
 
 /**
@@ -42,7 +44,7 @@ interface PageActionsProps {
  *   - Subtle backdrop-blur container keeps buttons legible over any content.
  *   - No page title/breadcrumb here — each page renders its own PageHeader.
  */
-export function PageActions({ onOpenMobileNav }: PageActionsProps) {
+export function PageActions({ onOpenMobileNav, onOpenPalette }: PageActionsProps) {
   const currentUser = useAppStore((s) => s.currentUser);
   const navigate = useAppStore((s) => s.navigate);
   const logout = useAppStore((s) => s.logout);
@@ -66,6 +68,23 @@ export function PageActions({ onOpenMobileNav }: PageActionsProps) {
         >
           <Menu className="h-[17px] w-[17px]" strokeWidth={2.2} />
         </Button>
+
+        {/* Command palette / search trigger (desktop only) */}
+        {onOpenPalette && (
+          <button
+            type="button"
+            onClick={onOpenPalette}
+            className="hidden h-8 items-center gap-2 rounded-full px-3 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground md:flex"
+            aria-label="Open command palette"
+            title="Search pages and actions (Ctrl+K)"
+          >
+            <Search className="h-3.5 w-3.5" strokeWidth={2.2} />
+            <span>Search…</span>
+            <kbd className="ml-1 rounded border border-border/80 bg-muted/60 px-1.5 py-0.5 font-mono text-[10px] font-semibold text-muted-foreground">
+              ⌘K
+            </kbd>
+          </button>
+        )}
 
         {/* Notifications */}
         <div className="relative flex items-center">

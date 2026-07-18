@@ -5,6 +5,7 @@ import { Sidebar, MobileSidebar } from "./sidebar";
 import { PageActions } from "./page-actions";
 import { BottomTabBar } from "./bottom-tab-bar";
 import { ActiveSessionBanner } from "@/components/portal/shared/active-session-banner";
+import { CommandPalette } from "@/components/portal/shared/command-palette";
 import { useAppStore } from "@/store/use-app-store";
 
 interface AppShellProps {
@@ -21,10 +22,14 @@ interface AppShellProps {
  *
  * The bottom tab bar replaces reliance on the hamburger drawer for primary
  * navigation on mobile — it's thumb-reachable and always visible.
+ *
+ * A global Cmd/Ctrl+K command palette is mounted here for quick navigation
+ * from any view.
  */
 export function AppShell({ children }: AppShellProps) {
   const [collapsed, setCollapsed] = React.useState(false);
   const [mobileNavOpen, setMobileNavOpen] = React.useState(false);
+  const [paletteOpen, setPaletteOpen] = React.useState(false);
   const view = useAppStore((s) => s.view);
 
   // Scroll to top on view change — native-app feel for mobile navigation.
@@ -40,6 +45,18 @@ export function AppShell({ children }: AppShellProps) {
   React.useEffect(() => {
     localStorage.setItem("portal-sidebar-collapsed", collapsed ? "1" : "0");
   }, [collapsed]);
+
+  // Global Cmd/Ctrl+K shortcut → open command palette.
+  React.useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        setPaletteOpen((o) => !o);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
 
   return (
     <div className="flex min-h-screen bg-background">
@@ -60,7 +77,10 @@ export function AppShell({ children }: AppShellProps) {
         {/* Floating page actions — merged into the page, no separate header bar.
             Sticky top-right pill with backdrop blur. Contains only the essential
             controls: mobile nav, notifications, theme, account. */}
-        <PageActions onOpenMobileNav={() => setMobileNavOpen(true)} />
+        <PageActions
+          onOpenMobileNav={() => setMobileNavOpen(true)}
+          onOpenPalette={() => setPaletteOpen(true)}
+        />
         <ActiveSessionBanner />
         {/*
           Content rhythm. On mobile we add bottom padding equal to the tab bar
@@ -97,6 +117,9 @@ export function AppShell({ children }: AppShellProps) {
 
       {/* Mobile primary navigation — sticky bottom tab bar (<lg only). */}
       <BottomTabBar />
+
+      {/* Global Cmd/Ctrl+K command palette */}
+      <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} />
     </div>
   );
 }
