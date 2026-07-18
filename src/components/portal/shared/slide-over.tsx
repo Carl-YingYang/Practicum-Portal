@@ -47,27 +47,29 @@ export function SlideOver({
 }: SlideOverProps) {
   const widthCls =
     width === "wide"
-      ? "sm:max-w-[832px] w-full sm:w-[832px]"
-      : "sm:max-w-[640px] w-full sm:w-[640px]";
+      ? "sm:max-w-[832px] sm:w-[832px]"
+      : "sm:max-w-[640px] sm:w-[640px]";
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
         side="right"
         className={cn(
-          "gap-0 p-0 sm:max-w-none",
-          widthCls
+          "flex flex-col gap-0 p-0", // Base structure
+          // Mobile overrides: Force 100% full screen, remove borders, hide default X button
+          "w-full !max-w-full h-[100dvh] border-0 rounded-none sm:border-l [&>button.absolute]:hidden sm:[&>button.absolute]:flex",
+          widthCls // Desktop responsive widths
         )}
       >
         {/* Header */}
-        <div className="flex items-start justify-between gap-3 border-b border-border/60 px-5 py-4 pr-12">
+        <div className="flex items-start justify-between gap-3 border-b border-border/60 bg-background px-4 py-3 sm:px-5 sm:py-4 sm:pr-12">
           <div className="min-w-0 flex-1">
             {eyebrow && (
               <div className="mb-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
                 {eyebrow}
               </div>
             )}
-            <SheetHeader className="space-y-1 p-0">
+            <SheetHeader className="space-y-1 p-0 text-left">
               <SheetTitle className="truncate text-base font-semibold leading-tight">
                 {title}
               </SheetTitle>
@@ -84,11 +86,13 @@ export function SlideOver({
         </div>
 
         {/* Body — scrollable */}
-        <div className="flex-1 overflow-y-auto px-5 py-4">{children}</div>
+        <div className="flex-1 overflow-y-auto bg-background px-4 py-4 sm:px-5">
+          {children}
+        </div>
 
         {/* Optional sticky footer */}
         {footer && (
-          <div className="border-t border-border/60 bg-muted/30 px-5 py-3">
+          <div className="border-t border-border/60 bg-muted/30 px-4 py-3 sm:px-5 pb-safe">
             {footer}
           </div>
         )}

@@ -29,19 +29,12 @@ import {
   GraduationCap,
   FileText,
   MessageSquare,
+  ArrowLeft, // Dinagdag natin ang ArrowLeft para sa mobile back button
 } from "lucide-react";
 import { portalUsers } from "@/lib/mock-data";
 import { type FormSubmission, FORM_CATEGORY_LABELS, type FormSubmissionStatus } from "@/lib/types";
 import { format, formatDistanceToNow } from "date-fns";
 
-/**
- * SubmissionReviewSlideOver — the coordinator's focused review workspace.
- * Shows the submitter's identity, the form's filled-in responses (read-only),
- * the review timeline, and the approve / request-revision actions.
- *
- * Opened from the coordinator's Submissions queue. Stays on the same page —
- * no navigation — so the coordinator can move through submissions quickly.
- */
 export function SubmissionReviewSlideOver({
   open,
   onOpenChange,
@@ -144,7 +137,7 @@ export function SubmissionReviewSlideOver({
               <DropdownMenuItem onClick={handleDownload}>
                 <Download className="mr-2 h-3.5 w-3.5" /> Export PDF
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={handlePrint}>
+              <DropdownMenuItem onClick={handlePrint} className="sm:hidden">
                 <Printer className="mr-2 h-3.5 w-3.5" /> Print
               </DropdownMenuItem>
             </DropdownMenuContent>
@@ -153,11 +146,11 @@ export function SubmissionReviewSlideOver({
       }
       footer={
         isPendingReview ? (
-          <div className="space-y-2.5">
+          <div className="space-y-4">
             {decision && (
-              <div className="space-y-1.5">
-                <Label htmlFor="sr-note" className="text-[12px]">
-                  {decision === "approve" ? "Approval note (optional)" : "Revision note"}
+              <div className="space-y-2">
+                <Label htmlFor="sr-note" className="text-[12px] font-semibold text-foreground">
+                  {decision === "approve" ? "Approval note (optional)" : "Revision note (required)"}
                 </Label>
                 <Textarea
                   id="sr-note"
@@ -168,28 +161,31 @@ export function SubmissionReviewSlideOver({
                       ? "Add a brief note for the submitter (optional)."
                       : "Explain what needs to be revised. The submitter will see this note."
                   }
-                  rows={2}
-                  className="text-[13px]"
+                  rows={3}
+                  className="text-[13px] resize-none"
                 />
               </div>
             )}
-            <div className="flex items-center justify-end gap-2">
+
+            {/* Ginawang flex-col-reverse sa mobile para mag stack ang buttons at full-width */}
+            <div className="flex flex-col-reverse gap-2 sm:flex-row sm:items-center sm:justify-end">
               {decision ? (
                 <>
-                  <Button variant="ghost" size="sm" onClick={() => setDecision(null)}>
+                  <Button variant="ghost" size="sm" className="w-full sm:w-auto" onClick={() => setDecision(null)}>
                     Cancel
                   </Button>
                   <Button
                     size="sm"
                     onClick={handleConfirm}
+                    disabled={decision === "request_revision" && !reviewNote.trim()}
                     className={cn(
-                      "gap-1.5",
+                      "w-full sm:w-auto gap-1.5",
                       decision === "approve"
                         ? "bg-emerald-600 hover:bg-emerald-700"
-                        : "bg-amber-600 hover:bg-amber-700"
+                        : "bg-amber-600 hover:bg-amber-700 text-white"
                     )}
                   >
-                    <CheckCircle2 className="h-3.5 w-3.5" />
+                    <CheckCircle2 className="h-4 w-4" />
                     Confirm {decision === "approve" ? "approval" : "revision request"}
                   </Button>
                 </>
@@ -199,76 +195,93 @@ export function SubmissionReviewSlideOver({
                     variant="outline"
                     size="sm"
                     onClick={() => setDecision("request_revision")}
-                    className="gap-1.5 border-amber-300 text-amber-700 hover:bg-amber-50 hover:text-amber-800 dark:border-amber-900/60 dark:text-amber-400 dark:hover:bg-amber-950/40"
+                    className="w-full sm:w-auto gap-1.5 border-amber-300 text-amber-700 hover:bg-amber-50 hover:text-amber-800 dark:border-amber-900/60 dark:text-amber-400 dark:hover:bg-amber-950/40"
                   >
-                    <RotateCcw className="h-3.5 w-3.5" /> Request revision
+                    <RotateCcw className="h-4 w-4" /> Request revision
                   </Button>
                   <Button
                     size="sm"
                     onClick={() => setDecision("approve")}
-                    className="gap-1.5 bg-emerald-600 hover:bg-emerald-700"
+                    className="w-full sm:w-auto gap-1.5 bg-emerald-600 hover:bg-emerald-700"
                   >
-                    <CheckCircle2 className="h-3.5 w-3.5" /> Approve
+                    <CheckCircle2 className="h-4 w-4" /> Approve
                   </Button>
                 </>
               )}
             </div>
           </div>
         ) : isReviewed ? (
-          <div className="flex items-center justify-between gap-2 text-[12px]">
-            <span className="text-muted-foreground">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-[12px]">
+            <span className="text-muted-foreground text-center sm:text-left">
               {submission.status === "approved" ? "Approved" : "Sent back for revision"} · {updatedRel}
             </span>
             {isReviewed && (
               <Button
-                variant="ghost"
+                variant="outline"
                 size="sm"
                 onClick={() => setDecision(submission.status === "approved" ? "request_revision" : "approve")}
-                className="gap-1.5 text-muted-foreground"
+                className="w-full sm:w-auto gap-1.5"
               >
                 <RotateCcw className="h-3.5 w-3.5" /> Reopen review
               </Button>
             )}
           </div>
         ) : (
-          <div className="flex items-center gap-2 text-[12px] text-muted-foreground">
-            <Clock className="h-3.5 w-3.5" />
-            {submission.status === "in_progress"
-              ? "This response is still being drafted by the submitter — not ready for review."
-              : "Awaiting the submitter to start."}
+          <div className="flex flex-col sm:flex-row items-center gap-2 text-[12px] text-muted-foreground justify-center sm:justify-start">
+            <Clock className="h-4 w-4" />
+            <span className="text-center sm:text-left">
+              {submission.status === "in_progress"
+                ? "This response is still being drafted by the submitter — not ready for review."
+                : "Awaiting the submitter to start."}
+            </span>
           </div>
         )
       }
     >
       <div className="space-y-4">
+
+        {/* Mobile Back Button (Visible lang sa small screens) */}
+        <div className="sm:hidden mb-2 -mt-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="-ml-3 h-8 gap-1.5 text-muted-foreground"
+            onClick={() => onOpenChange(false)}
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Back to Reviews
+          </Button>
+        </div>
+
         {/* Submitter + target context card */}
-        <div className="rounded-lg border border-border/60 bg-card p-3.5">
-          <div className="flex items-start gap-3">
+        <div className="rounded-xl border border-border/60 bg-card p-4 shadow-sm">
+          <div className="flex items-start gap-3.5">
             <Avatar
               name={submitter?.name ?? "?"}
               size="md"
               color={submitter?.avatarColor ?? "#64748b"}
             />
             <div className="min-w-0 flex-1">
-              <div className="flex flex-wrap items-center gap-1.5">
-                <span className="text-[13px] font-semibold text-foreground">{submitter?.name ?? "Unknown"}</span>
+              <div className="flex flex-col sm:flex-row sm:items-center gap-1.5 sm:gap-2">
+                <span className="text-[14px] font-semibold text-foreground">{submitter?.name ?? "Unknown"}</span>
                 <SubmissionStatusBadge status={submission.status} withIcon />
               </div>
-              <div className="mt-0.5 text-[11px] text-muted-foreground">
+              <div className="mt-1 text-[12px] text-muted-foreground">
                 {submitter?.email}
               </div>
               {targetStudent && (
-                <div className="mt-2 flex items-center gap-1.5 rounded-md bg-muted/40 px-2 py-1 text-[11px] text-muted-foreground">
-                  <GraduationCap className="h-3 w-3" />
-                  Evaluating: <span className="font-medium text-foreground">{targetStudent.name}</span>
-                  <span className="text-muted-foreground/70">· {targetStudent.studentNumber}</span>
+                <div className="mt-3 flex flex-wrap items-center gap-1.5 rounded-lg bg-muted/40 px-2.5 py-1.5 text-[12px] text-muted-foreground border border-border/40">
+                  <GraduationCap className="h-3.5 w-3.5" />
+                  <span>Evaluating:</span>
+                  <span className="font-medium text-foreground">{targetStudent.name}</span>
+                  <span className="hidden sm:inline text-muted-foreground/70">· {targetStudent.studentNumber}</span>
                 </div>
               )}
             </div>
           </div>
 
           {/* Timeline */}
-          <div className="mt-3 grid grid-cols-1 gap-1.5 border-t border-border/50 pt-3 text-[11px] sm:grid-cols-2">
+          <div className="mt-4 grid grid-cols-1 gap-2 border-t border-border/50 pt-4 text-[12px] sm:grid-cols-2">
             <TimelineItem
               icon={Calendar}
               label="Started"
@@ -287,27 +300,27 @@ export function SubmissionReviewSlideOver({
               />
             )}
             {submission.reviewNote && (
-              <div className="sm:col-span-2 mt-1 rounded-md bg-amber-50 px-2.5 py-1.5 text-[11px] text-amber-900 ring-1 ring-inset ring-amber-200/70 dark:bg-amber-950/40 dark:text-amber-200 dark:ring-amber-900/50">
-                <div className="flex items-center gap-1 font-medium">
-                  <MessageSquare className="h-3 w-3" /> Reviewer note
+              <div className="sm:col-span-2 mt-2 rounded-lg bg-amber-50 px-3 py-2.5 text-[12px] text-amber-900 ring-1 ring-inset ring-amber-200/70 dark:bg-amber-950/40 dark:text-amber-200 dark:ring-amber-900/50">
+                <div className="flex items-center gap-1.5 font-semibold mb-1">
+                  <MessageSquare className="h-3.5 w-3.5" /> Reviewer note
                 </div>
-                <div className="mt-0.5">{submission.reviewNote}</div>
+                <div className="leading-relaxed opacity-90">{submission.reviewNote}</div>
               </div>
             )}
           </div>
         </div>
 
         {/* Filled-in form responses */}
-        <div>
-          <h3 className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-            Responses
+        <div className="pt-2">
+          <h3 className="mb-3 text-[12px] font-semibold uppercase tracking-[0.05em] text-muted-foreground">
+            Form Responses
           </h3>
           {form.blocks.length === 0 ? (
-            <div className="rounded-md border border-dashed border-border/70 px-4 py-6 text-center text-[12px] text-muted-foreground">
+            <div className="rounded-xl border border-dashed border-border/70 px-4 py-8 text-center text-[13px] text-muted-foreground bg-muted/20">
               This form has no blocks.
             </div>
           ) : (
-            <div className="space-y-3 rounded-lg border border-border/60 bg-card p-4">
+            <div className="space-y-4 rounded-xl border border-border/60 bg-card p-4 sm:p-5 shadow-sm">
               {form.blocks.map((b) => (
                 <FormBlockRenderer
                   key={b.id}
@@ -334,8 +347,8 @@ function TimelineItem({
   value: string;
 }) {
   return (
-    <div className="flex items-center gap-1.5">
-      <Icon className="h-3 w-3 text-muted-foreground" />
+    <div className="flex items-center gap-2">
+      <Icon className="h-3.5 w-3.5 text-muted-foreground" />
       <span className="text-muted-foreground">{label}:</span>
       <span className="font-medium text-foreground">{value}</span>
     </div>
