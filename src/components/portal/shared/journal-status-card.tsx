@@ -159,37 +159,42 @@ export function JournalStatusCard({
             </span>
           </div>
 
-          {/* ---- Row 2: inline actions (single row, no stacking) ---- */}
+          {/* ---- Row 2: inline actions (single row, no stacking) ----
+              On mobile, buttons are icon-only to fit 3 actions + doc icon
+              in a narrow card. On sm+, full text labels appear. */}
           {!returning ? (
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center justify-center gap-1.5">
               <Button
                 onClick={() => setReading(true)}
                 variant="ghost"
                 size="sm"
-                className="h-8 flex-1"
+                className="h-8 min-w-0 flex-1 gap-1 px-1 sm:px-3"
                 type="button"
+                title="Read journal"
               >
-                <Eye className="h-3.5 w-3.5" />
-                Read
+                <Eye className="h-3.5 w-3.5 shrink-0" />
+                <span className="hidden sm:inline">Read</span>
               </Button>
               <Button
                 onClick={handleApprove}
                 size="sm"
-                className="h-8 flex-1"
+                className="h-8 min-w-0 flex-1 gap-1 px-1 sm:px-3"
                 type="button"
+                title="Approve journal"
               >
-                <Check className="h-3.5 w-3.5" />
-                Approve
+                <Check className="h-3.5 w-3.5 shrink-0" />
+                <span className="hidden sm:inline">Approve</span>
               </Button>
               <Button
                 onClick={() => setReturning(true)}
                 variant="outline"
                 size="sm"
-                className="h-8 flex-1"
+                className="h-8 min-w-0 flex-1 gap-1 px-1 sm:px-3"
                 type="button"
+                title="Return journal"
               >
-                <RotateCcw className="h-3.5 w-3.5" />
-                Return
+                <RotateCcw className="h-3.5 w-3.5 shrink-0" />
+                <span className="hidden sm:inline">Return</span>
               </Button>
               {/* Compact doc link — icon-only button on the far right.
                   Keeps the action row balanced whether or not a Doc URL

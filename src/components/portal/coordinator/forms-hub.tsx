@@ -512,7 +512,7 @@ export function FormsHub() {
               />
             </SectionCard>
           ) : (
-            <div className="grid gap-2.5 lg:grid-cols-2">
+            <div className="grid min-w-0 gap-2.5 lg:grid-cols-2">
               {assignments.map((a) => {
                 const form = forms.find((f) => f.id === a.formId);
                 if (!form) return null;
@@ -525,7 +525,7 @@ export function FormsHub() {
                 const dueInDays = a.dueDate ? differenceInDays(new Date(a.dueDate), new Date()) : null;
                 const overdue = dueInDays !== null && dueInDays < 0;
                 return (
-                  <div key={a.id} className="flex flex-col gap-2 rounded-lg border border-border/60 bg-card p-4">
+                  <div key={a.id} className="flex min-w-0 flex-col gap-2 overflow-hidden rounded-lg border border-border/60 bg-card p-4">
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0 flex-1">
                         <div className="flex flex-wrap items-center gap-1.5">
@@ -534,7 +534,7 @@ export function FormsHub() {
                             {FORM_CATEGORY_LABELS[form.category]}
                           </span>
                         </div>
-                        <h3 className="mt-1.5 truncate text-[14px] font-semibold text-foreground">{form.title}</h3>
+                        <h3 className="mt-1.5 line-clamp-2 text-[14px] font-semibold text-foreground">{form.title}</h3>
                       </div>
                       <Button
                         variant="ghost"
@@ -574,7 +574,7 @@ export function FormsHub() {
 
                     {/* Response progress bar */}
                     <div className="rounded-md bg-muted/30 px-2.5 py-2">
-                      <div className="flex items-center justify-between text-[11px]">
+                      <div className="flex flex-wrap items-center justify-between gap-y-1 text-[11px]">
                         <span className="font-medium text-foreground">
                           {stats.submitted} / {stats.assigned} submitted
                         </span>
@@ -696,7 +696,7 @@ function FormCard({
               <span className="text-[11px] text-muted-foreground">v{form.version}</span>
             )}
           </div>
-          <h3 className="mt-1.5 truncate text-[14.5px] font-semibold text-foreground">
+          <h3 className="mt-1.5 line-clamp-2 text-[14.5px] font-semibold text-foreground">
             {form.title}
           </h3>
           {form.description && (

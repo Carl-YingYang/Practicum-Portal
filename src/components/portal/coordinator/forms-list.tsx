@@ -371,7 +371,7 @@ function FormCard({
               <span className="text-[11px] text-muted-foreground">v{form.version}</span>
             )}
           </div>
-          <h3 className="mt-1.5 truncate text-[14.5px] font-semibold text-foreground">
+          <h3 className="mt-1.5 line-clamp-2 text-[14.5px] font-semibold text-foreground">
             {form.title}
           </h3>
           {form.description && (

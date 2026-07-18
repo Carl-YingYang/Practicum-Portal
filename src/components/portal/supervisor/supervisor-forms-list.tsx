@@ -120,7 +120,7 @@ export function SupervisorFormsList() {
                 {FORM_CATEGORY_LABELS[cat]}
                 <span className="ml-1.5 text-muted-foreground">({items.length})</span>
               </h2>
-              <div className="grid gap-3 lg:grid-cols-2">
+              <div className="grid min-w-0 gap-3 lg:grid-cols-2">
                 {items.map((f) => (
                   <SupervisorFormCard key={f.id} form={f} onOpen={() => navigate("supervisor.form-view", { formId: f.id })} />
                 ))}
@@ -140,11 +140,11 @@ function SupervisorFormCard({ form, onOpen }: { form: FormDocument; onOpen: () =
     <button
       type="button"
       onClick={onOpen}
-      className="group flex w-full flex-col gap-3 rounded-2xl border border-border/60 bg-card p-5 text-left transition-all hover:border-border hover:shadow-sm active:scale-[0.99]"
+      className="group flex min-w-0 w-full flex-col gap-3 overflow-hidden rounded-2xl border border-border/60 bg-card p-5 text-left transition-all hover:border-border hover:shadow-sm active:scale-[0.99]"
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
-          <h3 className="truncate text-sm font-semibold text-foreground">
+          <h3 className="line-clamp-2 text-sm font-semibold text-foreground">
             {form.title}
           </h3>
           {form.description && (
