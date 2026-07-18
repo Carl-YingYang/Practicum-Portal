@@ -50,8 +50,10 @@ import {
   UserX,
   Users,
   UserCog,
+  FileSpreadsheet,
 } from "lucide-react";
 import { toast } from "sonner";
+import { downloadCsv } from "@/lib/client-pdf";
 
 const COURSES = ["BSIT", "BSCS", "BSIS"];
 
@@ -147,6 +149,50 @@ export function StudentsList() {
   };
 
   const selectedStudents = students.filter((s) => selectedIds.has(s.id));
+
+  // ---- CSV export of the currently-filtered student list ----
+  const handleExportCsv = () => {
+    if (rows.length === 0) {
+      toast.error("Nothing to export", {
+        description: "Adjust your filters to include at least one student.",
+      });
+      return;
+    }
+    downloadCsv(
+      "students-export",
+      [
+        "Student Name",
+        "Student Number",
+        "Email",
+        "Course",
+        "Position",
+        "Company",
+        "Supervisor",
+        "Status",
+        "Logged Hours",
+        "Required Hours",
+        "Completion %",
+        "Last Eval Score",
+      ],
+      rows.map((r) => [
+        r.student.name,
+        r.student.studentNumber,
+        r.student.email,
+        r.student.course,
+        r.student.position,
+        r.companyName,
+        r.supervisorName ?? "Unassigned",
+        r.student.status,
+        r.student.loggedHours,
+        r.student.requiredHours,
+        r.hoursPct,
+        r.lastScore > 0 ? r.lastScore.toFixed(2) : "—",
+      ]),
+    );
+    toast.success("CSV exported", {
+      description: `${rows.length} student${rows.length === 1 ? "" : "s"} exported to students-export.csv.`,
+    });
+  };
 
   const columns: Column<Row>[] = [
     {
@@ -309,10 +355,20 @@ export function StudentsList() {
         description={`${students.length} students in the cohort.`}
         breadcrumb="Students"
         actions={
-          <Button onClick={() => navigate("coordinator.student-new")} className="w-full sm:w-auto">
-            <Plus className="h-4 w-4" />
-            Add Student
-          </Button>
+          <div className="flex w-full flex-wrap gap-2 sm:w-auto">
+            <Button
+              variant="outline"
+              onClick={handleExportCsv}
+              className="w-full sm:w-auto"
+            >
+              <FileSpreadsheet className="h-4 w-4" />
+              Export CSV
+            </Button>
+            <Button onClick={() => navigate("coordinator.student-new")} className="w-full sm:w-auto">
+              <Plus className="h-4 w-4" />
+              Add Student
+            </Button>
+          </div>
         }
       />
 

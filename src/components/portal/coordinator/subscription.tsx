@@ -20,6 +20,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
+import { downloadPdfReport } from "@/lib/client-pdf";
 
 // ============================================================
 // Constants & helpers
@@ -58,6 +59,8 @@ function formatHours(n: number): string {
 
 export function SubscriptionPage() {
   const students = useAppStore((s) => s.students);
+  const companies = useAppStore((s) => s.companies);
+  const supervisors = useAppStore((s) => s.supervisors);
 
   // ---- Derived billing summary (active students only) ----
   const activeStudents = React.useMemo(
@@ -70,15 +73,82 @@ export function SubscriptionPage() {
   );
   const estimatedBalance = totalBillableHours * BILLING_RATE_PHP;
 
-  // ---- Download Statement of Account (prototype: toast only) ----
-  // This is an internal reporting/transparency action for the Coordinator.
-  // It does NOT generate the official school payment invoice (that is the
-  // Finance / Accounting Office's responsibility). In production this would
-  // produce a downloadable SOA PDF summarizing accrued intern-hour usage.
+  // ---- Download Statement of Account (SOA) — real PDF download ----
+  // Produces a downloadable PDF summarizing accrued intern-hour usage for
+  // internal administrative review and transparency. NOT an official payment
+  // invoice (that is the Finance / Accounting Office's responsibility).
   const handleDownloadSoa = () => {
-    toast.success("Preparing Statement of Account document for download...", {
-      description:
-        "Your SOA summary will open in a new tab once generated. This is for internal review and transparency — not an official payment invoice.",
+    const rows = activeStudents.map((s) => {
+      const company = companies.find((c) => c.id === s.companyId);
+      const supervisor = supervisors.find((su) => su.id === s.supervisorId);
+      return {
+        student: s,
+        companyName: company?.name ?? "—",
+        supervisorName: supervisor?.name ?? "—",
+        cost: (s.requiredHours || 0) * BILLING_RATE_PHP,
+      };
+    });
+    downloadPdfReport({
+      filename: "statement-of-account",
+      title: "Statement of Account (SOA)",
+      subtitle: `Institutional post-paid billing · ${activeStudents.length} active students · Term 2024-2025`,
+      meta: [
+        { label: "Billing Rate", value: formatPhp(BILLING_RATE_PHP) + "/hr" },
+        { label: "Active Students", value: String(activeStudents.length) },
+        { label: "Billable Hours", value: formatHours(totalBillableHours) },
+        { label: "Accrued Balance", value: formatPhp(estimatedBalance) },
+      ],
+      sections: [
+        {
+          heading: "Billing Summary",
+          keyValue: [
+            { label: "Term", value: "2024-2025" },
+            { label: "Rate type", value: "Fixed per intern-hour" },
+            { label: "Currency", value: "Philippine Peso (₱)" },
+            { label: "Generated", value: new Date().toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short" }) },
+          ],
+        },
+        {
+          heading: "Intern-Hour Breakdown",
+          table: {
+            head: ["Student", "Student ID", "Company", "Supervisor", "Req. Hrs", "Cost"],
+            body: rows.map((r) => [
+              r.student.name,
+              r.student.studentNumber,
+              r.companyName,
+              r.supervisorName,
+              formatHours(r.student.requiredHours),
+              formatPhp(r.cost),
+            ]),
+            foot: [
+              "Total",
+              "",
+              "",
+              "",
+              formatHours(totalBillableHours),
+              formatPhp(estimatedBalance),
+            ],
+            align: ["left", "left", "left", "left", "right", "right"],
+          },
+        },
+        {
+          heading: "Notes",
+          paragraphs: [
+            {
+              text: "This Statement of Account is generated for internal administrative review and transparency. It summarizes accrued intern-hour usage based on the total required hours of all active students at the fixed institutional rate. It is NOT an official payment invoice.",
+            },
+            {
+              label: "Remittance",
+              text: "Official payment instructions and remittance channels are managed by the school's Finance / Accounting Office. Please coordinate with them for actual payment processing.",
+            },
+          ],
+        },
+      ],
+      footer:
+        "Practicum Evaluation Portal · Statement of Account · For internal administrative use only",
+    });
+    toast.success("Statement of Account downloaded", {
+      description: "statement-of-account.pdf saved to your downloads.",
     });
   };
 

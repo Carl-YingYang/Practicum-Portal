@@ -14,6 +14,7 @@ import { PageHeader } from "@/components/portal/layout/page-header";
 import { SectionCard } from "@/components/portal/shared/section-card";
 import { DataTable, type Column } from "@/components/portal/shared/data-table";
 import { EmptyState } from "@/components/portal/shared/empty-state";
+import { StarRating } from "@/components/portal/shared/star-rating";
 import {
   ScoreBadge,
   EvaluationStatusBadge,
@@ -220,6 +221,13 @@ export function AllEvaluationsList() {
               <div className="flex items-center justify-between gap-2">
                 <span className="text-xs text-muted-foreground">{r.dateLabel}</span>
                 <div className="inline-flex shrink-0 items-center gap-1.5">
+                  <StarRating
+                    value={r.avg}
+                    size={12}
+                    showValue={false}
+                    showLabel={false}
+                    animate={false}
+                  />
                   <span className="text-xs font-medium text-foreground/70">Avg</span>
                   <ScoreBadge score={r.avg} />
                 </div>

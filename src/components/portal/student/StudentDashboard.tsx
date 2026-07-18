@@ -6,6 +6,7 @@ import { useEffectiveSchool } from "@/lib/use-effective-school";
 import { HeroSlideshow } from "@/components/portal/shared/HeroSlideshow";
 import { SchoolIdentityCard } from "@/components/portal/shared/school-identity-card";
 import { ProgressRing } from "@/components/portal/shared/progress-ring";
+import { StarRating } from "@/components/portal/shared/star-rating";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { ACCENT_HEX } from "@/lib/types";
@@ -462,13 +463,20 @@ function EvaluationsCard({
         </div>
 
         {latest ? (
-          <div className="mt-3 flex flex-1 flex-col justify-center gap-1">
+          <div className="mt-3 flex flex-1 flex-col justify-center gap-2">
             <div className="flex items-baseline gap-1.5">
               <span className="text-2xl font-bold" style={{ color: accentHex.base }}>
                 {averageScore(latest).toFixed(1)}
               </span>
               <span className="text-xs text-muted-foreground">/ 5.0 average</span>
             </div>
+            <StarRating
+              value={averageScore(latest)}
+              size={15}
+              showValue={false}
+              showLabel
+              className="-ml-0.5"
+            />
             <p className="text-xs text-muted-foreground">
               {latest.status === "submitted"
                 ? "Submitted by your supervisor."

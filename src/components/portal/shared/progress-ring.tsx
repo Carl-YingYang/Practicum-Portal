@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import { CheckCircle2 } from "lucide-react";
 
@@ -10,9 +11,15 @@ interface ProgressRingProps {
   label?: string;
   sublabel?: string;
   className?: string;
+  /** Animate from 0 to value on mount. Default true. */
+  animate?: boolean;
 }
 
-/** Circular progress ring for hours completion. Amber <60%, emerald >=60%, check at 100%. */
+/**
+ * Circular progress ring for hours completion. Amber <60%, emerald >=60%,
+ * check at 100%. Animates the ring fill + counts the percentage up from 0
+ * on mount for a polished, engaging micro-interaction.
+ */
 export function ProgressRing({
   value,
   size = 88,
@@ -20,13 +27,51 @@ export function ProgressRing({
   label,
   sublabel,
   className,
+  animate = true,
 }: ProgressRingProps) {
   const clamped = Math.max(0, Math.min(100, value));
   const radius = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
-  const offset = circumference - (clamped / 100) * circumference;
   const complete = clamped >= 100;
   const color = complete ? "#059669" : clamped >= 60 ? "#059669" : "#d97706";
+
+  // Mount animation: ring fills 0 → value, percentage counts up.
+  const [displayValue, setDisplayValue] = useState(animate ? 0 : clamped);
+  const rafRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (!animate) {
+      setDisplayValue(clamped);
+      return;
+    }
+    // Respect reduced-motion preference.
+    const prefersReduced =
+      typeof window !== "undefined" &&
+      window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    if (prefersReduced) {
+      setDisplayValue(clamped);
+      return;
+    }
+    const duration = 1100; // ms
+    const start = performance.now();
+    const tick = (now: number) => {
+      const elapsed = now - start;
+      const t = Math.min(1, elapsed / duration);
+      // easeOutCubic for a nice decelerate.
+      const eased = 1 - Math.pow(1 - t, 3);
+      setDisplayValue(Math.round(clamped * eased));
+      if (t < 1) {
+        rafRef.current = requestAnimationFrame(tick);
+      }
+    };
+    rafRef.current = requestAnimationFrame(tick);
+    return () => {
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [clamped, animate]);
+
+  const offset = circumference - (displayValue / 100) * circumference;
 
   return (
     <div
@@ -53,15 +98,32 @@ export function ProgressRing({
           strokeLinecap="round"
           strokeDasharray={circumference}
           strokeDashoffset={offset}
-          className="transition-[stroke-dashoffset] duration-700 ease-out"
-        />
+          className="transition-[stroke-dashoffset] duration-200 ease-out"
+          style={{
+            filter: complete
+              ? "drop-shadow(0 0 6px rgba(5,150,105,0.35))"
+              : undefined,
+          }}
+        >
+          {animate && (
+            <animate
+              attributeName="stroke-dashoffset"
+              from={circumference}
+              to={offset}
+              dur="1.1s"
+              fill="freeze"
+              calcMode="spline"
+              keySplines="0.22 1 0.36 1"
+            />
+          )}
+        </circle>
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center">
         {complete ? (
-          <CheckCircle2 className="h-6 w-6 text-emerald-600" />
+          <CheckCircle2 className="h-6 w-6 text-emerald-600 animate-in zoom-in-50 duration-500" />
         ) : (
           <span className="text-lg font-bold tabular-nums text-foreground">
-            {clamped}%
+            {displayValue}%
           </span>
         )}
         {label && (
@@ -70,6 +132,11 @@ export function ProgressRing({
           </span>
         )}
       </div>
+      {sublabel && (
+        <span className="absolute -bottom-5 left-1/2 -translate-x-1/2 whitespace-nowrap text-[10px] text-muted-foreground">
+          {sublabel}
+        </span>
+      )}
     </div>
   );
 }
