@@ -18,7 +18,10 @@ import {
   Hourglass,
   ArrowRight,
   Download,
+  FileSpreadsheet,
 } from "lucide-react";
+import { downloadCsv } from "@/lib/client-pdf";
+import { toast } from "sonner";
 import {
   activeTimeLog,
   activeTimeLogsForRole,
@@ -113,6 +116,36 @@ export function SupervisorTimeMonitor() {
     (ms, r) => ms + totalCompletedTimeMs(timeLogs, r.student.id),
     0
   );
+
+  /** Export the live team table (one row per intern) to CSV. */
+  const handleExportCsv = () => {
+    const head = [
+      "Intern",
+      "Student Number",
+      "Status",
+      "Elapsed (live)",
+      "This Week",
+      "Logged Hours",
+      "Required Hours",
+      "Completion %",
+    ];
+    const body = rows.map((r) => [
+      r.name,
+      r.studentNumber,
+      r.status === "active" ? "On the clock" : "Off",
+      r.status === "active" ? formatTimer(r.elapsedMs) : "—",
+      formatDuration(r.weekMs),
+      r.loggedHours,
+      r.requiredHours,
+      `${Math.min(100, Math.round(r.pct))}%`,
+    ]);
+    const stamp = new Date().toISOString().slice(0, 10);
+    const filename = `team-time-tracking-${stamp}.csv`;
+    downloadCsv(filename, head, body);
+    toast.success("CSV exported", {
+      description: `${rows.length} interns exported to ${filename}`,
+    });
+  };
 
   const rows: InternClockRow[] = React.useMemo(() => {
     return interns
@@ -247,30 +280,41 @@ export function SupervisorTimeMonitor() {
         breadcrumb="Time Tracking"
         description="Monitor clock-in/out activity across your interns in real time."
         actions={
-          <TimeLogReportLauncher
-            trigger={
-              <Button variant="outline" size="sm">
-                <Download className="h-4 w-4" />
-                Export
-              </Button>
-            }
-            title="Team Time Log Report"
-            subtitle={`${interns.length} interns · Supervisor: ${supervisor?.name ?? "—"}`}
-            summaryStats={[
-              { label: "Interns", value: String(interns.length) },
-              { label: "Total Sessions", value: String(reportTotalSessions) },
-              { label: "Total Tracked", value: formatDuration(reportTotalMs) },
-              {
-                label: "On the Clock Now",
-                value: String(activeCount),
-              },
-              {
-                label: "Hours This Week",
-                value: formatDuration(teamWeekMs),
-              },
-            ]}
-            rows={reportRows}
-          />
+          <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleExportCsv}
+              className="w-full sm:w-auto"
+            >
+              <FileSpreadsheet className="h-4 w-4" />
+              Export CSV
+            </Button>
+            <TimeLogReportLauncher
+              trigger={
+                <Button variant="outline" size="sm" className="w-full sm:w-auto">
+                  <Download className="h-4 w-4" />
+                  Export PDF
+                </Button>
+              }
+              title="Team Time Log Report"
+              subtitle={`${interns.length} interns · Supervisor: ${supervisor?.name ?? "—"}`}
+              summaryStats={[
+                { label: "Interns", value: String(interns.length) },
+                { label: "Total Sessions", value: String(reportTotalSessions) },
+                { label: "Total Tracked", value: formatDuration(reportTotalMs) },
+                {
+                  label: "On the Clock Now",
+                  value: String(activeCount),
+                },
+                {
+                  label: "Hours This Week",
+                  value: formatDuration(teamWeekMs),
+                },
+              ]}
+              rows={reportRows}
+            />
+          </div>
         }
       />
 

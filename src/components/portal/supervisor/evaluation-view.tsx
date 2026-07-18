@@ -34,6 +34,7 @@ import { ConfirmDialog } from "@/components/portal/shared/confirm-dialog";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { RATING_CRITERIA, RATING_ANCHORS } from "@/lib/types";
+import { StarRating } from "@/components/portal/shared/star-rating";
 
 export function EvaluationView() {
   const viewParams = useAppStore((s) => s.viewParams);
@@ -201,6 +202,11 @@ export function EvaluationView() {
                 </span>
               )}
             </p>
+            {avg > 0 && (
+              <div className="mt-2 flex justify-center">
+                <StarRating value={avg} size={18} showValue={false} showLabel />
+              </div>
+            )}
           </div>
         </SectionCard>
         <SectionCard>
@@ -234,18 +240,28 @@ export function EvaluationView() {
               return (
                 <li
                   key={c.key}
-                  className="flex flex-col gap-1 py-3 first:pt-0 last:pb-0 sm:flex-row sm:items-center sm:justify-between"
+                  className="flex flex-col gap-2 py-3 first:pt-0 last:pb-0 sm:flex-row sm:items-center sm:justify-between"
                 >
-                  <div>
+                  <div className="min-w-0">
                     <p className="text-sm font-semibold text-foreground">
                       {c.label}
                     </p>
                     <p className="text-xs text-muted-foreground">{c.hint}</p>
+                    {score > 0 && (
+                      <div className="mt-1.5 sm:hidden">
+                        <StarRating value={score} size={14} showValue={false} />
+                      </div>
+                    )}
                   </div>
                   <div className="flex items-center gap-3">
-                    <span className="rounded-md bg-muted px-2 py-0.5 text-xs text-muted-foreground">
+                    <span className="hidden rounded-md bg-muted px-2 py-0.5 text-xs text-muted-foreground sm:inline">
                       {score > 0 ? RATING_ANCHORS[score] : "Not rated"}
                     </span>
+                    {score > 0 && (
+                      <div className="hidden sm:block">
+                        <StarRating value={score} size={14} showValue={false} />
+                      </div>
+                    )}
                     <ScoreBadge score={score} />
                   </div>
                 </li>

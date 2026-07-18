@@ -20,6 +20,7 @@ import {
   ScoreBadge,
 } from "@/components/portal/shared/badges";
 import { Avatar } from "@/components/portal/shared/avatar";
+import { StarRating } from "@/components/portal/shared/star-rating";
 import { Button } from "@/components/ui/button";
 import { AlertCircle, Download, FileText } from "lucide-react";
 import { toast } from "sonner";
@@ -138,21 +139,38 @@ export function EvaluationView({ evaluationId }: { evaluationId?: string }) {
                     <p className="text-xs text-muted-foreground">
                       {s.value > 0 ? RATING_ANCHORS[s.value] : "Not rated"}
                     </p>
+                    {s.value > 0 && (
+                      <div className="mt-1.5 sm:hidden">
+                        <StarRating value={s.value} size={13} showValue={false} />
+                      </div>
+                    )}
                   </div>
-                  <span className="font-mono text-sm font-semibold tabular-nums text-foreground">
-                    {s.value > 0 ? `${s.value}/5` : "—"}
-                  </span>
+                  <div className="flex items-center gap-3">
+                    {s.value > 0 && (
+                      <div className="hidden sm:block">
+                        <StarRating value={s.value} size={14} showValue={false} />
+                      </div>
+                    )}
+                    <span className="font-mono text-sm font-semibold tabular-nums text-foreground">
+                      {s.value > 0 ? `${s.value}/5` : "—"}
+                    </span>
+                  </div>
                 </div>
               ))}
             </div>
           </div>
 
           {/* Average */}
-          <div className="flex items-center justify-between rounded-md bg-teal-50 px-4 py-3 dark:bg-teal-950/30">
+          <div className="flex flex-col gap-2 rounded-md bg-teal-50 px-4 py-3 dark:bg-teal-950/30 sm:flex-row sm:items-center sm:justify-between">
             <span className="text-sm font-medium text-foreground">Overall Average</span>
-            <span className="font-mono text-lg font-bold tabular-nums text-teal-700 dark:text-teal-300">
-              {avg > 0 ? `${avg.toFixed(2)}/5` : "—"}
-            </span>
+            <div className="flex items-center gap-3">
+              {avg > 0 && (
+                <StarRating value={avg} size={16} showValue={false} showLabel />
+              )}
+              <span className="font-mono text-lg font-bold tabular-nums text-teal-700 dark:text-teal-300">
+                {avg > 0 ? `${avg.toFixed(2)}/5` : "—"}
+              </span>
+            </div>
           </div>
 
           {/* Comments */}

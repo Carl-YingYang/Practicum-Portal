@@ -21,7 +21,10 @@ import {
   Clock,
   ArrowRight,
   Download,
+  FileSpreadsheet,
 } from "lucide-react";
+import { downloadCsv } from "@/lib/client-pdf";
+import { toast } from "sonner";
 import {
   activeTimeLog,
   activeTimeLogsForRole,
@@ -263,36 +266,80 @@ export function CoordinatorTimeMonitor() {
     0
   );
 
+  /** Export the live cohort table (one row per student) to CSV. */
+  const handleExportCsv = () => {
+    const head = [
+      "Student",
+      "Student Number",
+      "Company",
+      "Supervisor",
+      "Status",
+      "Elapsed (live)",
+      "This Week",
+      "Logged Hours",
+      "Required Hours",
+      "Completion %",
+    ];
+    const body = rows.map((r) => [
+      r.name,
+      r.studentNumber,
+      r.companyName,
+      r.supervisorName ?? "Unassigned",
+      r.status === "active" ? "On the clock" : "Off",
+      r.status === "active" ? formatTimer(r.elapsedMs) : "—",
+      formatDuration(r.weekMs),
+      r.loggedHours,
+      r.requiredHours,
+      `${Math.min(100, Math.round(r.pct))}%`,
+    ]);
+    const stamp = new Date().toISOString().slice(0, 10);
+    const filename = `cohort-time-tracking-${stamp}.csv`;
+    downloadCsv(filename, head, body);
+    toast.success("CSV exported", {
+      description: `${rows.length} students exported to ${filename}`,
+    });
+  };
+
   return (
     <>
       <PageHeader
         breadcrumb="Time Tracking"
         description="Monitor clock-in/out activity across the entire student cohort in real time."
         actions={
-          <TimeLogReportLauncher
-            trigger={
-              <Button variant="outline">
-                <Download className="h-4 w-4" />
-                Export
-              </Button>
-            }
-            title="Cohort Time Log Report"
-            subtitle={`${students.length} students · Term 2024-2025`}
-            summaryStats={[
-              { label: "Students", value: String(students.length) },
-              { label: "Total Sessions", value: String(reportTotalSessions) },
-              { label: "Total Tracked", value: formatDuration(reportTotalMs) },
-              {
-                label: "Cohort Hours",
-                value: `${Math.round(cohortTotalH)}h`,
-              },
-              {
-                label: "On the Clock Now",
-                value: String(activeCount),
-              },
-            ]}
-            rows={reportRows}
-          />
+          <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
+            <Button
+              variant="outline"
+              onClick={handleExportCsv}
+              className="w-full sm:w-auto"
+            >
+              <FileSpreadsheet className="h-4 w-4" />
+              Export CSV
+            </Button>
+            <TimeLogReportLauncher
+              trigger={
+                <Button variant="outline" className="w-full sm:w-auto">
+                  <Download className="h-4 w-4" />
+                  Export PDF
+                </Button>
+              }
+              title="Cohort Time Log Report"
+              subtitle={`${students.length} students · Term 2024-2025`}
+              summaryStats={[
+                { label: "Students", value: String(students.length) },
+                { label: "Total Sessions", value: String(reportTotalSessions) },
+                { label: "Total Tracked", value: formatDuration(reportTotalMs) },
+                {
+                  label: "Cohort Hours",
+                  value: `${Math.round(cohortTotalH)}h`,
+                },
+                {
+                  label: "On the Clock Now",
+                  value: String(activeCount),
+                },
+              ]}
+              rows={reportRows}
+            />
+          </div>
         }
       />
 
