@@ -14,6 +14,7 @@ import { EvaluationView } from "./evaluation-view";
 import { AllJournalsList } from "./all-journals-list";
 import { JournalView } from "./journal-view";
 import { CoordinatorReports } from "./coordinator-reports";
+import { CoordinatorTimeMonitor } from "./coordinator-time-monitor";
 import { CoordinatorProfile } from "./coordinator-profile";
 import { FormsHub } from "./forms-hub";
 import { FormEditor } from "./form-editor";
@@ -70,6 +71,8 @@ export function CoordinatorWorkspace() {
       return <SubscriptionPage />;
     case "coordinator.reports":
       return <CoordinatorReports />;
+    case "coordinator.time-monitor":
+      return <CoordinatorTimeMonitor />;
     case "coordinator.profile":
       return <CoordinatorProfile />;
     default:
@@ -90,6 +93,7 @@ export {
   AllJournalsList,
   JournalView,
   CoordinatorReports,
+  CoordinatorTimeMonitor,
   CoordinatorProfile,
   FormsHub,
   FormEditor,

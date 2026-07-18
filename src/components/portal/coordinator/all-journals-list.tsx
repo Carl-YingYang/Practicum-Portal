@@ -38,6 +38,7 @@ import {
 import {
   ClipboardList,
   FileText,
+  FileSpreadsheet,
   Check,
   X,
   CheckCheck,
@@ -46,6 +47,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { downloadCsv } from "@/lib/client-pdf";
 import {
   usePagination,
   DataTablePagination,
@@ -108,6 +110,34 @@ export function AllJournalsList() {
       })
       .sort((a, b) => (a.date < b.date ? 1 : -1));
   }, [journals, students, supervisors, companies, status, companyId]);
+
+  /** Export the filtered journals list to CSV. */
+  const handleExportCsv = () => {
+    const head = [
+      "Student",
+      "Student Number",
+      "Supervisor",
+      "Company",
+      "Week",
+      "Hours",
+      "Status",
+    ];
+    const body = rows.map((r) => [
+      r.studentName,
+      r.studentNumber,
+      r.supervisorName,
+      r.companyName,
+      r.week,
+      `${r.hours}h`,
+      r.status,
+    ]);
+    const stamp = new Date().toISOString().slice(0, 10);
+    const filename = `journals-${stamp}.csv`;
+    downloadCsv(filename, head, body);
+    toast.success("CSV exported", {
+      description: `${rows.length} journals exported to ${filename}`,
+    });
+  };
 
   // Only pending journals can be bulk-approved/rejected.
   const selectedRows = rows.filter((r) => selected.has(r.id));
@@ -195,10 +225,16 @@ export function AllJournalsList() {
         description={`${journals.length} journals across the cohort · ${pendingCount} pending approval.`}
         breadcrumb="Journals"
         actions={
-          <Button variant="outline" onClick={() => navigate("coordinator.reports")} className="w-full sm:w-auto">
-            <FileText className="h-4 w-4" />
-            Export compliance report
-          </Button>
+          <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
+            <Button variant="outline" onClick={handleExportCsv} className="w-full sm:w-auto">
+              <FileSpreadsheet className="h-4 w-4" />
+              Export CSV
+            </Button>
+            <Button variant="outline" onClick={() => navigate("coordinator.reports")} className="w-full sm:w-auto">
+              <FileText className="h-4 w-4" />
+              Compliance Report
+            </Button>
+          </div>
         }
       />
 

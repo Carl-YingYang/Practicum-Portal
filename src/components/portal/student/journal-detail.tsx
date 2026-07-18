@@ -22,6 +22,7 @@ import {
   Edit3,
   FileText,
   FileDown,
+  Printer,
   Send,
   FileType2,
 } from "lucide-react";
@@ -179,6 +180,16 @@ export function JournalDetail() {
               <Button onClick={handleDownloadPdf}>
                 <FileType2 className="h-4 w-4" />
                 Download PDF
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  window.print();
+                  toast.success("Print dialog opened");
+                }}
+              >
+                <Printer className="h-4 w-4" />
+                Print
               </Button>
             </div>
           )

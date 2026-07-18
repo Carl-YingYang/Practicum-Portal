@@ -20,7 +20,9 @@ import {
 import { RATING_ANCHORS, RATING_CRITERIA, type Evaluation } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { ClipboardCheck, Download } from "lucide-react";
+import { ClipboardCheck, Download, Printer } from "lucide-react";
+import { StarRating } from "@/components/portal/shared/star-rating";
+import { toast } from "sonner";
 
 export function EvaluationView() {
   const currentUser = useAppStore((s) => s.currentUser);
@@ -66,13 +68,25 @@ export function EvaluationView() {
         description={`Term ${evaluation.term}`}
         showBack
         actions={
-          <Button
-            variant="outline"
-            onClick={() => setPdfOpen(true)}
-            disabled={isDraft}
-          >
-            <Download className="h-4 w-4" /> Download PDF
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setPdfOpen(true)}
+              disabled={isDraft}
+            >
+              <Download className="h-4 w-4" /> Download PDF
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => {
+                window.print();
+                toast.success("Print dialog opened");
+              }}
+              disabled={isDraft}
+            >
+              <Printer className="h-4 w-4" /> Print
+            </Button>
+          </div>
         }
       />
 
@@ -158,6 +172,11 @@ export function EvaluationReportCard({
                 / 5
               </span>
             </p>
+            {avg > 0 && (
+              <div className="mt-1.5 flex justify-start sm:justify-end">
+                <StarRating value={avg} size={16} showValue={false} showLabel />
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -216,12 +235,22 @@ export function EvaluationReportCard({
                       <p className="text-xs text-muted-foreground">{c.hint}</p>
                     </div>
                     <div className="flex items-center gap-2">
+                      {score > 0 && (
+                        <div className="hidden sm:block">
+                          <StarRating value={score} size={13} showValue={false} />
+                        </div>
+                      )}
                       <span className="text-xs text-muted-foreground">
                         {RATING_ANCHORS[score] ?? "—"}
                       </span>
                       <ScoreBadge score={score} />
                     </div>
                   </div>
+                  {score > 0 && (
+                    <div className="mb-2 sm:hidden">
+                      <StarRating value={score} size={13} showValue={false} />
+                    </div>
+                  )}
                   <ProgressBar value={(score / 5) * 100} />
                 </div>
               );

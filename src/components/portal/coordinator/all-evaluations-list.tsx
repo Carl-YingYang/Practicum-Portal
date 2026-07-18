@@ -27,7 +27,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ClipboardCheck, FileText } from "lucide-react";
+import { ClipboardCheck, FileText, FileSpreadsheet } from "lucide-react";
+import { downloadCsv } from "@/lib/client-pdf";
+import { toast } from "sonner";
 
 interface Row extends Evaluation {
   studentName: string;
@@ -76,6 +78,40 @@ export function AllEvaluationsList() {
       })
       .sort((a, b) => (a.submittedAt ?? a.createdAt) < (b.submittedAt ?? b.createdAt) ? 1 : -1);
   }, [evaluations, students, supervisors, companies, companyId, supervisorId, status]);
+
+  /** Export the filtered evaluations list to CSV. */
+  const handleExportCsv = () => {
+    const head = [
+      "Student",
+      "Student Number",
+      "Supervisor",
+      "Company",
+      "Date",
+      "Quality of Work",
+      "Job Knowledge",
+      "Dependability",
+      "Average",
+      "Status",
+    ];
+    const body = rows.map((r) => [
+      r.studentName,
+      r.studentNumber,
+      r.supervisorName,
+      r.companyName,
+      r.dateLabel,
+      r.qualityOfWork > 0 ? `${r.qualityOfWork}/5` : "—",
+      r.jobKnowledge > 0 ? `${r.jobKnowledge}/5` : "—",
+      r.dependability > 0 ? `${r.dependability}/5` : "—",
+      r.avg > 0 ? r.avg.toFixed(2) : "—",
+      r.status,
+    ]);
+    const stamp = new Date().toISOString().slice(0, 10);
+    const filename = `evaluations-${stamp}.csv`;
+    downloadCsv(filename, head, body);
+    toast.success("CSV exported", {
+      description: `${rows.length} evaluations exported to ${filename}`,
+    });
+  };
 
   const columns: Column<Row>[] = [
     {
@@ -131,10 +167,16 @@ export function AllEvaluationsList() {
         description={`${evaluations.length} evaluations across the cohort.`}
         breadcrumb="Evaluations"
         actions={
-          <Button variant="outline" onClick={() => navigate("coordinator.reports")} className="w-full sm:w-auto">
-            <FileText className="h-4 w-4" />
-            Export
-          </Button>
+          <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
+            <Button variant="outline" onClick={handleExportCsv} className="w-full sm:w-auto">
+              <FileSpreadsheet className="h-4 w-4" />
+              Export CSV
+            </Button>
+            <Button variant="outline" onClick={() => navigate("coordinator.reports")} className="w-full sm:w-auto">
+              <FileText className="h-4 w-4" />
+              PDF Reports
+            </Button>
+          </div>
         }
       />
 
