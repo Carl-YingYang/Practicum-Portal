@@ -271,7 +271,7 @@ function HeroSlideshow() {
 // ============================================================
 function BrandPanel() {
   return (
-    <div className="relative hidden w-1/2 flex-col justify-between overflow-hidden p-12 text-white lg:flex">
+    <div className="relative hidden w-1/2 flex-col justify-between overflow-hidden p-8 text-white md:flex lg:p-12">
       {/* Background — default navy gradient (login is never school-branded) */}
       <div className="bg-ici-navy-gradient absolute inset-0" />
 
@@ -346,7 +346,7 @@ function BrandPanel() {
 // ============================================================
 function MobileBrand() {
   return (
-    <div className="mb-7 flex items-center gap-2.5 lg:hidden">
+    <div className="mb-7 flex items-center gap-2.5 md:hidden">
       <div className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-md bg-primary text-primary-foreground elev-sm">
         <GraduationCap className="h-5 w-5" strokeWidth={2.4} />
       </div>
@@ -704,7 +704,7 @@ export function LoginScreen() {
       >
         <LoginThemeToggle />
         <BrandPanel />
-        <div className="flex w-full flex-col items-center justify-center px-4 py-10 lg:w-1/2">
+        <div className="flex w-full flex-col items-center justify-center px-4 py-10 md:w-1/2">
           <CoordinatorRegisterForm
             onBackToSignIn={() => setMode("signin")}
           />
@@ -725,7 +725,7 @@ export function LoginScreen() {
       <BrandPanel />
 
       {/* Right form panel — clean flat white */}
-      <div className="flex w-full flex-col items-center justify-center px-4 py-10 lg:w-1/2">
+      <div className="flex w-full flex-col items-center justify-center px-4 py-10 md:w-1/2">
         <div className="w-full max-w-[400px]">
           <MobileBrand />
 

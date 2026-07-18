@@ -159,14 +159,14 @@ export function GoogleDocEditor({
       </div>
 
       {/* ── Docs-style formatting toolbar ─────────────────────────────── */}
-      <div className="flex items-center gap-0.5 border-b border-border/70 bg-white px-3 py-1.5 dark:bg-zinc-950">
+      <div className="flex items-center gap-0.5 overflow-x-auto border-b border-border/70 bg-white px-3 py-1.5 dark:bg-zinc-950">
         <ToolbarBtn icon={Undo2} label="Undo" disabled={readOnly} />
         <ToolbarBtn icon={Redo2} label="Redo" disabled={readOnly} />
         <Divider />
         <button
           type="button"
           disabled
-          className="flex items-center gap-1 rounded px-2 py-1 text-[12px] text-zinc-600 dark:text-zinc-400"
+          className="flex shrink-0 items-center gap-1 rounded px-2 py-1 text-[12px] text-zinc-600 dark:text-zinc-400"
           title="Paragraph style"
         >
           Normal text
@@ -204,7 +204,7 @@ export function GoogleDocEditor({
         <Divider />
         <ToolbarBtn icon={List} label="Bullet list" disabled={readOnly} />
         <ToolbarBtn icon={ListOrdered} label="Numbered list" disabled={readOnly} />
-        <div className="ml-auto flex items-center gap-0.5">
+        <div className="ml-auto flex shrink-0 items-center gap-0.5">
           <ToolbarBtn
             icon={downloading ? Loader2 : FileDown}
             label={downloading ? "Generating…" : "Download as Word"}
@@ -218,7 +218,7 @@ export function GoogleDocEditor({
 
       {/* ── Document page ─────────────────────────────────────────────── */}
       <div className="flex-1 overflow-y-auto bg-zinc-100/60 p-3 dark:bg-zinc-900/40 sm:p-6">
-        <div className="mx-auto max-w-[816px] rounded-sm bg-white px-10 py-12 shadow-md ring-1 ring-zinc-200/70 dark:bg-zinc-950 dark:ring-zinc-800 sm:px-14">
+        <div className="mx-auto max-w-[816px] rounded-sm bg-white px-4 py-8 shadow-md ring-1 ring-zinc-200/70 dark:bg-zinc-950 dark:ring-zinc-800 sm:px-10 sm:py-12 lg:px-14">
           {/* Title */}
           <h1 className="font-heading text-2xl font-bold leading-tight text-zinc-900 dark:text-zinc-50">
             {title}
@@ -348,7 +348,7 @@ function ToolbarBtn({
       title={label}
       aria-label={label}
       className={cn(
-        "rounded p-1.5 text-zinc-600 transition-colors dark:text-zinc-400",
+        "shrink-0 rounded p-1.5 text-zinc-600 transition-colors dark:text-zinc-400",
         disabled && "cursor-default opacity-40",
         !disabled && "hover:bg-zinc-100 dark:hover:bg-zinc-800",
         active && "bg-teal-50 text-teal-700 dark:bg-teal-950/40 dark:text-teal-300",
@@ -360,7 +360,7 @@ function ToolbarBtn({
 }
 
 function Divider() {
-  return <span className="mx-1 h-5 w-px bg-zinc-200 dark:bg-zinc-700" />;
+  return <span className="mx-1 h-5 w-px shrink-0 bg-zinc-200 dark:bg-zinc-700" />;
 }
 
 export default GoogleDocEditor;

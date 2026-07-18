@@ -204,7 +204,7 @@ export const bottomTabs: Record<Role, NavItem[]> = {
       icon: "students",
       badgeKey: "unassignedStudents",
     },
-    { key: "supervisors", label: "Supervisors", shortLabel: "Supervisors", view: "coordinator.supervisors", icon: "supervisors" },
+    { key: "supervisors", label: "Supervisors", shortLabel: "Superv.", view: "coordinator.supervisors", icon: "supervisors" },
     { key: "profile", label: "Profile", shortLabel: "Profile", view: "coordinator.profile", icon: "profile" },
   ],
 };

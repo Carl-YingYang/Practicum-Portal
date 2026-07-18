@@ -211,9 +211,9 @@ export function FormsList() {
               className="h-9 pl-8"
             />
           </div>
-          <div className="flex items-center gap-2">
+          <div className="grid grid-cols-2 gap-2 sm:flex sm:items-center sm:gap-2">
             <Select value={categoryFilter} onValueChange={(v) => setCategoryFilter(v as FormCategory | "all")}>
-              <SelectTrigger className="h-9 w-[170px]">
+              <SelectTrigger className="h-9 w-full sm:w-[170px]">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -223,7 +223,7 @@ export function FormsList() {
               </SelectContent>
             </Select>
             <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as typeof statusFilter)}>
-              <SelectTrigger className="h-9 w-[140px]">
+              <SelectTrigger className="h-9 w-full sm:w-[140px]">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -249,7 +249,7 @@ export function FormsList() {
           />
         </SectionCard>
       ) : (
-        <div className="grid gap-2.5 lg:grid-cols-2">
+        <div className="grid min-w-0 gap-2.5 lg:grid-cols-2">
           {filtered.map((form) => (
             <FormCard
               key={form.id}
@@ -359,7 +359,7 @@ function FormCard({
   const isPublished = form.status === "published";
 
   return (
-    <div className="group relative flex flex-col gap-2.5 rounded-lg border border-border/60 bg-card p-4 transition-shadow hover:shadow-sm">
+    <div className="group relative flex min-w-0 flex-col gap-2.5 overflow-hidden rounded-lg border border-border/60 bg-card p-4 transition-shadow hover:shadow-sm">
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-1.5">
@@ -418,7 +418,7 @@ function FormCard({
         </DropdownMenu>
       </div>
 
-      <div className="flex items-center gap-3 text-[11.5px] text-muted-foreground">
+      <div className="flex flex-wrap items-center gap-3 text-[11.5px] text-muted-foreground">
         <span className="inline-flex items-center gap-1">
           <Layers className="h-3 w-3" />
           {sectionCount} {sectionCount === 1 ? "section" : "sections"}
@@ -436,7 +436,7 @@ function FormCard({
       </div>
 
       {/* Primary actions — one clear CTA per status */}
-      <div className="flex items-center gap-2 pt-0.5">
+      <div className="flex flex-wrap items-center gap-2 pt-0.5">
         <Button size="sm" variant="default" className="h-8 gap-1.5" onClick={() => onAction("edit")}>
           <Pencil className="h-3.5 w-3.5" />
           {isPublished ? "View / edit" : "Edit form"}
