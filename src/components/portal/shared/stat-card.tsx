@@ -47,7 +47,7 @@ export function StatCard({
   return (
     <Card
       className={cn(
-        "card-refined flex flex-col gap-1 border-border/60",
+        "card-refined group/stat flex flex-col gap-1 border-border/60 transition-all duration-200 hover:-translate-y-0.5 hover:border-border hover:shadow-md",
         compact ? "p-4" : "p-5",
         className
       )}
@@ -59,7 +59,7 @@ export function StatCard({
           </p>
           <p
             className={cn(
-              "mt-1 font-bold leading-none tracking-tight tabular-nums text-foreground",
+              "mt-1 font-bold leading-none tracking-tight tabular-nums text-foreground transition-colors",
               compact ? "text-2xl" : "text-3xl"
             )}
           >
@@ -68,7 +68,7 @@ export function StatCard({
         </div>
         <span
           className={cn(
-            "flex shrink-0 items-center justify-center rounded-xl",
+            "flex shrink-0 items-center justify-center rounded-xl transition-transform duration-200 group-hover/stat:scale-110",
             compact ? "h-9 w-9" : "h-10 w-10",
             toneIcon[tone]
           )}

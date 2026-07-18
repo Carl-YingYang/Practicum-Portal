@@ -23,8 +23,10 @@ import {
   FileText,
   FileDown,
   Send,
+  FileType2,
 } from "lucide-react";
 import { exportJournalToDocx } from "@/lib/docx-export";
+import { downloadPdfReport } from "@/lib/client-pdf";
 
 export function JournalDetail() {
   const currentUser = useAppStore((s) => s.currentUser);
@@ -100,6 +102,58 @@ export function JournalDetail() {
     }
   };
 
+  const handleDownloadPdf = () => {
+    try {
+      const filename = `journal-${formatDate(journal.date).replace(/\s+/g, "-").toLowerCase()}.pdf`;
+      downloadPdfReport({
+        filename,
+        title: "Weekly Practicum Journal",
+        subtitle: `${schoolIdentity.name} · Week of ${formatDate(journal.date)}`,
+        meta: [
+          { label: "Student", value: student.name },
+          { label: "Student No.", value: student.studentNumber },
+          { label: "Course", value: student.course },
+          { label: "Company", value: company?.name ?? "—" },
+          { label: "Supervisor", value: supervisor?.name ?? "—" },
+          { label: "Hours", value: `${journal.hours}h` },
+          { label: "Status", value: journal.status },
+          { label: "Generated", value: formatDate(new Date().toISOString()) },
+        ],
+        sections: [
+          {
+            heading: "Tasks Performed",
+            paragraphs: [
+              { text: journal.tasks || "Not provided." },
+            ],
+          },
+          {
+            heading: "Learnings & Reflections",
+            paragraphs: [
+              { text: journal.learnings || "Not provided." },
+            ],
+          },
+          {
+            heading: "Review Information",
+            keyValue: [
+              { label: "Submitted On", value: journal.submittedAt ? formatDate(journal.submittedAt) : "—" },
+              { label: "Reviewed By", value: reviewer?.name ?? "—" },
+              { label: "Reviewed On", value: journal.reviewedAt ? formatDate(journal.reviewedAt) : "—" },
+              ...(journal.rejectionReason
+                ? [{ label: "Rejection Reason", value: journal.rejectionReason }]
+                : []),
+            ],
+          },
+        ],
+      });
+      toast.success("PDF downloaded", {
+        description: `${filename} saved to your downloads.`,
+      });
+    } catch (e) {
+      console.error(e);
+      toast.error("Couldn't generate the PDF.");
+    }
+  };
+
   return (
     <>
       <PageHeader
@@ -113,14 +167,20 @@ export function JournalDetail() {
               <Send className="h-4 w-4" /> Submit for Approval
             </Button>
           ) : (
-            <Button
-              variant="outline"
-              onClick={handleDownloadWord}
-              disabled={downloading}
-            >
-              <FileDown className="h-4 w-4" />
-              {downloading ? "Generating…" : "Download Word"}
-            </Button>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                variant="outline"
+                onClick={handleDownloadWord}
+                disabled={downloading}
+              >
+                <FileDown className="h-4 w-4" />
+                {downloading ? "Generating…" : "Word"}
+              </Button>
+              <Button onClick={handleDownloadPdf}>
+                <FileType2 className="h-4 w-4" />
+                Download PDF
+              </Button>
+            </div>
           )
         }
       />

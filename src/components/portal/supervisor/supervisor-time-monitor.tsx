@@ -117,6 +117,28 @@ export function SupervisorTimeMonitor() {
     0
   );
 
+  const rows: InternClockRow[] = React.useMemo(() => {
+    return interns
+      .map((st) => {
+        const active = activeTimeLog(timeLogs, st.id);
+        return {
+          id: st.id,
+          name: st.name,
+          studentNumber: st.studentNumber,
+          status: active ? ("active" as const) : ("off" as const),
+          elapsedMs: active ? elapsedMs(active, now) : 0,
+          weekMs: weeklyTimeMs(timeLogs, st.id, now),
+          loggedHours: st.loggedHours,
+          requiredHours: st.requiredHours,
+          pct: hoursPercent(st),
+        };
+      })
+      .sort((a, b) => {
+        if (a.status !== b.status) return a.status === "active" ? -1 : 1;
+        return b.weekMs - a.weekMs;
+      });
+  }, [interns, timeLogs, now]);
+
   /** Export the live team table (one row per intern) to CSV. */
   const handleExportCsv = () => {
     const head = [
@@ -146,28 +168,6 @@ export function SupervisorTimeMonitor() {
       description: `${rows.length} interns exported to ${filename}`,
     });
   };
-
-  const rows: InternClockRow[] = React.useMemo(() => {
-    return interns
-      .map((st) => {
-        const active = activeTimeLog(timeLogs, st.id);
-        return {
-          id: st.id,
-          name: st.name,
-          studentNumber: st.studentNumber,
-          status: active ? ("active" as const) : ("off" as const),
-          elapsedMs: active ? elapsedMs(active, now) : 0,
-          weekMs: weeklyTimeMs(timeLogs, st.id, now),
-          loggedHours: st.loggedHours,
-          requiredHours: st.requiredHours,
-          pct: hoursPercent(st),
-        };
-      })
-      .sort((a, b) => {
-        if (a.status !== b.status) return a.status === "active" ? -1 : 1;
-        return b.weekMs - a.weekMs;
-      });
-  }, [interns, timeLogs, now]);
 
   const columns: Column<InternClockRow>[] = [
     {

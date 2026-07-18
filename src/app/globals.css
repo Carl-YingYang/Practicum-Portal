@@ -630,7 +630,18 @@
   .card-refined.is-interactive:hover {
     box-shadow: var(--shadow-card-hover);
     border-color: color-mix(in srgb, var(--primary) 28%, var(--border));
-    transform: translateY(-1px);
+    transform: translateY(-2px);
+  }
+
+  .card-refined.is-interactive:focus-within {
+    border-color: color-mix(in srgb, var(--primary) 42%, var(--border));
+    box-shadow: var(--shadow-card-hover),
+      0 0 0 3px color-mix(in srgb, var(--primary) 12%, transparent);
+  }
+
+  .card-refined.is-interactive:active {
+    transform: translateY(0);
+    transition-duration: 80ms;
   }
 
   /* Input focus — uses primary (navy in light, lighter navy in dark) */
