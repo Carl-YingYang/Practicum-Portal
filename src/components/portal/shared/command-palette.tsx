@@ -20,6 +20,8 @@ import {
   UserCircle,
   Search,
   CornerDownLeft,
+  ArrowUp,
+  ArrowDown,
 } from "lucide-react";
 import { useTheme } from "next-themes";
 import { toast } from "sonner";
@@ -164,14 +166,34 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
           </CommandItem>
         </CommandGroup>
         <CommandSeparator />
-        <div className="flex items-center justify-between px-3 py-2 text-[11px] text-muted-foreground">
+        <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1.5 px-3 py-2.5 text-[11px] text-muted-foreground">
           <span className="inline-flex items-center gap-1.5">
             <Search className="h-3 w-3" />
             Type to search
           </span>
-          <span className="inline-flex items-center gap-1">
-            <CornerDownLeft className="h-3 w-3" /> to navigate
-          </span>
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+            <span className="inline-flex items-center gap-1">
+              <kbd className="inline-flex h-4 min-w-4 items-center justify-center rounded border border-border bg-muted px-1 font-mono text-[10px] text-foreground/80">
+                <ArrowUp className="h-2.5 w-2.5" />
+              </kbd>
+              <kbd className="inline-flex h-4 min-w-4 items-center justify-center rounded border border-border bg-muted px-1 font-mono text-[10px] text-foreground/80">
+                <ArrowDown className="h-2.5 w-2.5" />
+              </kbd>
+              navigate
+            </span>
+            <span className="inline-flex items-center gap-1">
+              <kbd className="inline-flex h-4 min-w-4 items-center justify-center rounded border border-border bg-muted px-1 font-mono text-[10px] text-foreground/80">
+                <CornerDownLeft className="h-2.5 w-2.5" />
+              </kbd>
+              open
+            </span>
+            <span className="inline-flex items-center gap-1">
+              <kbd className="inline-flex h-4 items-center justify-center rounded border border-border bg-muted px-1.5 font-mono text-[10px] uppercase text-foreground/80">
+                esc
+              </kbd>
+              close
+            </span>
+          </div>
         </div>
       </CommandList>
     </CommandDialog>

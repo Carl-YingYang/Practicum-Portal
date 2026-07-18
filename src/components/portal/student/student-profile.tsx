@@ -60,18 +60,22 @@ export function StudentProfile() {
           >
             <div className="flex flex-col gap-6 sm:flex-row sm:items-start">
               {/* Hours progress */}
-              <div className="flex shrink-0 flex-col items-center gap-2 rounded-xl border border-border bg-muted/30 p-5">
+              <div className="gradient-tint relative flex shrink-0 flex-col items-center gap-2 overflow-hidden rounded-xl border border-border bg-muted/30 p-5">
                 <ProgressRing
                   value={pct}
                   size={104}
                   label="complete"
                 />
                 <p className="text-center text-xs text-muted-foreground">
-                  <span className="font-semibold text-foreground">
+                  <span className="stat-number-gradient font-semibold">
                     {student.loggedHours}h
                   </span>{" "}
                   of {student.requiredHours}h
                 </p>
+                <span className="absolute top-2 right-2 inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-primary">
+                  <span className="dot-pulse h-1.5 w-1.5 rounded-full bg-primary" />
+                  Active
+                </span>
               </div>
 
               {/* Details grid */}
@@ -161,7 +165,7 @@ function DetailItem({
   mono?: boolean;
 }) {
   return (
-    <div className="min-w-0">
+    <div className="item-rise min-w-0 rounded-lg border border-transparent px-2.5 py-2 transition-colors hover:border-border hover:bg-muted/40">
       <dt className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
         {Icon && <Icon className="h-3.5 w-3.5" />}
         {label}

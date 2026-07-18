@@ -25,6 +25,7 @@ import {
   Printer,
   Send,
   FileType2,
+  Share2,
 } from "lucide-react";
 import { exportJournalToDocx } from "@/lib/docx-export";
 import { downloadPdfReport } from "@/lib/client-pdf";
@@ -155,6 +156,40 @@ export function JournalDetail() {
     }
   };
 
+  const handleShare = async () => {
+    const shareUrl = `${window.location.origin}/?journal=${journal.id}&week=${encodeURIComponent(weekLabel(journal.date))}`;
+    const shareText = `Weekly Practicum Journal — ${formatDate(journal.date)} (${weekLabel(journal.date)}) · ${student.name} · ${journal.hours}h · Status: ${journal.status}`;
+    try {
+      if (typeof navigator !== "undefined" && navigator.share) {
+        await navigator.share({
+          title: `Journal · ${formatDate(journal.date)}`,
+          text: shareText,
+          url: shareUrl,
+        });
+        toast.success("Shared");
+      } else if (typeof navigator !== "undefined" && navigator.clipboard) {
+        await navigator.clipboard.writeText(`${shareText}\n${shareUrl}`);
+        toast.success("Link copied to clipboard", {
+          description: "Paste it anywhere to share this journal entry.",
+        });
+      } else {
+        // Last-resort fallback
+        const ta = document.createElement("textarea");
+        ta.value = `${shareText}\n${shareUrl}`;
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand("copy");
+        document.body.removeChild(ta);
+        toast.success("Link copied to clipboard");
+      }
+    } catch (e) {
+      // User cancelled the share sheet — silent
+      if (e instanceof Error && e.name === "AbortError") return;
+      console.error(e);
+      toast.error("Couldn't share this journal.");
+    }
+  };
+
   return (
     <>
       <PageHeader
@@ -190,6 +225,13 @@ export function JournalDetail() {
               >
                 <Printer className="h-4 w-4" />
                 Print
+              </Button>
+              <Button
+                variant="outline"
+                onClick={handleShare}
+              >
+                <Share2 className="h-4 w-4" />
+                Share
               </Button>
             </div>
           )

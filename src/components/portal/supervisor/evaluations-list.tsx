@@ -19,6 +19,7 @@ import {
   EvaluationStatusBadge,
   Badge,
 } from "@/components/portal/shared/badges";
+import { StarRating } from "@/components/portal/shared/star-rating";
 import { EmptyState } from "@/components/portal/shared/empty-state";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -116,7 +117,23 @@ export function EvaluationsList() {
       key: "average",
       header: "Average",
       align: "right",
-      cell: (e) => <ScoreBadge score={averageScore(e)} />,
+      cell: (e) => {
+        const avg = averageScore(e);
+        if (avg <= 0) return <span className="text-sm text-muted-foreground">—</span>;
+        return (
+          <div className="flex items-center justify-end gap-2">
+            <StarRating
+              value={avg}
+              size={12}
+              showValue={false}
+              showLabel={false}
+              animate={false}
+              className="hidden md:inline-flex"
+            />
+            <ScoreBadge score={avg} />
+          </div>
+        );
+      },
       sortValue: (e) => averageScore(e),
     },
     {
@@ -277,7 +294,16 @@ export function EvaluationsList() {
                     <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
                       Average
                     </span>
-                    <ScoreBadge score={averageScore(e)} />
+                    <div className="flex items-center gap-1.5">
+                      <StarRating
+                        value={averageScore(e)}
+                        size={11}
+                        showValue={false}
+                        showLabel={false}
+                        animate={false}
+                      />
+                      <ScoreBadge score={averageScore(e)} />
+                    </div>
                   </div>
                   <div className="flex items-center justify-end gap-1 pt-1 text-xs font-medium text-primary">
                     {e.status === "draft" ? "Edit draft" : "View details"}

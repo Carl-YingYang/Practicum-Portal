@@ -150,7 +150,22 @@ export function AllEvaluationsList() {
       header: "Average",
       sortValue: (r) => r.avg,
       align: "right",
-      cell: (r) => <ScoreBadge score={r.avg} />,
+      cell: (r) => {
+        if (r.avg <= 0) return <span className="text-sm text-muted-foreground">—</span>;
+        return (
+          <div className="flex items-center justify-end gap-2">
+            <StarRating
+              value={r.avg}
+              size={12}
+              showValue={false}
+              showLabel={false}
+              animate={false}
+              className="hidden md:inline-flex"
+            />
+            <ScoreBadge score={r.avg} />
+          </div>
+        );
+      },
     },
     {
       key: "status",

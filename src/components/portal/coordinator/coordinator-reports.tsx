@@ -17,13 +17,15 @@ import {
   formatDuration,
   cohortTotalHours,
 } from "@/lib/selectors";
-import { RATING_ANCHORS } from "@/lib/types";
+import { RATING_ANCHORS, RATING_CRITERIA } from "@/lib/types";
 import { PageHeader } from "@/components/portal/layout/page-header";
 import { SectionCard } from "@/components/portal/shared/section-card";
 import { PdfPreviewModal } from "@/components/portal/shared/pdf-preview-modal";
 import { TimeLogReportLauncher } from "@/components/portal/shared/time-log-report-launcher";
+import { TrendsChart, type TrendPoint, type TrendSeries } from "@/components/portal/shared/trends-chart";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
   Select,
   SelectContent,
@@ -38,6 +40,7 @@ import {
   NotebookText,
   Download,
   Timer,
+  TrendingUp,
 } from "lucide-react";
 import { toast } from "sonner";
 import { downloadPdfReport } from "@/lib/client-pdf";
@@ -47,6 +50,8 @@ type ReportKind =
   | "journal-compliance"
   | "per-student-eval"
   | "per-student-journal";
+
+type ReportsTab = "reports" | "trends";
 
 export function CoordinatorReports() {
   const students = useAppStore((s) => s.students);
@@ -59,6 +64,85 @@ export function CoordinatorReports() {
   const [activeReport, setActiveReport] = React.useState<ReportKind | null>(null);
   const [evalStudentId, setEvalStudentId] = React.useState<string>("");
   const [journalStudentId, setJournalStudentId] = React.useState<string>("");
+  const [tab, setTab] = React.useState<ReportsTab>("reports");
+
+  // ---------- Trends data (cohort-level) ----------
+  // Cohort-wide weekly journal hours (single line — sum of all students' hours per week).
+  const cohortWeeklyHours = React.useMemo(() => {
+    const buckets = new Map<string, number>();
+    journals.forEach((j) => {
+      const wk = weekLabel(j.date);
+      buckets.set(wk, (buckets.get(wk) ?? 0) + j.hours);
+    });
+    if (buckets.size === 0) {
+      return { points: [], series: [] as TrendSeries[] };
+    }
+    const sortedWeeks = Array.from(buckets.keys()).sort((a, b) => {
+      const ma = a.match(/Week of (.+)/);
+      const mb = b.match(/Week of (.+)/);
+      const da = ma ? new Date(ma[1] + ", 2025") : new Date(0);
+      const db = mb ? new Date(mb[1] + ", 2025") : new Date(0);
+      return da.getTime() - db.getTime();
+    });
+    const points: TrendPoint[] = sortedWeeks.map((wk) => ({
+      label: wk.replace("Week of ", "Wk "),
+      hours: buckets.get(wk) ?? 0,
+    }));
+    const series: TrendSeries[] = [
+      { key: "hours", label: "Cohort hours", color: "hsl(var(--primary))" },
+    ];
+    return { points, series };
+  }, [journals]);
+
+  // Per-company average evaluation scores (bar chart, top companies by student count).
+  const companyEvalScores = React.useMemo(() => {
+    const companyMap = new Map<string, { name: string; totalScore: number; count: number }>();
+    evaluations
+      .filter((e) => e.status === "submitted")
+      .forEach((e) => {
+        const st = getStudent(students, e.studentId);
+        if (!st) return;
+        const company = getCompany(companies, st.companyId);
+        if (!company) return;
+        const cur = companyMap.get(company.id) ?? {
+          name: company.name,
+          totalScore: 0,
+          count: 0,
+        };
+        cur.totalScore += averageScore(e);
+        cur.count += 1;
+        companyMap.set(company.id, cur);
+      });
+    const points: TrendPoint[] = Array.from(companyMap.values())
+      .map((c) => ({
+        label: c.name.length > 14 ? c.name.slice(0, 12) + "…" : c.name,
+        avg: c.count > 0 ? Number((c.totalScore / c.count).toFixed(2)) : 0,
+      }))
+      .sort((a, b) => (b.avg as number) - (a.avg as number))
+      .slice(0, 8);
+    const series: TrendSeries[] = [
+      { key: "avg", label: "Avg score", color: "hsl(var(--primary))" },
+    ];
+    return { points, series };
+  }, [evaluations, students, companies]);
+
+  // Cohort journal status distribution (single horizontal/vertical bar chart).
+  const journalStatusDist = React.useMemo(() => {
+    const counts = { approved: 0, pending: 0, rejected: 0, draft: 0 };
+    journals.forEach((j) => {
+      counts[j.status] += 1;
+    });
+    const points: TrendPoint[] = [
+      { label: "Approved", count: counts.approved },
+      { label: "Pending", count: counts.pending },
+      { label: "Rejected", count: counts.rejected },
+      { label: "Draft", count: counts.draft },
+    ];
+    const series: TrendSeries[] = [
+      { key: "count", label: "Journals", color: "hsl(var(--primary))" },
+    ];
+    return { points, series };
+  }, [journals]);
 
   // Cohort time-log rows (precomputed for the report + summary card)
   const cohortTimeRows = React.useMemo(
@@ -329,6 +413,19 @@ export function CoordinatorReports() {
         breadcrumb="Reports"
       />
 
+      <Tabs value={tab} onValueChange={(v) => setTab(v as ReportsTab)}>
+        <TabsList className="h-9 w-full sm:w-fit">
+          <TabsTrigger value="reports" className="gap-1.5 text-[12.5px]">
+            <FileText className="h-3.5 w-3.5" />
+            Reports
+          </TabsTrigger>
+          <TabsTrigger value="trends" className="gap-1.5 text-[12.5px]">
+            <TrendingUp className="h-3.5 w-3.5" />
+            Trends
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="reports" className="mt-4">
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {/* All evaluations bundle */}
         <ReportCard
@@ -452,6 +549,57 @@ export function CoordinatorReports() {
           </div>
         </ReportCard>
       </div>
+        </TabsContent>
+
+        <TabsContent value="trends" className="mt-4 space-y-4">
+          <div className="grid gap-4 lg:grid-cols-2">
+            <SectionCard
+              title="Cohort weekly journal hours"
+              description="Total hours logged across all students per week — track cohort-wide engagement over the term."
+            >
+              <TrendsChart
+                data={cohortWeeklyHours.points}
+                series={cohortWeeklyHours.series}
+                variant="line"
+                yLabel="Hours"
+                height={280}
+              />
+            </SectionCard>
+
+            <SectionCard
+              title="Journal status distribution"
+              description="Snapshot of the cohort's journal pipeline — approved, pending, rejected, drafts."
+            >
+              <TrendsChart
+                data={journalStatusDist.points}
+                series={journalStatusDist.series}
+                variant="bar"
+                yLabel="Journals"
+                height={280}
+              />
+            </SectionCard>
+          </div>
+
+          <SectionCard
+            title="Average evaluation score by company"
+            description="Top companies by submitted-evaluation average (1–5 scale). Compare placement-quality across the cohort."
+          >
+            {companyEvalScores.points.length === 0 ? (
+              <div className="flex items-center justify-center rounded-lg border border-dashed border-border bg-muted/30 py-10 text-sm text-muted-foreground">
+                No submitted evaluations to visualise yet.
+              </div>
+            ) : (
+              <TrendsChart
+                data={companyEvalScores.points}
+                series={companyEvalScores.series}
+                variant="bar"
+                yLabel="Avg score"
+                height={300}
+              />
+            )}
+          </SectionCard>
+        </TabsContent>
+      </Tabs>
 
       {/* All evaluations bundle */}
       <PdfPreviewModal

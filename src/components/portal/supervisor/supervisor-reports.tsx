@@ -8,6 +8,7 @@ import {
   Download,
   Users,
   Timer,
+  TrendingUp,
 } from "lucide-react";
 import { useAppStore } from "@/store/use-app-store";
 import {
@@ -28,13 +29,16 @@ import { PageHeader } from "@/components/portal/layout/page-header";
 import { SectionCard } from "@/components/portal/shared/section-card";
 import { PdfPreviewModal } from "@/components/portal/shared/pdf-preview-modal";
 import { TimeLogReportLauncher } from "@/components/portal/shared/time-log-report-launcher";
+import { TrendsChart, type TrendPoint, type TrendSeries } from "@/components/portal/shared/trends-chart";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { RATING_ANCHORS } from "@/lib/types";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { RATING_ANCHORS, RATING_CRITERIA } from "@/lib/types";
 import type { Student, Evaluation, Journal } from "@/lib/types";
 import { downloadPdfReport } from "@/lib/client-pdf";
 
 type ReportType = "evaluation-summary" | "journal-report" | "time-log-report";
+type ReportsTab = "reports" | "trends";
 
 export function SupervisorReports() {
   const currentUser = useAppStore((s) => s.currentUser);
@@ -84,6 +88,74 @@ export function SupervisorReports() {
 
   const totalSessions = timeLogReport.reduce((s, r) => s + r.sessions.length, 0);
   const totalMs = timeLogReport.reduce((s, r) => s + r.totalMs, 0);
+
+  // ---------- Trends data ----------
+  // Build weekly journal-hours series per intern (approved + pending journals).
+  const weeklyHours = useMemo(() => {
+    type WeekBuckets = Map<string, TrendPoint>;
+    const weekMap = new Map<string, WeekBuckets>(); // studentId -> weekKey -> point
+    const allWeeks = new Set<string>(); // sorted week keys
+    interns.forEach((s) => {
+      const studentJournals = journalsForStudent(journals, s.id);
+      const buckets: WeekBuckets = new Map();
+      studentJournals.forEach((j) => {
+        const wk = weekLabel(j.date);
+        allWeeks.add(wk);
+        const cur = buckets.get(wk) ?? { label: wk };
+        cur[s.id] = (typeof cur[s.id] === "number" ? cur[s.id] : 0) + j.hours;
+        buckets.set(wk, cur);
+      });
+      weekMap.set(s.id, buckets);
+    });
+    if (allWeeks.size === 0) {
+      return { points: [], series: [] as TrendSeries[] };
+    }
+    const sortedWeeks = Array.from(allWeeks).sort((a, b) => {
+      // weeks are formatted "Week of Mon D" — parse the date for sorting
+      const ma = a.match(/Week of (.+)/);
+      const mb = b.match(/Week of (.+)/);
+      const da = ma ? new Date(ma[1] + ", 2025") : new Date(0);
+      const db = mb ? new Date(mb[1] + ", 2025") : new Date(0);
+      return da.getTime() - db.getTime();
+    });
+    const points: TrendPoint[] = sortedWeeks.map((wk) => {
+      const row: TrendPoint = { label: wk.replace("Week of ", "Wk ") };
+      interns.forEach((s) => {
+        const buckets = weekMap.get(s.id);
+        const v = buckets?.get(wk)?.[s.id];
+        row[s.id] = typeof v === "number" ? v : 0;
+      });
+      return row;
+    });
+    const series: TrendSeries[] = interns.map((s) => ({
+      key: s.id,
+      label: s.name.split(" ")[0],
+    }));
+    return { points, series };
+  }, [interns, journals]);
+
+  // Evaluation scores per intern (bar chart).
+  const evalScores = useMemo(() => {
+    const points: TrendPoint[] = evalSummary
+      .filter((r) => r.evaluation)
+      .map((r) => ({
+        label: r.student.name.split(" ")[0],
+        quality: r.evaluation!.qualityOfWork,
+        knowledge: r.evaluation!.jobKnowledge,
+        dependability: r.evaluation!.dependability,
+      }));
+    const series: TrendSeries[] = RATING_CRITERIA.map((c) => ({
+      key: c.key === "qualityOfWork"
+        ? "quality"
+        : c.key === "jobKnowledge"
+          ? "knowledge"
+          : "dependability",
+      label: c.label.split(" ")[0],
+    }));
+    return { points, series };
+  }, [evalSummary]);
+
+  const [tab, setTab] = useState<ReportsTab>("reports");
 
   const open = openReport !== null;
   const close = () => setOpenReport(null);
@@ -219,142 +291,189 @@ export function SupervisorReports() {
         description="Generate print-ready reports across all your interns."
       />
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {/* Evaluation summary card */}
-        <Card className="gap-0 p-5">
-          <div className="flex items-start gap-3">
-            <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-teal-50 text-teal-700 dark:bg-teal-950/60 dark:text-teal-300">
-              <ClipboardCheck className="h-5 w-5" />
-            </span>
-            <div className="min-w-0 flex-1">
-              <h2 className="text-base font-semibold text-foreground">
-                Evaluation Summary
-              </h2>
-              <p className="mt-1 text-sm text-muted-foreground">
-                All interns with their latest submitted evaluation scores and
-                averages for the current term.
-              </p>
-            </div>
-          </div>
-          <div className="mt-4 flex items-center justify-between border-t border-border pt-3 text-xs text-muted-foreground">
-            <span>
-              <span className="font-semibold text-foreground">
-                {evalSummary.filter((r) => r.evaluation).length}
-              </span>{" "}
-              of {interns.length} evaluated
-            </span>
-            <Button
-              size="sm"
-              onClick={() => setOpenReport("evaluation-summary")}
-              disabled={interns.length === 0}
-            >
-              <Download className="h-3.5 w-3.5" />
-              Open preview
-            </Button>
-          </div>
-        </Card>
+      <Tabs value={tab} onValueChange={(v) => setTab(v as ReportsTab)}>
+        <TabsList className="h-9 w-full sm:w-fit">
+          <TabsTrigger value="reports" className="gap-1.5 text-[12.5px]">
+            <FileText className="h-3.5 w-3.5" />
+            Reports
+          </TabsTrigger>
+          <TabsTrigger value="trends" className="gap-1.5 text-[12.5px]">
+            <TrendingUp className="h-3.5 w-3.5" />
+            Trends
+          </TabsTrigger>
+        </TabsList>
 
-        {/* Per-intern journal report card */}
-        <Card className="gap-0 p-5">
-          <div className="flex items-start gap-3">
-            <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300">
-              <NotebookText className="h-5 w-5" />
-            </span>
-            <div className="min-w-0 flex-1">
-              <h2 className="text-base font-semibold text-foreground">
-                Per-Intern Journal Report
-              </h2>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Approved weekly journals per intern with hours and progress
-                toward required totals.
-              </p>
-            </div>
-          </div>
-          <div className="mt-4 flex items-center justify-between border-t border-border pt-3 text-xs text-muted-foreground">
-            <span>
-              <span className="font-semibold text-foreground">
-                {journalReport.reduce((s, r) => s + r.approvedJournals.length, 0)}
-              </span>{" "}
-              approved journals across {interns.length} interns
-            </span>
-            <Button
-              size="sm"
-              onClick={() => setOpenReport("journal-report")}
-              disabled={interns.length === 0}
-            >
-              <Download className="h-3.5 w-3.5" />
-              Open preview
-            </Button>
-          </div>
-        </Card>
+        <TabsContent value="reports" className="mt-4 space-y-4">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {/* Evaluation summary card */}
+            <Card className="gap-0 p-5">
+              <div className="flex items-start gap-3">
+                <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-teal-50 text-teal-700 dark:bg-teal-950/60 dark:text-teal-300">
+                  <ClipboardCheck className="h-5 w-5" />
+                </span>
+                <div className="min-w-0 flex-1">
+                  <h2 className="text-base font-semibold text-foreground">
+                    Evaluation Summary
+                  </h2>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    All interns with their latest submitted evaluation scores and
+                    averages for the current term.
+                  </p>
+                </div>
+              </div>
+              <div className="mt-4 flex items-center justify-between border-t border-border pt-3 text-xs text-muted-foreground">
+                <span>
+                  <span className="font-semibold text-foreground">
+                    {evalSummary.filter((r) => r.evaluation).length}
+                  </span>{" "}
+                  of {interns.length} evaluated
+                </span>
+                <Button
+                  size="sm"
+                  onClick={() => setOpenReport("evaluation-summary")}
+                  disabled={interns.length === 0}
+                >
+                  <Download className="h-3.5 w-3.5" />
+                  Open preview
+                </Button>
+              </div>
+            </Card>
 
-        {/* Per-intern time log report card */}
-        <Card className="gap-0 p-5">
-          <div className="flex items-start gap-3">
-            <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300">
-              <Timer className="h-5 w-5" />
-            </span>
-            <div className="min-w-0 flex-1">
-              <h2 className="text-base font-semibold text-foreground">
-                Per-Intern Time Log Report
-              </h2>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Clock-in/out sessions per intern, grouped by week with subtotals
-                and a grand total toward required hours.
-              </p>
-            </div>
-          </div>
-          <div className="mt-4 flex items-center justify-between border-t border-border pt-3 text-xs text-muted-foreground">
-            <span>
-              <span className="font-semibold text-foreground">{totalSessions}</span>{" "}
-              sessions · {formatDuration(totalMs)} tracked
-            </span>
-            {interns.length === 0 || totalSessions === 0 ? (
-              <Button size="sm" disabled>
-                <Download className="h-3.5 w-3.5" />
-                Open preview
-              </Button>
-            ) : (
-              <TimeLogReportLauncher
-                trigger={
-                  <Button size="sm">
+            {/* Per-intern journal report card */}
+            <Card className="gap-0 p-5">
+              <div className="flex items-start gap-3">
+                <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300">
+                  <NotebookText className="h-5 w-5" />
+                </span>
+                <div className="min-w-0 flex-1">
+                  <h2 className="text-base font-semibold text-foreground">
+                    Per-Intern Journal Report
+                  </h2>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    Approved weekly journals per intern with hours and progress
+                    toward required totals.
+                  </p>
+                </div>
+              </div>
+              <div className="mt-4 flex items-center justify-between border-t border-border pt-3 text-xs text-muted-foreground">
+                <span>
+                  <span className="font-semibold text-foreground">
+                    {journalReport.reduce((s, r) => s + r.approvedJournals.length, 0)}
+                  </span>{" "}
+                  approved journals across {interns.length} interns
+                </span>
+                <Button
+                  size="sm"
+                  onClick={() => setOpenReport("journal-report")}
+                  disabled={interns.length === 0}
+                >
+                  <Download className="h-3.5 w-3.5" />
+                  Open preview
+                </Button>
+              </div>
+            </Card>
+
+            {/* Per-intern time log report card */}
+            <Card className="gap-0 p-5">
+              <div className="flex items-start gap-3">
+                <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300">
+                  <Timer className="h-5 w-5" />
+                </span>
+                <div className="min-w-0 flex-1">
+                  <h2 className="text-base font-semibold text-foreground">
+                    Per-Intern Time Log Report
+                  </h2>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    Clock-in/out sessions per intern, grouped by week with subtotals
+                    and a grand total toward required hours.
+                  </p>
+                </div>
+              </div>
+              <div className="mt-4 flex items-center justify-between border-t border-border pt-3 text-xs text-muted-foreground">
+                <span>
+                  <span className="font-semibold text-foreground">{totalSessions}</span>{" "}
+                  sessions · {formatDuration(totalMs)} tracked
+                </span>
+                {interns.length === 0 || totalSessions === 0 ? (
+                  <Button size="sm" disabled>
                     <Download className="h-3.5 w-3.5" />
                     Open preview
                   </Button>
-                }
-                title="Per-Intern Time Log Report"
-                subtitle={`${interns.length} interns · ${totalSessions} sessions · ${formatDuration(totalMs)}`}
-                rows={timeLogReport.map((r) => ({
-                  student: r.student,
-                  companyName: getCompany(companies, r.student.companyId)?.name,
-                  supervisorName: getSupervisor(supervisors, supervisorId)?.name,
-                  sessions: r.sessions,
-                }))}
+                ) : (
+                  <TimeLogReportLauncher
+                    trigger={
+                      <Button size="sm">
+                        <Download className="h-3.5 w-3.5" />
+                        Open preview
+                      </Button>
+                    }
+                    title="Per-Intern Time Log Report"
+                    subtitle={`${interns.length} interns · ${totalSessions} sessions · ${formatDuration(totalMs)}`}
+                    rows={timeLogReport.map((r) => ({
+                      student: r.student,
+                      companyName: getCompany(companies, r.student.companyId)?.name,
+                      supervisorName: getSupervisor(supervisors, supervisorId)?.name,
+                      sessions: r.sessions,
+                    }))}
+                  />
+                )}
+              </div>
+            </Card>
+          </div>
+
+          {/* Hint card when no interns */}
+          {interns.length === 0 && (
+            <SectionCard>
+              <div className="flex flex-col items-center py-6 text-center">
+                <span className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-muted text-muted-foreground">
+                  <Users className="h-6 w-6" />
+                </span>
+                <h3 className="text-base font-semibold text-foreground">
+                  No interns assigned
+                </h3>
+                <p className="mt-1 max-w-sm text-sm text-muted-foreground">
+                  Reports become available once you have at least one intern
+                  assigned to your supervision.
+                </p>
+              </div>
+            </SectionCard>
+          )}
+        </TabsContent>
+
+        <TabsContent value="trends" className="mt-4 space-y-4">
+          <SectionCard
+            title="Weekly journal hours"
+            description="Hours logged per intern per week — spot slumps and surges at a glance."
+          >
+            <TrendsChart
+              data={weeklyHours.points}
+              series={weeklyHours.series}
+              variant="line"
+              yLabel="Hours"
+              height={320}
+            />
+          </SectionCard>
+
+          <SectionCard
+            title="Evaluation scores by criterion"
+            description="Latest submitted evaluation scores per intern, broken down by criterion."
+          >
+            {evalScores.points.length === 0 ? (
+              <div className="flex items-center justify-center rounded-lg border border-dashed border-border bg-muted/30 py-10 text-sm text-muted-foreground">
+                No submitted evaluations to visualise yet.
+              </div>
+            ) : (
+              <TrendsChart
+                data={evalScores.points}
+                series={evalScores.series}
+                variant="bar"
+                yLabel="Score (1–5)"
+                height={320}
               />
             )}
-          </div>
-        </Card>
-      </div>
-
-      {/* Hint card when no interns */}
-      {interns.length === 0 && (
-        <div className="mt-6">
-          <SectionCard>
-            <div className="flex flex-col items-center py-6 text-center">
-              <span className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-muted text-muted-foreground">
-                <Users className="h-6 w-6" />
-              </span>
-              <h3 className="text-base font-semibold text-foreground">
-                No interns assigned
-              </h3>
-              <p className="mt-1 max-w-sm text-sm text-muted-foreground">
-                Reports become available once you have at least one intern
-                assigned to your supervision.
-              </p>
-            </div>
           </SectionCard>
-        </div>
-      )}
+        </TabsContent>
+      </Tabs>
 
       {/* PDF preview modal */}
       <PdfPreviewModal
