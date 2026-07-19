@@ -50,9 +50,9 @@ export function MobileListCard({
       type={onClick ? "button" : undefined}
       onClick={onClick}
       className={cn(
-        "flex min-h-11 w-full items-center gap-3 rounded-2xl border border-border/60 bg-card p-4 text-left shadow-sm transition-all",
+        "flex min-h-11 w-full items-center gap-3 rounded-2xl border border-border/60 bg-card p-4 text-left shadow-sm",
         onClick &&
-          "active:scale-[0.99] hover:border-border hover:shadow-md cursor-pointer",
+          "cursor-pointer hover:bg-muted/30",
         className
       )}
     >

@@ -30,7 +30,6 @@ export function SectionCard({
     <Card
       className={cn(
         "card-refined gap-0 overflow-hidden border-border/60",
-        interactive && "is-interactive hover:shadow-sm hover:border-border transition-shadow duration-200",
         className
       )}
     >

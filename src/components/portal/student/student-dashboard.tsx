@@ -64,7 +64,7 @@ export function StudentDashboard() {
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
             <StatCardSkeleton count={3} />
           </div>
-          <div className="h-64 animate-pulse rounded-xl bg-muted/60" />
+          <div className="h-64 rounded-xl bg-muted/60" />
         </div>
       </>
     );

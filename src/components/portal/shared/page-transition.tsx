@@ -1,35 +1,21 @@
 "use client";
 
-import { motion } from "framer-motion";
 import * as React from "react";
 
 /**
- * Subtle fade + slide-up transition for view changes.
- * Keeps the "calm over clever" design principle — 220ms, no bounce.
+ * Flat, no-animation wrapper. Previously used Framer Motion for fade+slide;
+ * now renders children directly for instant, lightweight view switches.
  */
 export function PageTransition({ children }: { children: React.ReactNode }) {
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 8 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -4 }}
-      transition={{ duration: 0.22, ease: [0.4, 0, 0.2, 1] }}
-    >
-      {children}
-    </motion.div>
-  );
+  return <>{children}</>;
 }
 
 /**
- * Simulated async loading on first mount — returns `true` (loading) for `delay`
- * ms after mount, then `false`. Gives dashboards/lists a polished skeleton
- * shimmer before content appears, matching modern SaaS feel.
+ * Previously returned `true` for `delay` ms to show skeleton loaders.
+ * Now returns `false` immediately — content renders instantly with no
+ * artificial loading delay. Kept for backward compatibility with existing
+ * callers (signature unchanged).
  */
-export function useInitialLoading(delay = 380): boolean {
-  const [loading, setLoading] = React.useState(true);
-  React.useEffect(() => {
-    const t = setTimeout(() => setLoading(false), delay);
-    return () => clearTimeout(t);
-  }, [delay]);
-  return loading;
+export function useInitialLoading(_delay = 0): boolean {
+  return false;
 }

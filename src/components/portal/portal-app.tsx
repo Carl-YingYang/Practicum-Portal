@@ -2,12 +2,10 @@
 
 import * as React from "react";
 import dynamic from "next/dynamic";
-import { AnimatePresence } from "framer-motion";
 import { Loader2 } from "lucide-react";
 import { useAppStore } from "@/store/use-app-store";
 import { LoginScreen } from "@/components/portal/auth/login-screen";
 import { AppShell } from "@/components/portal/layout/app-shell";
-import { PageTransition } from "@/components/portal/shared/page-transition";
 
 // Role workspaces are code-split so the initial `/` compile only builds the
 // login screen. Each workspace (and its heavy deps — mdxeditor, recharts,
@@ -98,15 +96,9 @@ export function PortalApp() {
       workspace = <LoginScreen />;
   }
 
-  // Animate view changes (keying on `view` + param ids so navigating between
-  // two detail pages of the same type re-triggers the transition).
-  const transitionKey = `${view}:${viewParams.studentId ?? ""}:${viewParams.supervisorId ?? ""}:${viewParams.evaluationId ?? ""}:${viewParams.journalId ?? ""}`;
-
   return (
     <AppShell>
-      <AnimatePresence mode="wait">
-        <PageTransition key={transitionKey}>{workspace}</PageTransition>
-      </AnimatePresence>
+      {workspace}
     </AppShell>
   );
 }

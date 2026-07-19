@@ -623,25 +623,16 @@
   /* Card — flat with hairline border, minimal shadow */
   .card-refined {
     box-shadow: var(--shadow-card);
-    transition: box-shadow 220ms var(--ease-calm), transform 220ms var(--ease-calm),
-      border-color 220ms var(--ease-calm);
   }
 
   .card-refined.is-interactive:hover {
-    box-shadow: var(--shadow-card-hover);
     border-color: color-mix(in srgb, var(--primary) 28%, var(--border));
-    transform: translateY(-2px);
   }
 
   .card-refined.is-interactive:focus-within {
     border-color: color-mix(in srgb, var(--primary) 42%, var(--border));
     box-shadow: var(--shadow-card-hover),
       0 0 0 3px color-mix(in srgb, var(--primary) 12%, transparent);
-  }
-
-  .card-refined.is-interactive:active {
-    transform: translateY(0);
-    transition-duration: 80ms;
   }
 
   /* Input focus — uses primary (navy in light, lighter navy in dark) */
@@ -663,18 +654,10 @@
     color: var(--accent-foreground);
     font-weight: 600;
     border-radius: var(--radius);
-    transition: background-color 180ms var(--ease-calm), transform 180ms var(--ease-calm),
-      box-shadow 180ms var(--ease-calm);
   }
 
   .btn-ici-gold:hover {
     background-color: color-mix(in srgb, var(--accent) 85%, var(--blue));
-    box-shadow: 0 4px 12px -2px color-mix(in srgb, var(--blue) 30%, transparent);
-    transform: translateY(-1px);
-  }
-
-  .btn-ici-gold:active {
-    transform: translateY(0);
   }
 
   /* Vibrant blue CTA button — primary action */
@@ -683,18 +666,10 @@
     color: var(--primary-foreground);
     font-weight: 600;
     border-radius: var(--radius);
-    transition: background-color 180ms var(--ease-calm), transform 180ms var(--ease-calm),
-      box-shadow 180ms var(--ease-calm);
   }
 
   .btn-ici-navy:hover {
     background-color: color-mix(in srgb, var(--primary) 85%, var(--blue-deep));
-    box-shadow: 0 4px 12px -2px color-mix(in srgb, var(--primary) 40%, transparent);
-    transform: translateY(-1px);
-  }
-
-  .btn-ici-navy:active {
-    transform: translateY(0);
   }
 
   /* Section header — blue text with lighter blue underline */
@@ -768,7 +743,7 @@
 }
 
 .view-enter {
-  animation: portal-view-enter 220ms var(--ease-calm);
+  /* Flat — no entrance animation. Instant view switches. */
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -888,25 +863,9 @@
    STYLING POLISH — micro-interactions & decorative accents
    ============================================================ */
 
-/* Table row hover accent — subtle left border indicator */
+/* Table row hover — flat background only, no accent bar animation */
 .row-accent {
   position: relative;
-  transition: background-color 180ms var(--ease-calm);
-}
-.row-accent::before {
-  content: "";
-  position: absolute;
-  left: 0;
-  top: 0;
-  bottom: 0;
-  width: 2px;
-  background-color: var(--primary);
-  transform: scaleY(0);
-  transform-origin: center;
-  transition: transform 220ms var(--ease-calm);
-}
-.row-accent:hover::before {
-  transform: scaleY(1);
 }
 
 /* Decorative section heading — small dot accent before the text */

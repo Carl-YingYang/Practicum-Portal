@@ -47,7 +47,7 @@ export function StatCard({
   return (
     <Card
       className={cn(
-        "card-refined gradient-tint group/stat relative flex flex-col gap-1 overflow-hidden border-border/60 transition-all duration-200 hover:-translate-y-0.5 hover:border-border hover:shadow-md",
+        "card-refined gradient-tint relative flex flex-col gap-1 overflow-hidden border-border/60",
         compact ? "p-4" : "p-5",
         className
       )}
@@ -68,7 +68,7 @@ export function StatCard({
         </div>
         <span
           className={cn(
-            "flex shrink-0 items-center justify-center rounded-xl transition-transform duration-200 group-hover/stat:scale-110",
+            "flex shrink-0 items-center justify-center rounded-xl",
             compact ? "h-9 w-9" : "h-10 w-10",
             toneIcon[tone]
           )}

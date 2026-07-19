@@ -89,12 +89,7 @@ export function AppShell({ children }: AppShellProps) {
         */}
         <main className="flex-1 px-4 pb-[calc(56px+env(safe-area-inset-bottom,0px)+1rem)] pt-4 sm:px-6 lg:px-8 lg:pb-12 lg:pt-6">
           <div className="mx-auto w-full max-w-7xl">
-            {/*
-              View transition wrapper — keyed on the view name so React
-              remounts on route change, triggering the CSS fade/slide-in
-              animation defined in globals.css (.view-enter).
-            */}
-            <div key={view} className="view-enter">
+            <div key={view}>
               {children}
             </div>
           </div>

@@ -168,8 +168,8 @@ export function DataTable<T>({
               }
             }}
             className={cn(
-              "relative block w-full rounded-2xl border bg-card p-4 text-left transition-all",
-              onRowClick && "cursor-pointer hover:border-border hover:shadow-sm active:scale-[0.99] active:bg-muted/40",
+              "relative block w-full rounded-2xl border bg-card p-4 text-left",
+              onRowClick && "cursor-pointer hover:bg-muted/30",
               accent === "amber"
                 ? "border-amber-200/70 dark:border-amber-900/40"
                 : accent === "red"
@@ -228,7 +228,7 @@ export function DataTable<T>({
                         type="button"
                         onClick={() => toggleSort(col.key)}
                         className={cn(
-                          "inline-flex items-center gap-1 transition-colors hover:text-foreground",
+                          "inline-flex items-center gap-1",
                           col.align === "right" && "flex-row-reverse",
                           isActive && "text-foreground"
                         )}
@@ -260,8 +260,8 @@ export function DataTable<T>({
                   key={getRowId(row)}
                   onClick={() => onRowClick?.(row)}
                   className={cn(
-                    "row-accent h-[56px] border-border/70 transition-colors",
-                    onRowClick && "cursor-pointer hover:bg-muted/50",
+                    "h-[56px] border-border/70",
+                    onRowClick && "cursor-pointer hover:bg-muted/40",
                     accent === "amber" &&
                       "bg-amber-50/40 dark:bg-amber-950/15",
                     accent === "red" &&

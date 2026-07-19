@@ -234,7 +234,7 @@ export function CoordinatorDashboard() {
             </Button>
           }
         />
-        <div className="mb-4 h-11 animate-pulse rounded-xl bg-muted/60" />
+        <div className="mb-4 h-11 rounded-xl bg-muted/60" />
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
           <StatCardSkeleton count={4} />
         </div>
