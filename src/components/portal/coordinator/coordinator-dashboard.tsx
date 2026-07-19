@@ -5,7 +5,6 @@ import { cn } from "@/lib/utils";
 import { useAppStore } from "@/store/use-app-store";
 import {
   averageScore,
-  computeSubscriptionMetrics,
   evaluationsForStudent,
   formatDate,
   getCompany,
@@ -42,7 +41,6 @@ import {
   CalendarClock,
   XCircle,
   FileText,
-  Wallet,
   Timer,
   ChevronRight,
 } from "lucide-react";
@@ -67,34 +65,6 @@ interface CohortRow {
 }
 
 type AttentionTab = "unassigned" | "noEval" | "rejected" | "overdue";
-
-/**
- * Subscription KPI tile for the coordinator dashboard. Shows the committed
- * billing (Σ requiredHours × hourly rate) and links to the Subscription &
- * Billing page.
- */
-function SubscriptionKpiCard() {
-  const subscription = useAppStore((s) => s.subscription);
-  const students = useAppStore((s) => s.students);
-  const navigate = useAppStore((s) => s.navigate);
-  const metrics = React.useMemo(
-    () => computeSubscriptionMetrics(subscription, students),
-    [subscription, students]
-  );
-  return (
-    <StatCard
-      label="Committed Billing"
-      value={
-        "₱" +
-        Math.round(metrics.committedCostPhp).toLocaleString("en-US")
-      }
-      icon={Wallet}
-      tone="teal"
-      hint={`${metrics.totalAssignedHours.toLocaleString()} hrs × ₱${subscription.hourlyRatePhp}/hr`}
-      compact
-    />
-  );
-}
 
 export function CoordinatorDashboard() {
   const navigate = useAppStore((s) => s.navigate);
@@ -353,7 +323,6 @@ export function CoordinatorDashboard() {
             hint={`${approvedJournals}/${journals.length} approved`}
             compact
           />
-          <SubscriptionKpiCard />
         </div>
 
         {/* Your school — tappable branded strip; opens the school identity modal. */}

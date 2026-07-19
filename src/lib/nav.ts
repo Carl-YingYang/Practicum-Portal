@@ -13,7 +13,6 @@ import {
   FilePlus2,
   UserCircle,
   Settings,
-  Wallet,
   type LucideIcon,
 } from "lucide-react";
 import type { NavItem, Role, ViewKey } from "./types";
@@ -35,7 +34,6 @@ const iconMap: Record<string, LucideIcon> = {
   forms: FilePlus2,
   profile: UserCircle,
   settings: Settings,
-  subscription: Wallet,
 };
 
 export function getNavIcon(name: string): LucideIcon {
@@ -98,7 +96,6 @@ export const navConfig: Record<Role, NavItem[]> = {
     { key: "evaluations", label: "Evaluations", shortLabel: "Evals", view: "coordinator.evaluations", icon: "allEvaluations", section: "Workflow" },
     { key: "journals", label: "Journals", shortLabel: "Journals", view: "coordinator.journals", icon: "allJournals", section: "Workflow" },
     { key: "reports", label: "Reports", shortLabel: "Reports", view: "coordinator.reports", icon: "reports", section: "Insights" },
-    { key: "subscription", label: "Billing", shortLabel: "Billing", view: "coordinator.subscription", icon: "subscription", section: "Billing" },
     { key: "settings", label: "School Settings", shortLabel: "Settings", view: "coordinator.settings-school", icon: "settings", section: "Configuration" },
   ],
 };
@@ -232,6 +229,5 @@ export const secondaryNavItems: Record<Role, NavItem[]> = {
     { key: "evaluations", label: "Evaluations", shortLabel: "Evals", view: "coordinator.evaluations", icon: "allEvaluations" },
     { key: "journals", label: "Journals", shortLabel: "Journals", view: "coordinator.journals", icon: "allJournals" },
     { key: "reports", label: "Reports", shortLabel: "Reports", view: "coordinator.reports", icon: "reports" },
-    { key: "subscription", label: "Billing", shortLabel: "Billing", view: "coordinator.subscription", icon: "subscription" },
   ],
 };

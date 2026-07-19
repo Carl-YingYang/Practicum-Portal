@@ -307,7 +307,7 @@ export function StudentForm({ studentId }: { studentId?: ViewParams["studentId"]
               label="Required Hours"
               required
               error={errors.requiredHours}
-              hint="Typical: 300 (BSIT/BSCS) or 600 (BSIS). These hours draw against your subscription credit pool."
+              hint="Typical: 300 (BSIT/BSCS) or 600 (BSIS). Total practicum hours the student must complete."
             >
               <Input
                 type="number"
