@@ -29,16 +29,6 @@ interface SchoolIdentityModalProps {
 
 /**
  * SchoolIdentityModal — Facebook-style school info modal.
- *
- * Layout (top → bottom):
- * 1. Hero cover photo (full-bleed image with fade-in effect)
- * 2. Close button (top-right ghost-white circle)
- * 3. Profile avatar (large rounded-square logo on the cover, -mt-10, ring-4)
- * 4. School name + tagline + cohort chip ("N students connected")
- * 5. About section (2-column grid: Full name, Short name, Tagline, Address)
- * 6. Connected Students grid (4 cols mobile → 6 cols desktop, +N more tile)
- *
- * No theme color swatches — clean and Facebook-like.
  */
 export function SchoolIdentityModal({ open, onOpenChange, schoolId }: SchoolIdentityModalProps) {
   const schoolIdentity = useAppStore((s) => s.schoolIdentity);
@@ -70,40 +60,41 @@ export function SchoolIdentityModal({ open, onOpenChange, schoolId }: SchoolIden
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="overflow-hidden p-0 sm:max-w-lg">
+      <DialogContent className="p-0 sm:max-w-lg border-border/60 max-h-[92dvh] overflow-y-auto overflow-x-hidden [scrollbar-width:thin]">
         <DialogTitle className="sr-only">{displayName}</DialogTitle>
         <DialogDescription className="sr-only">
           School identity overview and connected students.
         </DialogDescription>
 
-        {/* Hero cover photo — full-bleed with fade-in */}
-        <div className="relative aspect-[16/6] w-full overflow-hidden bg-gradient-to-br from-slate-700 to-slate-900 sm:aspect-[16/5]">
+        {/* Hero cover photo — Clean full-bleed image (No fade) */}
+        <div className="relative aspect-[16/7] w-full overflow-hidden bg-muted sm:aspect-[21/9] shrink-0">
           {displayHero ? (
             <img
               src={displayHero}
               alt=""
-              className="hero-fade-in absolute inset-0 h-full w-full object-cover"
+              className="absolute inset-0 h-full w-full object-cover object-[center_top] sm:object-right"
             />
           ) : (
-            <div className="absolute inset-0 bg-gradient-to-br from-slate-700 via-slate-800 to-slate-900" />
+            <div className="absolute inset-0 bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-900" />
           )}
-          {/* Subtle gradient veil at the bottom for the close button */}
-          <div className="absolute inset-x-0 top-0 h-16 bg-gradient-to-b from-black/30 to-transparent" />
 
-          {/* Close button — top-right ghost-white circle (Facebook-style) */}
+          {/* Subtle gradient veil at the VERY top ONLY for the close button readability */}
+          <div className="absolute inset-x-0 top-0 h-16 bg-gradient-to-b from-black/40 to-transparent" />
+
+          {/* Close button — top-right ghost-white circle */}
           <button
             type="button"
             onClick={() => onOpenChange(false)}
-            className="absolute right-3 top-3 z-20 flex h-8 w-8 items-center justify-center rounded-full bg-white/20 text-white backdrop-blur-sm transition-colors hover:bg-white/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50"
+            className="absolute right-3 top-3 z-20 flex h-8 w-8 items-center justify-center rounded-full bg-white/20 text-white backdrop-blur-md transition-colors hover:bg-white/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50"
             aria-label="Close"
           >
             <X className="h-4 w-4" strokeWidth={2.5} />
           </button>
         </div>
 
-        {/* Profile avatar — large rounded-square on the cover photo */}
-        <div className="relative -mt-10 px-5">
-          <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-card ring-4 ring-background">
+        {/* Profile avatar — large rounded-square overlapping the cover photo */}
+        <div className="relative -mt-12 px-5 z-10 shrink-0">
+          <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-card ring-4 ring-background shadow-sm">
             {hasLogo ? (
               <img
                 src={displayLogo}
@@ -117,25 +108,25 @@ export function SchoolIdentityModal({ open, onOpenChange, schoolId }: SchoolIden
         </div>
 
         {/* School name + tagline + cohort chip */}
-        <div className="px-5 pt-3">
+        <div className="px-5 pt-3 pb-2 shrink-0">
           <h2 className="text-xl font-bold leading-tight tracking-tight text-foreground">
             {displayName}
           </h2>
           {displayTagline && (
-            <p className="mt-0.5 text-sm text-muted-foreground">{displayTagline}</p>
+            <p className="mt-1 text-sm text-muted-foreground leading-relaxed">{displayTagline}</p>
           )}
-          <div className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-muted px-2.5 py-0.5 text-xs font-medium text-muted-foreground">
-            <Users className="h-3 w-3" />
+          <div className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-muted/80 px-2.5 py-1 text-xs font-medium text-muted-foreground border border-border/40">
+            <Users className="h-3.5 w-3.5" />
             {connectedStudents.length} student{connectedStudents.length === 1 ? "" : "s"} connected
           </div>
         </div>
 
         {/* About section — 2-column grid */}
-        <div className="mt-4 space-y-2.5 border-t border-border/60 px-5 py-4">
+        <div className="mt-2 space-y-3 border-t border-border/50 px-5 py-4 bg-muted/10 shrink-0">
           <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
             About
           </p>
-          <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <AboutItem icon={Building2} label="Full name" value={displayName} />
             <AboutItem icon={Tag} label="Short name" value={displayShortName || "—"} />
             {displayTagline && <AboutItem icon={Info} label="Tagline" value={displayTagline} />}
@@ -145,16 +136,16 @@ export function SchoolIdentityModal({ open, onOpenChange, schoolId }: SchoolIden
 
         {/* Connected Students grid */}
         {connectedStudents.length > 0 && (
-          <div className="border-t border-border/60 px-5 py-4">
+          <div className="border-t border-border/50 px-5 pt-4 pb-8 sm:pb-5 shrink-0">
             <p className="mb-3 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
               Connected Students
             </p>
-            <div className="grid grid-cols-4 gap-2 sm:grid-cols-5 md:grid-cols-6">
+            <div className="grid grid-cols-4 gap-3 sm:grid-cols-5 md:grid-cols-6">
               {visibleStudents.map((s) => (
                 <button
                   key={s.id}
                   type="button"
-                  className="flex flex-col items-center gap-1 rounded-lg p-1 transition-colors hover:bg-muted/50"
+                  className="flex flex-col items-center gap-1.5 rounded-lg p-1.5 transition-colors hover:bg-muted/50"
                 >
                   <Avatar name={s.name} size="md" color={s.avatarColor} />
                   <p className="max-w-full truncate text-[10px] font-medium text-muted-foreground">
@@ -163,8 +154,8 @@ export function SchoolIdentityModal({ open, onOpenChange, schoolId }: SchoolIden
                 </button>
               ))}
               {remaining > 0 && (
-                <div className="flex flex-col items-center gap-1 rounded-lg p-1">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-muted text-xs font-bold text-muted-foreground">
+                <div className="flex flex-col items-center gap-1.5 rounded-lg p-1.5">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-muted text-xs font-bold text-muted-foreground ring-1 ring-border/40">
                     +{remaining}
                   </div>
                   <p className="text-[10px] font-medium text-muted-foreground">more</p>
@@ -175,7 +166,7 @@ export function SchoolIdentityModal({ open, onOpenChange, schoolId }: SchoolIden
         )}
 
         {connectedStudents.length === 0 && (
-          <div className="border-t border-border/60 px-5 py-6 text-center">
+          <div className="border-t border-border/50 px-5 pt-6 pb-8 text-center shrink-0">
             <p className="text-sm text-muted-foreground">
               No students connected to this school yet.
             </p>
@@ -198,16 +189,16 @@ function AboutItem({
   multiline?: boolean;
 }) {
   return (
-    <div className="flex items-start gap-2">
-      <Icon className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+    <div className="flex items-start gap-2.5">
+      <Icon className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground/70" />
       <div className="min-w-0 flex-1">
-        <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+        <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
           {label}
         </p>
         <p
           className={cn(
-            "text-xs font-medium text-foreground",
-            multiline ? "whitespace-pre-wrap break-words" : "truncate"
+            "text-xs font-medium text-foreground mt-0.5",
+            multiline ? "whitespace-pre-wrap break-words leading-relaxed" : "truncate"
           )}
         >
           {value}

@@ -253,21 +253,21 @@ export function CoordinatorDashboard() {
     attentionTab === "unassigned"
       ? unassigned.map((s) => ({ id: s.id, label: s.name, sub: s.studentNumber }))
       : attentionTab === "noEval"
-      ? noEvaluation.map((s) => ({ id: s.id, label: s.name, sub: s.studentNumber }))
-      : attentionTab === "rejected"
-      ? rejectedThisWeek.map(({ journal, student }) => ({
-          id: journal.id,
-          label: student?.name ?? "Student",
-          sub: formatDate(journal.date),
-        }))
-      : overdueJournals.map(({ student, daysOverdue }) => ({
-          id: student.id,
-          label: student.name,
-          sub:
-            daysOverdue === Infinity
-              ? "No journals submitted"
-              : `${daysOverdue} days since last journal`,
-        }));
+        ? noEvaluation.map((s) => ({ id: s.id, label: s.name, sub: s.studentNumber }))
+        : attentionTab === "rejected"
+          ? rejectedThisWeek.map(({ journal, student }) => ({
+            id: journal.id,
+            label: student?.name ?? "Student",
+            sub: formatDate(journal.date),
+          }))
+          : overdueJournals.map(({ student, daysOverdue }) => ({
+            id: student.id,
+            label: student.name,
+            sub:
+              daysOverdue === Infinity
+                ? "No journals submitted"
+                : `${daysOverdue} days since last journal`,
+          }));
 
   const attentionViewAll =
     attentionTab === "unassigned" || attentionTab === "noEval"
@@ -296,37 +296,50 @@ export function CoordinatorDashboard() {
       />
 
       <div className="space-y-5">
-        {/* KPIs — 4 cards. 2×2 on mobile/tablet (<1024px), one even row of 4 on desktop.
-            Explicit cols (not auto-fill) so cards always fill the row — no dead space. */}
-        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-          <StatCard
-            label="Total Students"
-            value={students.length}
-            icon={Users}
-            tone="teal"
-            hint={`${unassigned.length} unassigned`}
-            compact
-          />
-          <StatCard
-            label="Evaluations"
-            value={`${evalPct}%`}
-            icon={ClipboardCheck}
-            tone="emerald"
-            hint={`${evaluatedCount}/${studentsWithSupervisor.length} submitted`}
-            compact
-          />
-          <StatCard
-            label="Journals Approved"
-            value={`${journalPct}%`}
-            icon={NotebookText}
-            tone="amber"
-            hint={`${approvedJournals}/${journals.length} approved`}
-            compact
-          />
-        </div>
 
-        {/* Your school — tappable branded strip; opens the school identity modal. */}
-        <SchoolIdentityCard variant="compact" interactive />
+        {/* Top Bento Section: KPIs & School (Left) + Departments (Right) */}
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-3 xl:grid-cols-4">
+
+          {/* Left Column (Stats + School Identity) */}
+          <div className="flex flex-col gap-4 lg:col-span-2 xl:col-span-3">
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+              <StatCard
+                label="Total Students"
+                value={students.length}
+                icon={Users}
+                tone="teal"
+                hint={`${unassigned.length} unassigned`}
+                compact
+              />
+              <StatCard
+                label="Evaluations"
+                value={`${evalPct}%`}
+                icon={ClipboardCheck}
+                tone="emerald"
+                hint={`${evaluatedCount}/${studentsWithSupervisor.length} submitted`}
+                compact
+              />
+              <StatCard
+                label="Journals Approved"
+                value={`${journalPct}%`}
+                icon={NotebookText}
+                tone="amber"
+                hint={`${approvedJournals}/${journals.length} approved`}
+                compact
+              />
+            </div>
+
+            {/* Your school — tappable branded strip */}
+            <div className="flex-1">
+              <SchoolIdentityCard variant="compact" interactive className="h-full" />
+            </div>
+          </div>
+
+          {/* Right Column (Cohort by Dept) */}
+          <div className="lg:col-span-1">
+            <CohortByDepartment students={students} />
+          </div>
+        </div>
 
         {/* v5: Cohort journal status — at-a-glance counts + at-risk students. */}
         <CohortJournalStatus students={students} journals={journals} navigate={navigate} />
@@ -345,81 +358,81 @@ export function CoordinatorDashboard() {
             <div
               className="max-h-[28rem] overflow-y-auto pr-1 [scrollbar-width:thin] [scrollbar-color:theme(colors.muted-foreground/40)_transparent]"
             >
-            <DataTable
-              columns={columns}
-              rows={cohortRows}
-              getRowId={(r) => r.student.id}
-              onRowClick={(r) =>
-                navigate("coordinator.student-view", { studentId: r.student.id })
-              }
-              defaultSortKey="name"
-              defaultSortDir="asc"
-              pageSize={0}
-              rowAccent={(r) =>
-                !r.student.supervisorId ? "amber" : undefined
-              }
-              mobileCard={(r) => (
-                <div className="space-y-3">
-                  {/* Row 1: avatar + name + ID + journal status */}
-                  <div className="flex items-center gap-3">
-                    <Avatar name={r.student.name} size="md" />
-                    <div className="min-w-0 flex-1">
-                      <div className="truncate text-sm font-semibold text-foreground">
-                        {r.student.name}
+              <DataTable
+                columns={columns}
+                rows={cohortRows}
+                getRowId={(r) => r.student.id}
+                onRowClick={(r) =>
+                  navigate("coordinator.student-view", { studentId: r.student.id })
+                }
+                defaultSortKey="name"
+                defaultSortDir="asc"
+                pageSize={0}
+                rowAccent={(r) =>
+                  !r.student.supervisorId ? "amber" : undefined
+                }
+                mobileCard={(r) => (
+                  <div className="space-y-3">
+                    {/* Row 1: avatar + name + ID + journal status */}
+                    <div className="flex items-center gap-3">
+                      <Avatar name={r.student.name} size="md" />
+                      <div className="min-w-0 flex-1">
+                        <div className="truncate text-sm font-semibold text-foreground">
+                          {r.student.name}
+                        </div>
+                        <div className="truncate font-mono text-xs text-muted-foreground">
+                          {r.student.studentNumber}
+                        </div>
                       </div>
-                      <div className="truncate font-mono text-xs text-muted-foreground">
-                        {r.student.studentNumber}
-                      </div>
-                    </div>
-                    {r.latestJournalStatus && (
-                      <div className="shrink-0">
-                        <JournalStatusBadge status={r.latestJournalStatus} />
-                      </div>
-                    )}
-                  </div>
-                  {/* Row 1b: position · department (full-width, no badge competition) */}
-                  <div className="truncate text-xs text-muted-foreground">
-                    {r.student.position} · {r.student.department}
-                  </div>
-                  {/* Row 2: meta — company / supervisor (one per line so neither truncates) */}
-                  <div className="space-y-0.5 text-xs text-muted-foreground">
-                    <div className="flex items-center gap-1.5">
-                      <span className="shrink-0 font-medium text-foreground/60">Company:</span>
-                      <span className="min-w-0 truncate">{r.companyName}</span>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <span className="shrink-0 font-medium text-foreground/60">Supervisor:</span>
-                      {r.supervisorName ? (
-                        <span className="min-w-0 truncate">{r.supervisorName}</span>
-                      ) : (
-                        <UnassignedBadge />
+                      {r.latestJournalStatus && (
+                        <div className="shrink-0">
+                          <JournalStatusBadge status={r.latestJournalStatus} />
+                        </div>
                       )}
                     </div>
-                  </div>
-                  {/* Row 3: hours progress bar + last eval */}
-                  <div>
-                    <div className="mb-1.5 flex items-center justify-between gap-2">
-                      <span className="text-xs font-medium text-muted-foreground">Hours</span>
-                      {r.lastScore > 0 && <ScoreBadge score={r.lastScore} />}
+                    {/* Row 1b: position · department (full-width, no badge competition) */}
+                    <div className="truncate text-xs text-muted-foreground">
+                      {r.student.position} · {r.student.department}
                     </div>
-                    <ProgressBar value={r.hoursPct} showLabel className="w-full" />
+                    {/* Row 2: meta — company / supervisor (one per line so neither truncates) */}
+                    <div className="space-y-0.5 text-xs text-muted-foreground">
+                      <div className="flex items-center gap-1.5">
+                        <span className="shrink-0 font-medium text-foreground/60">Company:</span>
+                        <span className="min-w-0 truncate">{r.companyName}</span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <span className="shrink-0 font-medium text-foreground/60">Supervisor:</span>
+                        {r.supervisorName ? (
+                          <span className="min-w-0 truncate">{r.supervisorName}</span>
+                        ) : (
+                          <UnassignedBadge />
+                        )}
+                      </div>
+                    </div>
+                    {/* Row 3: hours progress bar + last eval */}
+                    <div>
+                      <div className="mb-1.5 flex items-center justify-between gap-2">
+                        <span className="text-xs font-medium text-muted-foreground">Hours</span>
+                        {r.lastScore > 0 && <ScoreBadge score={r.lastScore} />}
+                      </div>
+                      <ProgressBar value={r.hoursPct} showLabel className="w-full" />
+                    </div>
                   </div>
-                </div>
-              )}
-              emptyState={
-                <div className="p-4">
-                  <EmptyState
-                    icon={Users}
-                    title="No students yet"
-                    description="Add your first student to start tracking the cohort."
-                    actionLabel="Add Student"
-                    onAction={() => navigate("coordinator.student-new")}
-                    tone="red"
-                    compact
-                  />
-                </div>
-              }
-            />
+                )}
+                emptyState={
+                  <div className="p-4">
+                    <EmptyState
+                      icon={Users}
+                      title="No students yet"
+                      description="Add your first student to start tracking the cohort."
+                      actionLabel="Add Student"
+                      onAction={() => navigate("coordinator.student-new")}
+                      tone="red"
+                      compact
+                    />
+                  </div>
+                }
+              />
             </div>
             {/* Footer: view the full paginated Students list */}
             {cohortRows.length > 0 && (
@@ -554,9 +567,6 @@ export function CoordinatorDashboard() {
             <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground/50 transition-transform group-hover:translate-x-0.5 group-hover:text-foreground/70" />
           </button>
         </div>
-
-        {/* Cohort by Department — breakdown card */}
-        <CohortByDepartment students={students} />
       </div>
     </div>
   );
@@ -648,8 +658,8 @@ function CohortJournalStatus({
                     {journal?.status === "rejected"
                       ? "Journal returned — needs revision"
                       : journal?.status === "draft"
-                      ? "Journal in progress — not submitted"
-                      : "No journal submitted yet"}
+                        ? "Journal in progress — not submitted"
+                        : "No journal submitted yet"}
                   </p>
                 </div>
                 <ArrowRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
@@ -691,6 +701,7 @@ function CohortByDepartment({ students }: { students: Student[] }) {
     <SectionCard
       title="Cohort by Department"
       description={`${total} students across ${counts.length} departments.`}
+      className="h-full"
     >
       <div className="space-y-3">
         {counts.map(({ dept, count }) => {
