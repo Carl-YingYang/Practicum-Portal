@@ -11,6 +11,7 @@ import { DataTable, type Column } from "@/components/portal/shared/data-table";
 import { Avatar } from "@/components/portal/shared/avatar";
 import { EmptyState } from "@/components/portal/shared/empty-state";
 import { TimeLogReportLauncher } from "@/components/portal/shared/time-log-report-launcher";
+import { CentralizedTimesheetLauncher } from "@/components/portal/shared/centralized-timesheet-launcher";
 import { Button } from "@/components/ui/button";
 import {
   Timer,
@@ -22,6 +23,7 @@ import {
   ArrowRight,
   Download,
   FileSpreadsheet,
+  FileText,
 } from "lucide-react";
 import { downloadCsv } from "@/lib/client-pdf";
 import { toast } from "sonner";
@@ -229,20 +231,46 @@ export function CoordinatorTimeMonitor() {
       key: "actions",
       header: "",
       align: "right",
-      cell: (r) => (
-        <Button
-          variant="ghost"
-          size="sm"
-          className="text-muted-foreground"
-          onClick={(e) => {
-            e.stopPropagation();
-            navigate("coordinator.student-view", { studentId: r.id });
-          }}
-        >
-          Details
-          <ArrowRight className="h-3.5 w-3.5" />
-        </Button>
-      ),
+      cell: (r) => {
+        const st = students.find((s) => s.id === r.id);
+        return (
+          <div className="flex items-center justify-end gap-1">
+            {st && (
+              <CentralizedTimesheetLauncher
+                trigger={
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-muted-foreground"
+                    onClick={(e) => e.stopPropagation()}
+                    aria-label={`View timesheet for ${r.name}`}
+                  >
+                    <FileText className="h-3.5 w-3.5" />
+                    <span className="hidden sm:inline">Timesheet</span>
+                  </Button>
+                }
+                companyName={r.companyName !== "—" ? r.companyName : "Practicum Host"}
+                student={st}
+                supervisorName={r.supervisorName ?? undefined}
+                sessions={completedTimeLogsForUser(timeLogs, st.id)}
+                institutionName="Practicum Evaluation Portal"
+              />
+            )}
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-muted-foreground"
+              onClick={(e) => {
+                e.stopPropagation();
+                navigate("coordinator.student-view", { studentId: r.id });
+              }}
+            >
+              Details
+              <ArrowRight className="h-3.5 w-3.5" />
+            </Button>
+          </div>
+        );
+      },
     },
   ];
 

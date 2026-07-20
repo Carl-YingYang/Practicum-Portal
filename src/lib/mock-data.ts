@@ -876,6 +876,115 @@ export const timeLogs: TimeLog[] = [
   session("u-coord", "coordinator", daysAgo(6, 8, 30), 7.0, "Progress audit across cohort"),
   session("u-coord", "coordinator", daysAgo(4, 9, 0), 6.5, "Compliance documentation"),
   session("u-coord", "coordinator", daysAgo(1, 8, 45), 7.5, "Midterm review preparation"),
+
+  // ============================================================
+  // Centralized timesheet mock data — June & July 2026
+  // Fixed-date sessions mirroring a real intern monthly timesheet
+  // (sample: Timesheet_Nieva_CMN-2_Full_June-July2026.docx).
+  // These populate the clean centralized timesheet document with
+  // realistic per-day clock-in/out entries.
+  // ============================================================
+
+  // --- Juan Dela Cruz (s1) · Acme Corp · June 2026 ---
+  session("s1", "student", "2026-06-03T08:11:00", 9 + 11 / 60, "Onboarding & environment setup"),
+  session("s1", "student", "2026-06-04T08:06:00", 9 + 23 / 60, "Bug triage and code review"),
+  session("s1", "student", "2026-06-05T08:22:00", 9 + 9 / 60, "Feature development — auth module"),
+  session("s1", "student", "2026-06-06T08:40:00", 9 + 1 / 60, "Sprint planning + pair programming"),
+  session("s1", "student", "2026-06-08T08:35:00", 8 + 55 / 60, "API integration work"),
+  session("s1", "student", "2026-06-09T08:50:00", 8 + 52 / 60, "Refactoring legacy components"),
+  session("s1", "student", "2026-06-10T08:33:00", 8 + 20 / 60, "Database schema review"),
+  session("s1", "student", "2026-06-11T08:35:00", 8 + 54 / 60, "Code review + mentoring"),
+  session("s1", "student", "2026-06-12T08:31:00", 8 + 52 / 60, "Documentation drafting"),
+  session("s1", "student", "2026-06-15T08:33:00", 9 + 7 / 60, "Client presentation prep"),
+  session("s1", "student", "2026-06-16T08:23:00", 9 + 24 / 60, "Stakeholder demo"),
+  session("s1", "student", "2026-06-17T08:37:00", 8 + 54 / 60, "Performance optimization"),
+  session("s1", "student", "2026-06-18T08:31:00", 8 + 4 / 60, "Regression testing"),
+  session("s1", "student", "2026-06-19T08:31:00", 8 + 52 / 60, "Deployment + monitoring"),
+  session("s1", "student", "2026-06-22T08:30:00", 8 + 45 / 60, "Sprint retrospective"),
+  session("s1", "student", "2026-06-23T08:28:00", 9 + 12 / 60, "New feature kickoff"),
+  session("s1", "student", "2026-06-24T08:34:00", 8 + 58 / 60, "UI polish + a11y audit"),
+  session("s1", "student", "2026-06-25T08:36:00", 8 + 49 / 60, "Integration testing"),
+  session("s1", "student", "2026-06-26T08:29:00", 9 + 3 / 60, "Final bug fixes"),
+  session("s1", "student", "2026-06-29T08:32:00", 8 + 51 / 60, "Month-end reporting"),
+  session("s1", "student", "2026-06-30T08:38:00", 8 + 47 / 60, "Handoff documentation"),
+
+  // --- Juan Dela Cruz (s1) · Acme Corp · July 2026 ---
+  session("s1", "student", "2026-07-01T08:38:00", 8 + 49 / 60, "Q3 planning session"),
+  session("s1", "student", "2026-07-02T08:43:00", 8 + 35 / 60, "Architecture review"),
+  session("s1", "student", "2026-07-03T08:35:00", 8 + 44 / 60, "Component library work"),
+  session("s1", "student", "2026-07-06T10:30:00", 7 + 4 / 60, "Late start — dentist"),
+  session("s1", "student", "2026-07-07T08:41:00", 8 + 49 / 60, "Mentoring junior intern"),
+  session("s1", "student", "2026-07-08T08:28:00", 8 + 58 / 60, "API contract finalization"),
+  session("s1", "student", "2026-07-09T08:31:00", 9 + 3 / 60, "Cross-team sync"),
+  session("s1", "student", "2026-07-10T08:33:00", 8 + 58 / 60, "Demo preparation"),
+  session("s1", "student", "2026-07-11T08:40:00", 9 + 1 / 60, "Stakeholder demo day"),
+  session("s1", "student", "2026-07-13T09:35:00", 7 + 55 / 60, "Post-demo retrospective"),
+
+  // --- Ana Santos (s2) · Globex Solutions · June 2026 ---
+  session("s2", "student", "2026-06-03T09:00:00", 7 + 30 / 60, "Market research kickoff"),
+  session("s2", "student", "2026-06-04T09:15:00", 7 + 45 / 60, "Competitor analysis"),
+  session("s2", "student", "2026-06-05T09:05:00", 8 + 0 / 60, "Campaign strategy draft"),
+  session("s2", "student", "2026-06-08T09:20:00", 7 + 15 / 60, "Content calendar planning"),
+  session("s2", "student", "2026-06-09T09:10:00", 7 + 50 / 60, "Social media assets"),
+  session("s2", "student", "2026-06-10T09:00:00", 8 + 5 / 60, "Client presentation prep"),
+  session("s2", "student", "2026-06-11T09:25:00", 7 + 35 / 60, "Analytics review"),
+  session("s2", "student", "2026-06-12T09:15:00", 7 + 40 / 60, "Campaign launch"),
+  session("s2", "student", "2026-06-15T09:05:00", 8 + 10 / 60, "Post-launch monitoring"),
+  session("s2", "student", "2026-06-16T09:20:00", 7 + 25 / 60, "Performance reporting"),
+  session("s2", "student", "2026-06-17T09:10:00", 7 + 55 / 60, "Optimization tweaks"),
+  session("s2", "student", "2026-06-18T09:00:00", 8 + 0 / 60, "Quarterly review prep"),
+  session("s2", "student", "2026-06-19T09:15:00", 7 + 45 / 60, "Stakeholder report"),
+  session("s2", "student", "2026-06-22T09:05:00", 8 + 5 / 60, "New campaign brainstorm"),
+  session("s2", "student", "2026-06-23T09:20:00", 7 + 30 / 60, "Content drafting"),
+  session("s2", "student", "2026-06-24T09:10:00", 7 + 50 / 60, "Design review"),
+  session("s2", "student", "2026-06-25T09:00:00", 8 + 0 / 60, "A/B test setup"),
+  session("s2", "student", "2026-06-26T09:15:00", 7 + 40 / 60, "Results analysis"),
+  session("s2", "student", "2026-06-29T09:05:00", 8 + 10 / 60, "Month-end summary"),
+  session("s2", "student", "2026-06-30T09:20:00", 7 + 35 / 60, "Handoff notes"),
+
+  // --- Ana Santos (s2) · Globex Solutions · July 2026 ---
+  session("s2", "student", "2026-07-01T09:10:00", 7 + 50 / 60, "Q3 campaign planning"),
+  session("s2", "student", "2026-07-02T09:05:00", 8 + 5 / 60, "Brand guidelines update"),
+  session("s2", "student", "2026-07-03T09:15:00", 7 + 40 / 60, "Influencer outreach"),
+  session("s2", "student", "2026-07-06T09:20:00", 7 + 30 / 60, "Content production"),
+  session("s2", "student", "2026-07-07T09:00:00", 8 + 0 / 60, "Email campaign launch"),
+  session("s2", "student", "2026-07-08T09:10:00", 7 + 55 / 60, "Engagement tracking"),
+  session("s2", "student", "2026-07-09T09:15:00", 7 + 45 / 60, "Weekly metrics review"),
+  session("s2", "student", "2026-07-10T09:05:00", 8 + 5 / 60, "Strategy refinement"),
+  session("s2", "student", "2026-07-13T09:20:00", 7 + 35 / 60, "Mid-month report"),
+
+  // --- Carlos Mendoza (s3) · Initech Systems · June 2026 ---
+  session("s3", "student", "2026-06-03T08:50:00", 8 + 30 / 60, "Database optimization"),
+  session("s3", "student", "2026-06-04T08:45:00", 8 + 40 / 60, "Query performance tuning"),
+  session("s3", "student", "2026-06-05T08:55:00", 8 + 20 / 60, "Index rebuild"),
+  session("s3", "student", "2026-06-08T08:48:00", 8 + 35 / 60, "Server migration prep"),
+  session("s3", "student", "2026-06-09T08:52:00", 8 + 25 / 60, "Backup strategy review"),
+  session("s3", "student", "2026-06-10T08:47:00", 8 + 38 / 60, "Migration execution"),
+  session("s3", "student", "2026-06-11T08:53:00", 8 + 22 / 60, "Post-migration validation"),
+  session("s3", "student", "2026-06-12T08:49:00", 8 + 30 / 60, "Monitoring setup"),
+  session("s3", "student", "2026-06-15T08:51:00", 8 + 28 / 60, "Incident response drill"),
+  session("s3", "student", "2026-06-16T08:46:00", 8 + 42 / 60, "Capacity planning"),
+  session("s3", "student", "2026-06-17T08:54:00", 8 + 18 / 60, "Security patching"),
+  session("s3", "student", "2026-06-18T08:50:00", 8 + 30 / 60, "Log analysis"),
+  session("s3", "student", "2026-06-19T08:48:00", 8 + 33 / 60, "Documentation update"),
+  session("s3", "student", "2026-06-22T08:52:00", 8 + 27 / 60, "Performance benchmarking"),
+  session("s3", "student", "2026-06-23T08:47:00", 8 + 36 / 60, " Disaster recovery test"),
+  session("s3", "student", "2026-06-24T08:53:00", 8 + 24 / 60, "Automation scripting"),
+  session("s3", "student", "2026-06-25T08:49:00", 8 + 31 / 60, "Code review"),
+  session("s3", "student", "2026-06-26T08:51:00", 8 + 29 / 60, "Month-end maintenance"),
+  session("s3", "student", "2026-06-29T08:46:00", 8 + 40 / 60, "Quarterly audit prep"),
+  session("s3", "student", "2026-06-30T08:54:00", 8 + 20 / 60, "Audit support"),
+
+  // --- Carlos Mendoza (s3) · Initech Systems · July 2026 ---
+  session("s3", "student", "2026-07-01T08:50:00", 8 + 30 / 60, "New infra provisioning"),
+  session("s3", "student", "2026-07-02T08:45:00", 8 + 38 / 60, "Network config"),
+  session("s3", "student", "2026-07-03T08:55:00", 8 + 22 / 60, "Firewall rules audit"),
+  session("s3", "student", "2026-07-06T08:48:00", 8 + 35 / 60, "Pen test support"),
+  session("s3", "student", "2026-07-07T08:52:00", 8 + 26 / 60, "Vulnerability patching"),
+  session("s3", "student", "2026-07-08T08:47:00", 8 + 37 / 60, "Compliance documentation"),
+  session("s3", "student", "2026-07-09T08:53:00", 8 + 23 / 60, "Access review"),
+  session("s3", "student", "2026-07-10T08:49:00", 8 + 32 / 60, "System hardening"),
+  session("s3", "student", "2026-07-13T08:51:00", 8 + 28 / 60, "Mid-month checkpoint"),
 ];
 
 export const activityLog: ActivityLog[] = [
