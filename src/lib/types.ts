@@ -176,6 +176,14 @@ export interface Student {
   name: string;
   email: string;
   course: string;
+  /** Section / block the student belongs to (e.g. "BSCS 3-1", "BSCS 3-2"). Free-text. */
+  section?: string;
+  /**
+   * School year / batch the student belongs to (e.g. "2024-2025 Summer",
+   * "2025-2026 2nd Semester"). Mirrors the Company List.xlsx "School Year"
+   * column. Free-text so coordinators can define new batches.
+   */
+  schoolYear?: string;
   requiredHours: number;
   loggedHours: number;
   companyId: string;
@@ -199,6 +207,30 @@ export interface Student {
 export interface Company {
   id: string;
   name: string;
+  /** Full street address line (unit number + street). */
+  addressLine?: string;
+  /** Barangay component of the address. */
+  barangay?: string;
+  /** City / Municipality. */
+  city?: string;
+  /** Province. */
+  province?: string;
+  /** Contact person full name (e.g. "Andres P. Bonifacio"). */
+  contactName?: string;
+  /** Contact person salutation (e.g. "Engr.", "Ms.", "Hon."). */
+  contactSalutation?: string;
+  /** Contact person position / title (e.g. "HR Manager"). */
+  contactPosition?: string;
+  /** Contact person phone number. */
+  contactPhone?: string;
+  /** Contact person email address. */
+  contactEmail?: string;
+  /**
+   * School year / batch this company partnership is associated with
+   * (e.g. "2024-2025 Summer", "2025-2026 2nd Semester"). Mirrors the
+   * Company List.xlsx "School Year" column. Free-text.
+   */
+  schoolYear?: string;
 }
 
 export type SupervisorStatus = "active" | "inactive";
@@ -221,6 +253,15 @@ export interface Supervisor {
    * and shared with the supervisor as their login credential.
    */
   idNumber?: string;
+  /** Contact phone number (for the company directory / CSV export). */
+  phone?: string;
+  /** Salutation (e.g. "Ms.", "Engr.", "Hon."). */
+  salutation?: string;
+  /**
+   * School year / batch this supervisor is associated with
+   * (e.g. "2024-2025 Summer", "2025-2026 2nd Semester"). Free-text.
+   */
+  schoolYear?: string;
   createdAt: string;
 }
 
@@ -664,6 +705,7 @@ export type ViewKey =
   | "coordinator.journal-view"
   | "coordinator.reports"
   | "coordinator.time-monitor"
+  | "coordinator.timesheets"
   | "coordinator.time-clock"
   | "coordinator.forms"
   | "coordinator.form-editor"

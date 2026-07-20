@@ -4,6 +4,7 @@ import * as React from "react";
 import { cn } from "@/lib/utils";
 import { Separator } from "@/components/ui/separator";
 import type { FormBlock } from "@/lib/types";
+import { resolveAutoFillValue } from "@/lib/selectors";
 
 /**
  * Read-only / interactive renderer for a single form block.
@@ -21,6 +22,13 @@ export interface FormBlockRendererProps {
   onValueChange?: (blockId: string, value: string | Record<string, string>) => void;
   /** Pre-fill values keyed by block id (interactive mode). */
   values?: Record<string, string | Record<string, string>>;
+  /**
+   * Auto-fill context map for info-field blocks. When a block's label matches
+   * a known key (Student Name, Company, Supervisor, Term, Date…) and the field
+   * is empty, it auto-populates on first render. The value is also pushed into
+   * the form's `values` state via onValueChange so it persists on submit.
+   */
+  autoFill?: Record<string, string>;
   className?: string;
 }
 
@@ -29,6 +37,7 @@ export function FormBlockRenderer({
   interactive = false,
   onValueChange,
   values,
+  autoFill,
   className,
 }: FormBlockRendererProps) {
   const value = values?.[block.id];
@@ -78,6 +87,8 @@ export function FormBlockRenderer({
           interactive={interactive}
           value={(typeof value === "string" ? value : "") || ""}
           onChange={(v) => onValueChange?.(block.id, v)}
+          autoFill={autoFill}
+          onAutoFill={(v) => onValueChange?.(block.id, v)}
           className={className}
         />
       );
@@ -136,6 +147,8 @@ function InfoField({
   interactive,
   value,
   onChange,
+  autoFill,
+  onAutoFill,
   className,
 }: {
   label: string;
@@ -143,8 +156,28 @@ function InfoField({
   interactive: boolean;
   value: string;
   onChange: (v: string) => void;
+  autoFill?: Record<string, string>;
+  /** One-shot push of the auto-fill value into the form's values state. */
+  onAutoFill?: (v: string) => void;
   className?: string;
 }) {
+  // Compute the auto-fill value for this label (if any) when interactive
+  // AND the current value is empty.
+  const auto = React.useMemo(() => {
+    if (!interactive || !autoFill) return "";
+    if (value && value.trim()) return "";
+    return resolveAutoFillValue(label, autoFill);
+  }, [interactive, autoFill, value, label]);
+
+  // On mount (or when auto becomes available), push it once into the form
+  // state so it persists on submit.
+  React.useEffect(() => {
+    if (auto && onAutoFill) onAutoFill(auto);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [auto]);
+
+  const effective = value || auto;
+
   if (!interactive) {
     return (
       <div className={cn("flex items-baseline gap-2", className)}>
@@ -152,10 +185,10 @@ function InfoField({
         <span
           className={cn(
             "flex-1 border-b border-dashed border-border/80 pb-0.5 text-[13px]",
-            value ? "text-foreground" : "text-muted-foreground/70"
+            effective ? "text-foreground" : "text-muted-foreground/70"
           )}
         >
-          {value || placeholder || "\u00A0"}
+          {effective || placeholder || "\u00A0"}
         </span>
       </div>
     );
@@ -165,7 +198,7 @@ function InfoField({
       <label className="shrink-0 text-[13px] font-medium text-foreground">{label}:</label>
       <input
         type="text"
-        value={value}
+        value={effective}
         placeholder={placeholder}
         onChange={(e) => onChange(e.target.value)}
         className="flex-1 border-b border-dashed border-border bg-transparent pb-0.5 text-[13px] text-foreground placeholder:text-muted-foreground/50 focus:border-primary focus:outline-none"

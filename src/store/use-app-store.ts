@@ -186,6 +186,8 @@ interface AppState {
     name: string;
     email: string;
     course: string;
+    section?: string;
+    schoolYear?: string;
     requiredHours: number;
     companyId: string;
     supervisorId: string | null;
@@ -197,7 +199,7 @@ interface AppState {
   }) => { studentId: string; tempPassword: string; idNumber: string };
   updateStudent: (
     id: string,
-    input: Partial<Pick<Student, "name" | "email" | "course" | "requiredHours" | "companyId" | "supervisorId" | "status" | "position" | "department" | "startDate" | "endDate" | "workMode">>
+    input: Partial<Pick<Student, "name" | "email" | "course" | "section" | "schoolYear" | "requiredHours" | "companyId" | "supervisorId" | "status" | "position" | "department" | "startDate" | "endDate" | "workMode">>
   ) => void;
   createSupervisor: (input: {
     name: string;
@@ -207,10 +209,13 @@ interface AppState {
     department?: Supervisor["department"];
     capacity?: number;
     idNumber?: string;
+    phone?: string;
+    salutation?: string;
+    schoolYear?: string;
   }) => { supervisorId: string; tempPassword: string; idNumber: string };
   updateSupervisor: (
     id: string,
-    input: Partial<Pick<Supervisor, "name" | "email" | "companyId" | "status" | "title" | "department" | "capacity" | "idNumber">>
+    input: Partial<Pick<Supervisor, "name" | "email" | "companyId" | "status" | "title" | "department" | "capacity" | "idNumber" | "phone" | "salutation" | "schoolYear">>
   ) => void;
   createCoordinator: (input: {
     name: string;
@@ -223,6 +228,27 @@ interface AppState {
     id: string,
     input: Partial<Pick<Coordinator, "name" | "email" | "status" | "title" | "department">>
   ) => void;
+
+  /**
+   * Find a company by exact (case-insensitive) name, or create a new one.
+   * Used by the free-text Company combobox in student/supervisor forms —
+   * when the coordinator types a brand-new company name, this ensures a
+   * Company record exists and returns its id. If the name matches an
+   * existing company, returns that company's id (no duplicate).
+   */
+  upsertCompany: (input: {
+    name: string;
+    addressLine?: string;
+    barangay?: string;
+    city?: string;
+    province?: string;
+    contactName?: string;
+    contactSalutation?: string;
+    contactPosition?: string;
+    contactPhone?: string;
+    contactEmail?: string;
+    schoolYear?: string;
+  }) => string;
 
   // --- time clock actions (available to ALL roles) ---
   clockIn: (userId: string, role: Role, note?: string) => string;
@@ -1045,6 +1071,8 @@ export const useAppStore = create<AppState>((set, get) => ({
       name: input.name,
       email: input.email,
       course: input.course,
+      section: input.section,
+      schoolYear: input.schoolYear,
       requiredHours: input.requiredHours,
       loggedHours: 0,
       companyId: input.companyId,
@@ -1095,6 +1123,9 @@ export const useAppStore = create<AppState>((set, get) => ({
       department: input.department ?? "Other",
       capacity: input.capacity ?? 5,
       idNumber,
+      phone: input.phone,
+      salutation: input.salutation,
+      schoolYear: input.schoolYear,
       createdAt: now,
     };
     set((s) => ({
@@ -1115,6 +1146,32 @@ export const useAppStore = create<AppState>((set, get) => ({
         sup.id === id ? { ...sup, ...input } : sup
       ),
     })),
+
+  upsertCompany: (input) => {
+    const name = input.name.trim();
+    if (!name) return "";
+    const existing = get().companies.find(
+      (c) => c.name.trim().toLowerCase() === name.toLowerCase()
+    );
+    if (existing) {
+      // Merge any newly-provided rich fields onto the existing record.
+      const hasNew = (Object.keys(input) as (keyof typeof input)[]).some(
+        (k) => k !== "name" && input[k] !== undefined && (existing as Record<string, unknown>)[k as string] === undefined
+      );
+      if (hasNew) {
+        set((s) => ({
+          companies: s.companies.map((c) =>
+            c.id === existing.id ? { ...c, ...input, name: existing.name } : c
+          ),
+        }));
+      }
+      return existing.id;
+    }
+    const id = uuid();
+    const company: Company = { id, name, ...input };
+    set((s) => ({ companies: [...s.companies, company] }));
+    return id;
+  },
 
   createCoordinator: (input) => {
     const id = uuid();

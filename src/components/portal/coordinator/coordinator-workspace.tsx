@@ -15,6 +15,7 @@ import { AllJournalsList } from "./all-journals-list";
 import { JournalView } from "./journal-view";
 import { CoordinatorReports } from "./coordinator-reports";
 import { CoordinatorTimeMonitor } from "./coordinator-time-monitor";
+import { CoordinatorTimesheets } from "./coordinator-timesheets";
 import { CoordinatorProfile } from "./coordinator-profile";
 import { FormsHub } from "./forms-hub";
 import { FormEditor } from "./form-editor";
@@ -70,6 +71,8 @@ export function CoordinatorWorkspace() {
       return <CoordinatorReports />;
     case "coordinator.time-monitor":
       return <CoordinatorTimeMonitor />;
+    case "coordinator.timesheets":
+      return <CoordinatorTimesheets />;
     case "coordinator.profile":
       return <CoordinatorProfile />;
     default:
@@ -91,6 +94,7 @@ export {
   JournalView,
   CoordinatorReports,
   CoordinatorTimeMonitor,
+  CoordinatorTimesheets,
   CoordinatorProfile,
   FormsHub,
   FormEditor,

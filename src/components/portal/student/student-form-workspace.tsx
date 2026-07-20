@@ -37,7 +37,13 @@ import {
   FORM_CATEGORY_LABELS,
 } from "@/lib/types";
 import { format } from "date-fns";
-import { submissionFor } from "@/lib/selectors";
+import {
+  buildFormAutoFillContext,
+  getCompany,
+  getStudent,
+  getSupervisor,
+  submissionFor,
+} from "@/lib/selectors";
 
 type FieldValue = string | Record<string, string>;
 
@@ -54,9 +60,37 @@ export function StudentFormWorkspace({ formId }: { formId?: string }) {
   const form = useAppStore((s) => s.formDocuments.find((d) => d.id === formId));
   const currentUser = useAppStore((s) => s.currentUser);
   const submissions = useAppStore((s) => s.formSubmissions);
+  const students = useAppStore((s) => s.students);
+  const supervisors = useAppStore((s) => s.supervisors);
+  const companies = useAppStore((s) => s.companies);
   const startFormResponse = useAppStore((s) => s.startFormResponse);
   const saveSubmissionDraft = useAppStore((s) => s.saveSubmissionDraft);
   const submitFormResponse = useAppStore((s) => s.submitFormResponse);
+
+  // Auto-fill context: resolve the current student + their company + their
+  // supervisor. info-field blocks use this to auto-populate (Student Name /
+  // Company / Supervisor / Term / Date…) so the student doesn't re-type
+  // the header info on every form.
+  const autoFill = React.useMemo(() => {
+    const student = currentUser?.studentId
+      ? getStudent(students, currentUser.studentId)
+      : undefined;
+    const company = student ? getCompany(companies, student.companyId) : undefined;
+    const supervisor = student?.supervisorId
+      ? getSupervisor(supervisors, student.supervisorId)
+      : undefined;
+    return buildFormAutoFillContext({
+      studentName: student?.name,
+      studentNumber: student?.studentNumber,
+      course: student?.course,
+      section: student?.section,
+      schoolYear: student?.schoolYear,
+      companyName: company?.name,
+      supervisorName: supervisor?.name,
+      supervisorTitle: supervisor?.title,
+      term: "2024-2025",
+    });
+  }, [currentUser, students, companies, supervisors]);
 
   const currentSubmission = React.useMemo(() => {
     if (!formId || !currentUser) return undefined;
@@ -276,6 +310,7 @@ export function StudentFormWorkspace({ formId }: { formId?: string }) {
                 block={b}
                 interactive={!isReadOnly}
                 values={values}
+                autoFill={autoFill}
                 onValueChange={(id, v) => handleValueChange(id, v)}
               />
             ))

@@ -41,7 +41,12 @@ import {
   FORM_CATEGORY_LABELS,
 } from "@/lib/types";
 import { format } from "date-fns";
-import { submissionFor } from "@/lib/selectors";
+import {
+  buildFormAutoFillContext,
+  getCompany,
+  getSupervisor,
+  submissionFor,
+} from "@/lib/selectors";
 
 type FieldValue = string | Record<string, string>;
 
@@ -64,6 +69,8 @@ export function SupervisorFormWorkspace({ formId }: { formId?: string }) {
   const currentUser = useAppStore((s) => s.currentUser);
   const submissions = useAppStore((s) => s.formSubmissions);
   const students = useAppStore((s) => s.students);
+  const supervisors = useAppStore((s) => s.supervisors);
+  const companies = useAppStore((s) => s.companies);
   const startFormResponse = useAppStore((s) => s.startFormResponse);
   const saveSubmissionDraft = useAppStore((s) => s.saveSubmissionDraft);
   const submitFormResponse = useAppStore((s) => s.submitFormResponse);
@@ -86,6 +93,33 @@ export function SupervisorFormWorkspace({ formId }: { formId?: string }) {
     if (!formId || !currentUser) return undefined;
     return submissionFor(submissions, formId, currentUser.id, selectedStudentId);
   }, [submissions, formId, currentUser, selectedStudentId]);
+
+  // Auto-fill context: resolve the current supervisor + selected student
+  // (for evaluation/ojt forms) + their company. info-field blocks use this
+  // to auto-populate (Student Name / Company / Supervisor / Term / Date…).
+  const autoFill = React.useMemo(() => {
+    const supervisor = currentUser?.supervisorId
+      ? getSupervisor(supervisors, currentUser.supervisorId)
+      : undefined;
+    const student = selectedStudentId
+      ? students.find((st) => st.id === selectedStudentId)
+      : undefined;
+    const studentCompany = student ? getCompany(companies, student.companyId) : undefined;
+    const supervisorCompany = supervisor
+      ? getCompany(companies, supervisor.companyId)
+      : undefined;
+    return buildFormAutoFillContext({
+      studentName: student?.name,
+      studentNumber: student?.studentNumber,
+      course: student?.course,
+      section: student?.section,
+      schoolYear: student?.schoolYear,
+      companyName: studentCompany?.name ?? supervisorCompany?.name,
+      supervisorName: supervisor?.name,
+      supervisorTitle: supervisor?.title,
+      term: "2024-2025",
+    });
+  }, [currentUser, supervisors, students, companies, selectedStudentId]);
 
   // local values mirror the submission's values (so typing feels instant)
   const [values, setValues] = React.useState<Record<string, FieldValue>>({});
@@ -358,6 +392,7 @@ export function SupervisorFormWorkspace({ formId }: { formId?: string }) {
                 block={b}
                 interactive={!isReadOnly}
                 values={values}
+                autoFill={autoFill}
                 onValueChange={(id, v) => handleValueChange(id, v)}
               />
             ))

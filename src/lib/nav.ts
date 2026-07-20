@@ -95,6 +95,7 @@ export const navConfig: Record<Role, NavItem[]> = {
     },
     { key: "evaluations", label: "Evaluations", shortLabel: "Evals", view: "coordinator.evaluations", icon: "allEvaluations", section: "Workflow" },
     { key: "journals", label: "Journals", shortLabel: "Journals", view: "coordinator.journals", icon: "allJournals", section: "Workflow" },
+    { key: "timesheets", label: "Timesheets", shortLabel: "Timesheets", view: "coordinator.timesheets", icon: "timeClock", section: "Workflow" },
     { key: "reports", label: "Reports", shortLabel: "Reports", view: "coordinator.reports", icon: "reports", section: "Insights" },
     { key: "settings", label: "School Settings", shortLabel: "Settings", view: "coordinator.settings-school", icon: "settings", section: "Configuration" },
   ],
@@ -148,6 +149,7 @@ export const viewTitles: Record<ViewKey, string> = {
   "coordinator.journal-view": "Journal",
   "coordinator.reports": "Reports",
   "coordinator.time-monitor": "Time Tracking",
+  "coordinator.timesheets": "Intern Timesheets",
   "coordinator.time-clock": "Time Clock",
   "coordinator.forms": "Forms",
   "coordinator.form-editor": "Edit Form",
@@ -228,6 +230,7 @@ export const secondaryNavItems: Record<Role, NavItem[]> = {
     { key: "forms", label: "Forms", shortLabel: "Forms", view: "coordinator.forms", icon: "forms" },
     { key: "evaluations", label: "Evaluations", shortLabel: "Evals", view: "coordinator.evaluations", icon: "allEvaluations" },
     { key: "journals", label: "Journals", shortLabel: "Journals", view: "coordinator.journals", icon: "allJournals" },
+    { key: "timesheets", label: "Timesheets", shortLabel: "Timesheets", view: "coordinator.timesheets", icon: "timeClock" },
     { key: "reports", label: "Reports", shortLabel: "Reports", view: "coordinator.reports", icon: "reports" },
   ],
 };

@@ -2,7 +2,11 @@
 
 import * as React from "react";
 import { useAppStore } from "@/store/use-app-store";
-import { getCompany, studentsForSupervisor } from "@/lib/selectors";
+import {
+  getCompany,
+  schoolYearOptions,
+  studentsForSupervisor,
+} from "@/lib/selectors";
 import { PageHeader } from "@/components/portal/layout/page-header";
 import { SectionCard } from "@/components/portal/shared/section-card";
 import { StatCard } from "@/components/portal/shared/stat-card";
@@ -13,6 +17,13 @@ import { Badge } from "@/components/portal/shared/badges";
 import { MobileListCard } from "@/components/portal/shared/mobile-list-card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -29,19 +40,26 @@ import {
   UserSquare2,
   Users,
   Building2,
+  Download,
 } from "lucide-react";
+import { toast } from "sonner";
+import { downloadCsv } from "@/lib/client-pdf";
 
 interface Row {
   id: string;
   name: string;
+  salutation?: string;
   email: string;
+  phone?: string;
   title: string;
   department: string;
   capacity: number;
   companyId: string;
   companyName: string;
+  companyCity?: string;
   interns: number;
   status: "active" | "inactive";
+  schoolYear?: string;
 }
 
 export function SupervisorsList() {
@@ -51,6 +69,13 @@ export function SupervisorsList() {
   const students = useAppStore((s) => s.students);
 
   const [search, setSearch] = React.useState("");
+  const [schoolYearFilter, setSchoolYearFilter] = React.useState<string>("all");
+  const [statusFilter, setStatusFilter] = React.useState<string>("all");
+
+  const schoolYearOpts = React.useMemo(
+    () => schoolYearOptions([[...supervisors], [...students], [...companies]]),
+    [supervisors, students, companies],
+  );
 
   const rows: Row[] = React.useMemo(() => {
     return supervisors
@@ -60,28 +85,82 @@ export function SupervisorsList() {
         return {
           id: sup.id,
           name: sup.name,
+          salutation: sup.salutation,
           email: sup.email,
+          phone: sup.phone,
           title: sup.title,
           department: sup.department,
           capacity: sup.capacity,
           companyId: sup.companyId,
           companyName: company?.name ?? "—",
+          companyCity: company?.city,
           interns,
           status: sup.status,
+          schoolYear: sup.schoolYear,
         };
       })
       .filter((r) => {
-        if (!search) return true;
-        const q = search.toLowerCase();
-        return (
-          r.name.toLowerCase().includes(q) ||
-          r.email.toLowerCase().includes(q) ||
-          r.companyName.toLowerCase().includes(q) ||
-          r.title.toLowerCase().includes(q) ||
-          r.department.toLowerCase().includes(q)
-        );
+        if (search) {
+          const q = search.toLowerCase();
+          if (
+            !r.name.toLowerCase().includes(q) &&
+            !r.email.toLowerCase().includes(q) &&
+            !r.companyName.toLowerCase().includes(q) &&
+            !r.title.toLowerCase().includes(q) &&
+            !r.department.toLowerCase().includes(q)
+          )
+            return false;
+        }
+        if (schoolYearFilter !== "all" && (r.schoolYear ?? "") !== schoolYearFilter)
+          return false;
+        if (statusFilter !== "all" && r.status !== statusFilter) return false;
+        return true;
       });
-  }, [supervisors, companies, students, search]);
+  }, [supervisors, companies, students, search, schoolYearFilter, statusFilter]);
+
+  // ---- CSV export of all filtered supervisors with full info ----
+  const handleExportCsv = () => {
+    if (rows.length === 0) {
+      toast.error("Nothing to export", {
+        description: "Add at least one supervisor before exporting.",
+      });
+      return;
+    }
+    const file = downloadCsv(
+      "supervisors-export",
+      [
+        "Name",
+        "Salutation",
+        "Email",
+        "Phone",
+        "Title",
+        "Department",
+        "Company",
+        "Company City",
+        "Capacity",
+        "Interns Assigned",
+        "Status",
+        "School Year",
+      ],
+      rows.map((r) => [
+        r.name,
+        r.salutation ?? "",
+        r.email,
+        r.phone ?? "",
+        r.title,
+        r.department,
+        r.companyName,
+        r.companyCity ?? "",
+        r.capacity,
+        r.interns,
+        r.status,
+        r.schoolYear ?? "",
+      ]),
+    );
+    toast.success("Supervisors CSV exported", {
+      description: `${rows.length} supervisor${rows.length === 1 ? "" : "s"} exported to ${file}.`,
+    });
+  };
 
   const columns: Column<Row>[] = [
     {
@@ -104,6 +183,17 @@ export function SupervisorsList() {
       sortValue: (r) => r.companyName,
       hideOnMobile: true,
       cell: (r) => <span className="text-sm text-muted-foreground">{r.companyName}</span>,
+    },
+    {
+      key: "schoolYear",
+      header: "Batch",
+      sortValue: (r) => r.schoolYear ?? "~",
+      hideOnMobile: true,
+      cell: (r) => (
+        <span className="text-sm text-muted-foreground">
+          {r.schoolYear ?? "—"}
+        </span>
+      ),
     },
     {
       key: "interns",
@@ -173,16 +263,26 @@ export function SupervisorsList() {
         description={`${supervisors.length} supervisors across ${companies.length} companies.`}
         breadcrumb="Supervisors"
         actions={
-          <Button onClick={() => navigate("coordinator.supervisor-new")} className="w-full sm:w-auto">
-            <Plus className="h-4 w-4" />
-            Add Supervisor
-          </Button>
+          <div className="flex w-full flex-wrap gap-2 sm:w-auto">
+            <Button
+              variant="outline"
+              onClick={handleExportCsv}
+              className="w-full sm:w-auto"
+            >
+              <Download className="h-4 w-4" />
+              Export CSV
+            </Button>
+            <Button onClick={() => navigate("coordinator.supervisor-new")} className="w-full sm:w-auto">
+              <Plus className="h-4 w-4" />
+              Add Supervisor
+            </Button>
+          </div>
         }
       />
 
       <SectionCard noPadding contentClassName="p-0">
-        <div className="border-b border-border p-4">
-          <div className="relative w-full max-w-md">
+        <div className="flex flex-col gap-3 border-b border-border p-4 lg:flex-row lg:items-center">
+          <div className="relative w-full lg:max-w-md">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               placeholder="Search by name or company…"
@@ -190,6 +290,31 @@ export function SupervisorsList() {
               onChange={(e) => setSearch(e.target.value)}
               className="pl-9"
             />
+          </div>
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:flex lg:flex-1 lg:justify-end">
+            <Select value={schoolYearFilter} onValueChange={setSchoolYearFilter}>
+              <SelectTrigger className="h-11 w-full lg:w-[170px]" size="sm">
+                <SelectValue placeholder="School Year" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All batches</SelectItem>
+                {schoolYearOpts.map((y) => (
+                  <SelectItem key={y} value={y}>
+                    {y}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="h-11 w-full lg:w-[120px]" size="sm">
+                <SelectValue placeholder="Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All status</SelectItem>
+                <SelectItem value="active">Active</SelectItem>
+                <SelectItem value="inactive">Inactive</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </div>
 
@@ -211,7 +336,7 @@ export function SupervisorsList() {
                   {r.status === "active" ? "Active" : "Inactive"}
                 </Badge>
               }
-              meta={`${r.companyName} · ${r.interns}/${r.capacity} interns`}
+              meta={`${r.companyName}${r.schoolYear ? ` · ${r.schoolYear}` : ""} · ${r.interns}/${r.capacity} interns`}
               leading={<Avatar name={r.name} size="sm" />}
               onClick={() =>
                 navigate("coordinator.supervisor-view", { supervisorId: r.id })

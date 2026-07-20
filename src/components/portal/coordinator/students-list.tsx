@@ -4,12 +4,15 @@ import * as React from "react";
 import { useAppStore } from "@/store/use-app-store";
 import {
   averageScore,
+  courseOptions,
   evaluationsForStudent,
   getCompany,
   getSupervisor,
   hoursPercent,
+  schoolYearOptions,
+  sectionOptions,
 } from "@/lib/selectors";
-import type { Student, StudentStatus } from "@/lib/types";
+import type { Student } from "@/lib/types";
 import { PageHeader } from "@/components/portal/layout/page-header";
 import { DataTable, type Column } from "@/components/portal/shared/data-table";
 import { SectionCard } from "@/components/portal/shared/section-card";
@@ -38,6 +41,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
@@ -50,12 +54,14 @@ import {
   UserX,
   Users,
   UserCog,
+  Download,
   FileSpreadsheet,
+  Layers,
+  CheckCircle2,
+  Archive,
 } from "lucide-react";
 import { toast } from "sonner";
 import { downloadCsv } from "@/lib/client-pdf";
-
-const COURSES = ["BSIT", "BSCS", "BSIS"];
 
 interface Row {
   student: Student;
@@ -75,6 +81,8 @@ export function StudentsList() {
 
   const [search, setSearch] = React.useState("");
   const [course, setCourse] = React.useState<string>("all");
+  const [sectionFilter, setSectionFilter] = React.useState<string>("all");
+  const [schoolYearFilter, setSchoolYearFilter] = React.useState<string>("all");
   const [companyId, setCompanyId] = React.useState<string>("all");
   const [supervisorFilter, setSupervisorFilter] = React.useState<string>("all");
   const [status, setStatus] = React.useState<string>("all");
@@ -84,6 +92,14 @@ export function StudentsList() {
   // Bulk-assign state — multiple students
   const [selectedIds, setSelectedIds] = React.useState<Set<string>>(new Set());
   const [bulkOpen, setBulkOpen] = React.useState(false);
+
+  // Live filter options (sourced from the roster).
+  const courseOpts = React.useMemo(() => courseOptions(students), [students]);
+  const sectionOpts = React.useMemo(() => sectionOptions(students), [students]);
+  const schoolYearOpts = React.useMemo(
+    () => schoolYearOptions([[...students], [...supervisors], [...companies]]),
+    [students, supervisors, companies],
+  );
 
   const rows: Row[] = React.useMemo(() => {
     return students
@@ -112,6 +128,16 @@ export function StudentsList() {
             return false;
         }
         if (course !== "all" && r.student.course !== course) return false;
+        if (
+          sectionFilter !== "all" &&
+          (r.student.section ?? "") !== sectionFilter
+        )
+          return false;
+        if (
+          schoolYearFilter !== "all" &&
+          (r.student.schoolYear ?? "") !== schoolYearFilter
+        )
+          return false;
         if (companyId !== "all" && r.student.companyId !== companyId) return false;
         if (supervisorFilter === "unassigned" && r.student.supervisorId) return false;
         if (
@@ -123,7 +149,7 @@ export function StudentsList() {
         if (status !== "all" && r.student.status !== status) return false;
         return true;
       });
-  }, [students, supervisors, companies, evaluations, search, course, companyId, supervisorFilter, status]);
+  }, [students, supervisors, companies, evaluations, search, course, sectionFilter, schoolYearFilter, companyId, supervisorFilter, status]);
 
   // Bulk selection helpers — only unassigned students are selectable.
   const unassignedRows = rows.filter((r) => !r.student.supervisorId);
@@ -150,47 +176,126 @@ export function StudentsList() {
 
   const selectedStudents = students.filter((s) => selectedIds.has(s.id));
 
-  // ---- CSV export of the currently-filtered student list ----
-  const handleExportCsv = () => {
+  // ---- CSV export ----
+  const csvHeaders = [
+    "Student Name",
+    "Student Number",
+    "Email",
+    "Course",
+    "Section",
+    "School Year",
+    "Position",
+    "Company",
+    "Supervisor",
+    "Status",
+    "Logged Hours",
+    "Required Hours",
+    "Completion %",
+    "Last Eval Score",
+  ];
+  const rowToCsv = (r: Row): (string | number)[] => [
+    r.student.name,
+    r.student.studentNumber,
+    r.student.email,
+    r.student.course,
+    r.student.section ?? "",
+    r.student.schoolYear ?? "",
+    r.student.position,
+    r.companyName,
+    r.supervisorName ?? "Unassigned",
+    r.student.status,
+    r.student.loggedHours,
+    r.student.requiredHours,
+    r.hoursPct,
+    r.lastScore > 0 ? r.lastScore.toFixed(2) : "—",
+  ];
+
+  // 1. Export the currently-filtered view (all rows).
+  const handleExportCurrentView = () => {
     if (rows.length === 0) {
       toast.error("Nothing to export", {
         description: "Adjust your filters to include at least one student.",
       });
       return;
     }
-    downloadCsv(
+    const file = downloadCsv(
       "students-export",
-      [
-        "Student Name",
-        "Student Number",
-        "Email",
-        "Course",
-        "Position",
-        "Company",
-        "Supervisor",
-        "Status",
-        "Logged Hours",
-        "Required Hours",
-        "Completion %",
-        "Last Eval Score",
-      ],
-      rows.map((r) => [
-        r.student.name,
-        r.student.studentNumber,
-        r.student.email,
-        r.student.course,
-        r.student.position,
-        r.companyName,
-        r.supervisorName ?? "Unassigned",
-        r.student.status,
-        r.student.loggedHours,
-        r.student.requiredHours,
-        r.hoursPct,
-        r.lastScore > 0 ? r.lastScore.toFixed(2) : "—",
-      ]),
+      csvHeaders,
+      rows.map(rowToCsv),
     );
     toast.success("CSV exported", {
-      description: `${rows.length} student${rows.length === 1 ? "" : "s"} exported to students-export.csv.`,
+      description: `${rows.length} student${rows.length === 1 ? "" : "s"} exported to ${file}.`,
+    });
+  };
+
+  // 2. Export one CSV per section present in the filtered rows.
+  const handleExportPerSection = () => {
+    if (rows.length === 0) {
+      toast.error("Nothing to export", {
+        description: "Adjust your filters to include at least one student.",
+      });
+      return;
+    }
+    const sectionGroups = new Map<string, Row[]>();
+    for (const r of rows) {
+      const sec = r.student.section?.trim() || "(no section)";
+      if (!sectionGroups.has(sec)) sectionGroups.set(sec, []);
+      sectionGroups.get(sec)!.push(r);
+    }
+    const sections = Array.from(sectionGroups.entries());
+    sections.forEach(([section, sectionRows], idx) => {
+      const slug = section
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-|-$/g, "") || "no-section";
+      setTimeout(() => {
+        downloadCsv(
+          `students-${slug}`,
+          csvHeaders,
+          sectionRows.map(rowToCsv),
+        );
+      }, idx * 350);
+    });
+    toast.success(`Exported ${sections.length} section CSVs`, {
+      description: `One file per section: ${sections.map(([s]) => s).join(", ")}.`,
+    });
+  };
+
+  // 3. Export only active students (filtered).
+  const handleExportActive = () => {
+    const active = rows.filter((r) => r.student.status === "active");
+    if (active.length === 0) {
+      toast.error("Nothing to export", {
+        description: "No active students match your filters.",
+      });
+      return;
+    }
+    const file = downloadCsv(
+      "students-active",
+      csvHeaders,
+      active.map(rowToCsv),
+    );
+    toast.success("Active students exported", {
+      description: `${active.length} active student${active.length === 1 ? "" : "s"} exported to ${file}.`,
+    });
+  };
+
+  // 4. Export only inactive / archived students (filtered).
+  const handleExportInactive = () => {
+    const inactive = rows.filter((r) => r.student.status === "inactive");
+    if (inactive.length === 0) {
+      toast.error("Nothing to export", {
+        description: "No inactive / archived students match your filters.",
+      });
+      return;
+    }
+    const file = downloadCsv(
+      "students-inactive-archived",
+      csvHeaders,
+      inactive.map(rowToCsv),
+    );
+    toast.success("Inactive / archived students exported", {
+      description: `${inactive.length} archived student${inactive.length === 1 ? "" : "s"} preserved in ${file}.`,
     });
   };
 
@@ -242,6 +347,17 @@ export function StudentsList() {
       sortValue: (r) => r.student.course,
       hideOnMobile: true,
       cell: (r) => <span className="text-sm text-muted-foreground">{r.student.course}</span>,
+    },
+    {
+      key: "section",
+      header: "Section",
+      sortValue: (r) => r.student.section ?? "~",
+      hideOnMobile: true,
+      cell: (r) => (
+        <span className="text-sm text-muted-foreground">
+          {r.student.section ?? "—"}
+        </span>
+      ),
     },
     {
       key: "company",
@@ -356,14 +472,56 @@ export function StudentsList() {
         breadcrumb="Students"
         actions={
           <div className="flex w-full flex-wrap gap-2 sm:w-auto">
-            <Button
-              variant="outline"
-              onClick={handleExportCsv}
-              className="w-full sm:w-auto"
-            >
-              <FileSpreadsheet className="h-4 w-4" />
-              Export CSV
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" className="w-full sm:w-auto">
+                  <Download className="h-4 w-4" />
+                  Export
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-60">
+                <DropdownMenuLabel className="text-xs text-muted-foreground">
+                  Export students
+                </DropdownMenuLabel>
+                <DropdownMenuItem onClick={handleExportCurrentView}>
+                  <FileSpreadsheet className="h-4 w-4" />
+                  <div className="flex flex-col">
+                    <span>Current view (CSV)</span>
+                    <span className="text-[10px] text-muted-foreground">
+                      All filtered rows
+                    </span>
+                  </div>
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleExportPerSection}>
+                  <Layers className="h-4 w-4" />
+                  <div className="flex flex-col">
+                    <span>Per section (multiple CSVs)</span>
+                    <span className="text-[10px] text-muted-foreground">
+                      One file per section
+                    </span>
+                  </div>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={handleExportActive}>
+                  <CheckCircle2 className="h-4 w-4" />
+                  <div className="flex flex-col">
+                    <span>Active only (CSV)</span>
+                    <span className="text-[10px] text-muted-foreground">
+                      Current batch
+                    </span>
+                  </div>
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleExportInactive}>
+                  <Archive className="h-4 w-4" />
+                  <div className="flex flex-col">
+                    <span>Inactive / archived (CSV)</span>
+                    <span className="text-[10px] text-muted-foreground">
+                      Preserve previous batch
+                    </span>
+                  </div>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
             <Button onClick={() => navigate("coordinator.student-new")} className="w-full sm:w-auto">
               <Plus className="h-4 w-4" />
               Add Student
@@ -391,9 +549,35 @@ export function StudentsList() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All courses</SelectItem>
-                {COURSES.map((c) => (
+                {courseOpts.map((c) => (
                   <SelectItem key={c} value={c}>
                     {c}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={sectionFilter} onValueChange={setSectionFilter}>
+              <SelectTrigger className="h-11 w-full lg:w-[140px]" size="sm">
+                <SelectValue placeholder="Section" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All sections</SelectItem>
+                {sectionOpts.map((s) => (
+                  <SelectItem key={s} value={s}>
+                    {s}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={schoolYearFilter} onValueChange={setSchoolYearFilter}>
+              <SelectTrigger className="h-11 w-full lg:w-[170px]" size="sm">
+                <SelectValue placeholder="School Year" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All batches</SelectItem>
+                {schoolYearOpts.map((y) => (
+                  <SelectItem key={y} value={y}>
+                    {y}
                   </SelectItem>
                 ))}
               </SelectContent>

@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { useAppStore } from "@/store/use-app-store";
-import { getSupervisor } from "@/lib/selectors";
+import { getSupervisor, schoolYearOptions } from "@/lib/selectors";
 import type { ViewParams, Department } from "@/lib/types";
 import { DEPARTMENTS } from "@/lib/types";
 import { PageHeader } from "@/components/portal/layout/page-header";
@@ -10,6 +10,7 @@ import { SectionCard } from "@/components/portal/shared/section-card";
 import { ActionBar } from "@/components/portal/shared/action-bar";
 import { CredentialsDialog } from "@/components/portal/shared/credentials-dialog";
 import { EmptyState } from "@/components/portal/shared/empty-state";
+import { ComboInput } from "@/components/portal/shared/combo-input";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -22,6 +23,8 @@ import {
 } from "@/components/ui/select";
 import { AlertCircle } from "lucide-react";
 import { toast } from "sonner";
+
+const SALUTATIONS = ["Mr.", "Ms.", "Mrs.", "Dr.", "Engr.", "Atty.", "Hon.", "Prof."];
 
 function genTempPassword(): string {
   return (
@@ -39,9 +42,11 @@ export function SupervisorForm({
   const navigate = useAppStore((s) => s.navigate);
   const back = useAppStore((s) => s.back);
   const supervisors = useAppStore((s) => s.supervisors);
+  const students = useAppStore((s) => s.students);
   const companies = useAppStore((s) => s.companies);
   const createSupervisor = useAppStore((s) => s.createSupervisor);
   const updateSupervisor = useAppStore((s) => s.updateSupervisor);
+  const upsertCompany = useAppStore((s) => s.upsertCompany);
 
   const isEdit = !!supervisorId;
   const existing = React.useMemo(
@@ -49,12 +54,17 @@ export function SupervisorForm({
     [supervisors, supervisorId]
   );
 
+  const [salutation, setSalutation] = React.useState<string>("");
   const [name, setName] = React.useState("");
   const [email, setEmail] = React.useState("");
-  const [companyId, setCompanyId] = React.useState("");
+  const [phone, setPhone] = React.useState("");
+  // Company is held as the typed NAME (free-text). On save we resolve it to
+  // an id via upsertCompany (case-insensitive match or create).
+  const [companyName, setCompanyName] = React.useState<string>("");
   const [title, setTitle] = React.useState("");
   const [department, setDepartment] = React.useState<Department | "">("");
   const [capacity, setCapacity] = React.useState("5");
+  const [schoolYear, setSchoolYear] = React.useState<string>("");
   const [tempPassword] = React.useState(() => genTempPassword());
   const [errors, setErrors] = React.useState<Record<string, string>>({});
   const [credsOpen, setCredsOpen] = React.useState(false);
@@ -65,16 +75,30 @@ export function SupervisorForm({
     supervisorId: string;
   } | null>(null);
 
+  // Live option lists (sourced from the roster / companies).
+  const schoolYearOpts = React.useMemo(
+    () => schoolYearOptions([[...supervisors], [...students], [...companies]]),
+    [supervisors, students, companies],
+  );
+  const companyOpts = React.useMemo(
+    () => companies.map((c) => c.name).sort((a, b) => a.localeCompare(b)),
+    [companies],
+  );
+
   React.useEffect(() => {
     if (existing) {
+      setSalutation(existing.salutation ?? "");
       setName(existing.name);
       setEmail(existing.email);
-      setCompanyId(existing.companyId);
+      setPhone(existing.phone ?? "");
+      const company = companies.find((c) => c.id === existing.companyId);
+      setCompanyName(company?.name ?? "");
       setTitle(existing.title);
       setDepartment(existing.department);
       setCapacity(String(existing.capacity));
+      setSchoolYear(existing.schoolYear ?? "");
     }
-  }, [existing]);
+  }, [existing, companies]);
 
   if (isEdit && !existing) {
     return (
@@ -96,7 +120,7 @@ export function SupervisorForm({
     if (!name.trim()) next.name = "Name is required.";
     if (!email.trim()) next.email = "Email is required.";
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) next.email = "Enter a valid email.";
-    if (!companyId) next.companyId = "Company is required.";
+    if (!companyName.trim()) next.companyId = "Company is required.";
     if (!title.trim()) next.title = "Title is required.";
     if (!department) next.department = "Department is required.";
     if (!capacity.trim() || Number.isNaN(Number(capacity)) || Number(capacity) <= 0)
@@ -139,28 +163,58 @@ export function SupervisorForm({
         return;
       }
     }
+    // Resolve the company id from the typed company name (upsert on save).
+    const trimmedCompany = companyName.trim();
+    let resolveCompanyId = "";
+    let companyCreated = false;
+    if (trimmedCompany) {
+      const beforeIds = new Set(companies.map((c) => c.id));
+      resolveCompanyId = upsertCompany({ name: trimmedCompany });
+      companyCreated = !beforeIds.has(resolveCompanyId);
+    }
     if (isEdit && existing) {
       updateSupervisor(existing.id, {
         name: name.trim(),
         email: email.trim(),
-        companyId,
+        companyId: resolveCompanyId,
         title: title.trim(),
         department: department as Department,
         capacity: Number(capacity),
+        phone: phone.trim() || undefined,
+        salutation: salutation.trim() || undefined,
+        schoolYear: schoolYear.trim() || undefined,
       });
+      if (companyCreated) {
+        toast.success("Company added", {
+          description: `New company record created for “${trimmedCompany}”.`,
+        });
+      }
       toast.success("Supervisor updated", {
         description: `${name} saved.`,
       });
       navigate("coordinator.supervisor-view", { supervisorId: existing.id });
     } else {
+      if (!resolveCompanyId) {
+        // Defensive: should never happen because validate() rejects empty company.
+        toast.error("Company is required.");
+        return;
+      }
       const result = createSupervisor({
         name: name.trim(),
         email: email.trim(),
-        companyId,
+        companyId: resolveCompanyId,
         title: title.trim(),
         department: department as Department,
         capacity: Number(capacity),
+        phone: phone.trim() || undefined,
+        salutation: salutation.trim() || undefined,
+        schoolYear: schoolYear.trim() || undefined,
       });
+      if (companyCreated) {
+        toast.success("Company added", {
+          description: `New company record created for “${trimmedCompany}”.`,
+        });
+      }
       setCreatedCreds({
         name: name.trim(),
         email: email.trim(),
@@ -188,6 +242,14 @@ export function SupervisorForm({
         {/* Section 1 — Supervisor */}
         <SectionCard title="Supervisor">
           <div className="grid gap-4 sm:grid-cols-2">
+            <Field label="Salutation" hint="Optional. e.g. Ms., Engr., Hon.">
+              <ComboInput
+                value={salutation}
+                onChange={setSalutation}
+                options={SALUTATIONS}
+                placeholder="Ms. / Engr. / …"
+              />
+            </Field>
             <Field label="Full Name" required error={errors.name}>
               <Input
                 value={name}
@@ -205,24 +267,40 @@ export function SupervisorForm({
                 aria-invalid={!!errors.email}
               />
             </Field>
+            <Field label="Phone" hint="For the company directory / CSV export.">
+              <Input
+                type="tel"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                placeholder="(+63) 917 555 0123"
+              />
+            </Field>
             <Field
               label="Company"
               required
               error={errors.companyId}
+              hint="Type to search or add a new company."
               className="sm:col-span-2"
             >
-              <Select value={companyId} onValueChange={setCompanyId}>
-                <SelectTrigger className="w-full" aria-invalid={!!errors.companyId}>
-                  <SelectValue placeholder="Select company" />
-                </SelectTrigger>
-                <SelectContent>
-                  {companies.map((c) => (
-                    <SelectItem key={c.id} value={c.id}>
-                      {c.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <ComboInput
+                value={companyName}
+                onChange={setCompanyName}
+                options={companyOpts}
+                placeholder="Acme Corp / Globex / …"
+                aria-invalid={!!errors.companyId}
+              />
+            </Field>
+            <Field
+              label="School Year / Batch"
+              hint="e.g. 2025-2026 2nd Semester, 2024-2025 Summer."
+              className="sm:col-span-2"
+            >
+              <ComboInput
+                value={schoolYear}
+                onChange={setSchoolYear}
+                options={schoolYearOpts}
+                placeholder="2025-2026 2nd Semester"
+              />
             </Field>
           </div>
         </SectionCard>
@@ -282,7 +360,13 @@ export function SupervisorForm({
       </div>
 
       <ActionBar>
-        <Button variant="outline" onClick={back}>
+        <Button
+          variant="outline"
+          onClick={() => {
+            back();
+            toast.info("Cancelled", { description: "No changes were saved." });
+          }}
+        >
           Cancel
         </Button>
         <Button onClick={handleSave}>

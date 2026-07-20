@@ -31,6 +31,7 @@ import {
   FORM_CATEGORY_LABELS,
 } from "@/lib/types";
 import { format } from "date-fns";
+import { buildFormAutoFillContext, getCompany, getSupervisor } from "@/lib/selectors";
 
 type FieldValue = string | Record<string, string>;
 
@@ -40,9 +41,41 @@ export function SupervisorFormViewer({ formId }: { formId?: string }) {
   const back = useAppStore((s) => s.back);
   const canBack = useAppStore((s) => s.history.length > 0);
   const form = useAppStore((s) => s.formDocuments.find((d) => d.id === formId));
+  const currentUser = useAppStore((s) => s.currentUser);
+  const supervisors = useAppStore((s) => s.supervisors);
+  const companies = useAppStore((s) => s.companies);
+  const students = useAppStore((s) => s.students);
+  const viewParams = useAppStore((s) => s.viewParams);
 
   const [values, setValues] = React.useState<Record<string, FieldValue>>({});
   const [submitted, setSubmitted] = React.useState(false);
+
+  // Build the auto-fill context from the current supervisor + (optional)
+  // target student + their company. Pass it to every FormBlockRenderer so
+  // info-field blocks auto-populate from context.
+  const autoFill = React.useMemo(() => {
+    const supervisor = currentUser?.supervisorId
+      ? getSupervisor(supervisors, currentUser.supervisorId)
+      : undefined;
+    const company = supervisor ? getCompany(companies, supervisor.companyId) : undefined;
+    // Optional target student via viewParams (preselectStudentId or studentId).
+    const targetStudentId = viewParams.preselectStudentId ?? viewParams.studentId;
+    const student = targetStudentId
+      ? students.find((st) => st.id === targetStudentId)
+      : undefined;
+    const studentCompany = student ? getCompany(companies, student.companyId) : undefined;
+    return buildFormAutoFillContext({
+      studentName: student?.name,
+      studentNumber: student?.studentNumber,
+      course: student?.course,
+      section: student?.section,
+      schoolYear: student?.schoolYear,
+      companyName: studentCompany?.name ?? company?.name,
+      supervisorName: supervisor?.name,
+      supervisorTitle: supervisor?.title,
+      term: "2024-2025",
+    });
+  }, [currentUser, supervisors, companies, students, viewParams.preselectStudentId, viewParams.studentId]);
 
   if (!form) {
     return (
@@ -192,6 +225,7 @@ export function SupervisorFormViewer({ formId }: { formId?: string }) {
                 block={b}
                 interactive={!submitted}
                 values={values}
+                autoFill={autoFill}
                 onValueChange={(id, v) => setValues((prev) => ({ ...prev, [id]: v }))}
               />
             ))

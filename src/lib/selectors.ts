@@ -686,3 +686,130 @@ export function formResponseStats(
 
   return { assigned, submitted, approved, needsRevision };
 }
+
+// ============================================================
+// Cohort option lists — derived from live student/supervisor/
+// company data so coordinators get a free-text→option combobox
+// for Course, Section, School Year, and Company. New values typed
+// by the coordinator automatically appear as options next time.
+// ============================================================
+
+/** Distinct course strings currently in use across the student roster (sorted). */
+export function courseOptions(students: { course: string }[]): string[] {
+  const set = new Set<string>();
+  for (const s of students) if (s.course?.trim()) set.add(s.course.trim());
+  return Array.from(set).sort((a, b) => a.localeCompare(b));
+}
+
+/** Distinct section strings currently in use across the student roster (sorted). */
+export function sectionOptions(students: { section?: string }[]): string[] {
+  const set = new Set<string>();
+  for (const s of students) if (s.section?.trim()) set.add(s.section.trim());
+  return Array.from(set).sort((a, b) => a.localeCompare(b));
+}
+
+/**
+ * Distinct school-year / batch strings across students, supervisors,
+ * and companies (sorted, most-recent first by leading year parse).
+ * e.g. ["2025-2026 2nd Semester", "2024-2025 Summer"].
+ */
+export function schoolYearOptions(
+  sources: { schoolYear?: string }[][]
+): string[] {
+  const set = new Set<string>();
+  for (const arr of sources) {
+    for (const s of arr) if (s.schoolYear?.trim()) set.add(s.schoolYear.trim());
+  }
+  const arr = Array.from(set);
+  // Sort by the leading 4-digit year descending (most recent first);
+  // fall back to localeCompare for non-numeric values.
+  arr.sort((a, b) => {
+    const ya = parseInt(a.slice(0, 4), 10);
+    const yb = parseInt(b.slice(0, 4), 10);
+    if (Number.isFinite(ya) && Number.isFinite(yb) && ya !== yb) return yb - ya;
+    return b.localeCompare(a);
+  });
+  return arr;
+}
+
+/**
+ * Build an auto-fill context map for Form info-field blocks.
+ * Given a label, returns the matching value (or undefined) so the
+ * supervisor/coordinator doesn't re-type student/company/supervisor
+ * header info on every evaluation form.
+ *
+ * Matching is case-insensitive and tolerant: a label like
+ * "Student Name", "Name of Intern", "Company", "Supervisor",
+ * "Date", "Term", "School Year", "Section", "Student No." etc.
+ * resolves to the right value.
+ */
+export function buildFormAutoFillContext(ctx: {
+  studentName?: string;
+  studentNumber?: string;
+  course?: string;
+  section?: string;
+  schoolYear?: string;
+  companyName?: string;
+  supervisorName?: string;
+  supervisorTitle?: string;
+  term?: string;
+  today?: string; // pre-formatted date string
+}): Record<string, string> {
+  const today =
+    ctx.today ??
+    new Date().toLocaleDateString("en-US", {
+      month: "long",
+      day: "numeric",
+      year: "numeric",
+    });
+  // Each key maps to a list of label-fragments that should match it.
+  const map: { key: string; fragments: string[]; value: string }[] = [
+    { key: "studentName", fragments: ["student name", "name of intern", "intern name", "name of student", "trainee name", "name of trainee"], value: ctx.studentName ?? "" },
+    { key: "studentNumber", fragments: ["student no", "student number", "id number", "student id", "registration no"], value: ctx.studentNumber ?? "" },
+    { key: "course", fragments: ["course", "program", "degree"], value: ctx.course ?? "" },
+    { key: "section", fragments: ["section", "block", "year & section", "year and section"], value: ctx.section ?? "" },
+    { key: "schoolYear", fragments: ["school year", "sy", "academic year", "batch", "school yr"], value: ctx.schoolYear ?? "" },
+    { key: "companyName", fragments: ["company", "establishment", "firm", "organization", "organisation", "practicum site", "host company", "agency"], value: ctx.companyName ?? "" },
+    { key: "supervisorName", fragments: ["supervisor", "immediate supervisor", "company supervisor", "mentor"], value: ctx.supervisorName ?? "" },
+    { key: "supervisorTitle", fragments: ["supervisor title", "supervisor position", "position of supervisor"], value: ctx.supervisorTitle ?? "" },
+    { key: "term", fragments: ["term", "semester", "school term"], value: ctx.term ?? "" },
+    { key: "date", fragments: ["date", "date accomplished", "date submitted", "date filled"], value: today },
+  ];
+  const out: Record<string, string> = {};
+  for (const m of map) {
+    if (m.value) out[m.key] = m.value;
+  }
+  return out;
+}
+
+/**
+ * Resolve an info-field block label to an auto-fill value.
+ * Returns "" if no match (so the field stays editable/empty).
+ */
+export function resolveAutoFillValue(
+  label: string,
+  ctx: Record<string, string>
+): string {
+  const l = label.toLowerCase().trim();
+  if (!l) return "";
+  // Ordered fragments → value. Longer/more-specific fragments first.
+  const entries: { fragments: string[]; value: string }[] = [
+    { fragments: ["supervisor title", "supervisor position"], value: ctx.supervisorTitle ?? "" },
+    { fragments: ["supervisor", "immediate supervisor", "company supervisor", "mentor"], value: ctx.supervisorName ?? "" },
+    { fragments: ["student no", "student number", "id number", "student id", "registration no"], value: ctx.studentNumber ?? "" },
+    { fragments: ["student name", "name of intern", "intern name", "name of student", "trainee name", "name of trainee", "name"], value: ctx.studentName ?? "" },
+    { fragments: ["school year", "school yr", "academic year", "batch", "sy"], value: ctx.schoolYear ?? "" },
+    { fragments: ["year & section", "year and section", "section", "block"], value: ctx.section ?? "" },
+    { fragments: ["company name", "name of company", "company", "establishment", "firm", "practicum site", "host company", "agency", "organization", "organisation"], value: ctx.companyName ?? "" },
+    { fragments: ["course", "program", "degree"], value: ctx.course ?? "" },
+    { fragments: ["term", "semester", "school term"], value: ctx.term ?? "" },
+    { fragments: ["date accomplished", "date submitted", "date filled", "date"], value: ctx.date ?? "" },
+  ];
+  for (const e of entries) {
+    if (!e.value) continue;
+    for (const f of e.fragments) {
+      if (l.includes(f)) return e.value;
+    }
+  }
+  return "";
+}
