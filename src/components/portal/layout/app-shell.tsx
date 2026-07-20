@@ -87,7 +87,7 @@ export function AppShell({ children }: AppShellProps) {
           height (56px) + safe area so cards and action bars never get hidden.
           Page gutter px-4 sm:px-6 lg:px-8 (§1.1).
         */}
-        <main className="flex-1 px-4 pb-[calc(56px+env(safe-area-inset-bottom,0px)+1rem)] pt-4 sm:px-6 lg:px-8 lg:pb-12 lg:pt-6">
+        <main className="flex-1 px-5 pb-[calc(56px+env(safe-area-inset-bottom,0px)+1rem)] pt-4 sm:px-6 lg:px-8 lg:pb-12 lg:pt-6">
           <div className="mx-auto w-full max-w-7xl">
             <div key={view}>
               {children}

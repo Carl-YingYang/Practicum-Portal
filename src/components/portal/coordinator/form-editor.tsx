@@ -189,7 +189,7 @@ export function FormEditor({ formId }: { formId?: string }) {
     <TooltipProvider delayDuration={250}>
       <div className="space-y-3">
         {/* Sticky editor toolbar */}
-        <div className="sticky top-0 z-20 -mx-4 border-b border-border/60 bg-background/95 px-4 py-2 backdrop-blur sm:-mx-6 sm:px-6">
+        <div className="sticky top-0 z-20 -mx-5 border-b border-border/60 bg-background/95 px-5 py-2 backdrop-blur sm:-mx-6 sm:px-6">
           <div className="flex flex-wrap items-center gap-2">
             <Button variant="ghost" size="sm" onClick={back} className="gap-1 text-muted-foreground hover:text-foreground">
               <X className="h-4 w-4" /> Exit

@@ -491,7 +491,7 @@ export function StudentsList() {
 
       {/* Bulk-assign sticky action bar — appears when 2+ unassigned students are selected */}
       {selectedStudents.length >= 2 && (
-        <div className="sticky bottom-[calc(56px+env(safe-area-inset-bottom,0px))] z-20 mt-4 -mx-4 border-t border-border bg-background/95 px-4 py-3 backdrop-blur supports-[backdrop-filter]:bg-background/80 sm:-mx-6 sm:px-6 lg:bottom-0">
+        <div className="sticky bottom-[calc(56px+env(safe-area-inset-bottom,0px))] z-20 mt-4 -mx-5 border-t border-border bg-background/95 px-5 py-3 backdrop-blur supports-[backdrop-filter]:bg-background/80 sm:-mx-6 sm:px-6 lg:bottom-0">
           <div className="mx-auto flex w-full max-w-7xl flex-wrap items-center justify-between gap-3">
             <p className="min-w-0 truncate text-sm text-muted-foreground">
               <span className="font-semibold text-foreground">{selectedStudents.length}</span>{" "}

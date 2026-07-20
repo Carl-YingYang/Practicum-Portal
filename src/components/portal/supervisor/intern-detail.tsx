@@ -48,6 +48,7 @@ import { DataTable, type Column } from "@/components/portal/shared/data-table";
 import { EmptyState } from "@/components/portal/shared/empty-state";
 import { WeeklyGroupedSessions } from "@/components/portal/shared/weekly-grouped-sessions";
 import { PdfPreviewModal } from "@/components/portal/shared/pdf-preview-modal";
+import { CentralizedTimesheetLauncher } from "@/components/portal/shared/centralized-timesheet-launcher";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { RATING_CRITERIA, RATING_ANCHORS } from "@/lib/types";
@@ -270,7 +271,7 @@ export function InternDetail() {
 
       {/* Sticky bottom action bar (mobile + tablet) — primary CTA flex-1.
           Sits above the bottom tab bar (56px + safe area). */}
-      <div className="sticky bottom-[calc(56px+env(safe-area-inset-bottom,0px))] z-20 mt-6 -mx-4 flex gap-2 border-t border-border bg-background/95 p-3 backdrop-blur supports-[backdrop-filter]:bg-background/80 sm:-mx-6 sm:px-6 lg:hidden">
+      <div className="sticky bottom-[calc(56px+env(safe-area-inset-bottom,0px))] z-20 mt-6 -mx-5 flex gap-2 border-t border-border bg-background/95 p-3 backdrop-blur supports-[backdrop-filter]:bg-background/80 sm:-mx-6 sm:px-6 lg:hidden">
         {submittedEval ? (
           <Button
             variant="outline"
@@ -550,6 +551,21 @@ export function InternDetail() {
               noPadding
               contentClassName="p-0"
               className="mt-4"
+              actions={
+                <CentralizedTimesheetLauncher
+                  trigger={
+                    <Button variant="outline" size="sm" className="gap-1.5">
+                      <FileText className="h-3.5 w-3.5" />
+                      View Timesheet
+                    </Button>
+                  }
+                  companyName={getCompany(companies, student.companyId)?.name ?? "Practicum Host"}
+                  student={student}
+                  supervisorName={getSupervisor(supervisors, student.supervisorId)?.name}
+                  sessions={studentTimeLogs}
+                  institutionName="Practicum Evaluation Portal"
+                />
+              }
             >
               {studentTimeLogs.length === 0 ? (
                 <div className="p-5">

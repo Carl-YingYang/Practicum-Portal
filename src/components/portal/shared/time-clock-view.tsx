@@ -10,6 +10,8 @@ import { EmptyState } from "@/components/portal/shared/empty-state";
 import { ConfirmDialog } from "@/components/portal/shared/confirm-dialog";
 import { WeeklyGroupedSessions } from "@/components/portal/shared/weekly-grouped-sessions";
 import { JibbleTimesheetGrid } from "@/components/portal/shared/jibble-timesheet-grid";
+import { CentralizedTimesheetLauncher } from "@/components/portal/shared/centralized-timesheet-launcher";
+import { CentralizedTimesheetDocument } from "@/components/portal/shared/centralized-timesheet-document";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -36,7 +38,9 @@ import {
   formatDuration,
   formatTime,
   formatTimer,
+  getCompany,
   getStudent,
+  getSupervisor,
   hoursPercent,
   todaysTimeLogs,
   totalCompletedTimeMs,
@@ -85,6 +89,8 @@ interface TimeClockViewProps {
 export function TimeClockView({ breadcrumb, description }: TimeClockViewProps) {
   const currentUser = useAppStore((s) => s.currentUser);
   const students = useAppStore((s) => s.students);
+  const companies = useAppStore((s) => s.companies);
+  const supervisors = useAppStore((s) => s.supervisors);
   const timeLogs = useAppStore((s) => s.timeLogs);
   const toolsConfig = useAppStore((s) => s.toolsConfig);
   const clockIn = useAppStore((s) => s.clockIn);
@@ -111,6 +117,11 @@ export function TimeClockView({ breadcrumb, description }: TimeClockViewProps) {
 
   const { userId, role } = entity;
   const student = role === "student" ? getStudent(students, userId) : undefined;
+  // Resolve company + supervisor for the centralized timesheet header.
+  const studentCompany = student ? getCompany(companies, student.companyId) : undefined;
+  const studentSupervisor = student?.supervisorId
+    ? getSupervisor(supervisors, student.supervisorId)
+    : undefined;
 
   const active = activeTimeLog(timeLogs, userId);
   const allLogs = completedTimeLogsForUser(timeLogs, userId);
@@ -247,110 +258,103 @@ export function TimeClockView({ breadcrumb, description }: TimeClockViewProps) {
 
       {tab === "timesheet" ? (
         <div className="space-y-4">
-          <div className="flex flex-wrap items-center justify-end gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                const head = ["Date", "Clock In", "Clock Out", "Duration (hrs)", "Note"];
-                const body = allLogs.map((log) => {
-                  const start = new Date(log.clockInAt);
-                  const end = log.clockOutAt ? new Date(log.clockOutAt) : null;
-                  const durHrs =
-                    end != null
-                      ? ((end.getTime() - start.getTime()) / 3_600_000).toFixed(2)
-                      : "";
-                  return [
-                    start.toLocaleDateString("en-US"),
-                    formatTime(log.clockInAt),
-                    end ? formatTime(end.toISOString()) : "—",
-                    durHrs,
-                    log.note ?? "",
-                  ];
-                });
-                const file = downloadCsv(
-                  `timesheet-${new Date().toISOString().slice(0, 10)}`,
-                  head,
-                  body,
-                );
-                toast.success("Timesheet exported", {
-                  description: `${allLogs.length} session${allLogs.length === 1 ? "" : "s"} exported to ${file}`,
-                });
-              }}
-              disabled={allLogs.length === 0}
-            >
-              <FileSpreadsheet className="h-4 w-4" />
-              Export CSV
-            </Button>
-            <Button
-              size="sm"
-              onClick={() => {
-                const totalMs = totalCompletedTimeMs(allLogs);
-                const totalHrs = (totalMs / 3_600_000).toFixed(2);
-                const entityLabel = isStudent
-                  ? `${student?.name ?? "Student"} · ${student?.studentNumber ?? ""}`
-                  : `${roleLabel} time tracking`;
-                const file = downloadPdfReport({
-                  filename: `timesheet-${new Date().toISOString().slice(0, 10)}`,
-                  title: "Practicum Timesheet",
-                  subtitle: `${entityLabel} · Generated ${new Date().toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short" })}`,
-                  meta: [
-                    { label: "Total Sessions", value: String(allLogs.length) },
-                    { label: "Total Hours", value: `${totalHrs} h` },
-                    { label: "Period", value: `${new Date().toLocaleDateString("en-US", { month: "long", year: "numeric" })}` },
-                  ],
-                  sections: [
-                    {
-                      heading: "Clock-in / Clock-out Sessions",
-                      table: {
-                        head: ["Date", "Clock In", "Clock Out", "Duration", "Note"],
-                        body: allLogs.map((log) => {
-                          const start = new Date(log.clockInAt);
-                          const end = log.clockOutAt ? new Date(log.clockOutAt) : null;
-                          const durHrs =
-                            end != null
-                              ? `${((end.getTime() - start.getTime()) / 3_600_000).toFixed(2)} h`
-                              : "—";
-                          return [
-                            start.toLocaleDateString("en-US"),
-                            formatTime(log.clockInAt),
-                            end ? formatTime(end.toISOString()) : "—",
-                            durHrs,
-                            log.note ?? "—",
-                          ];
-                        }),
-                        foot: [["Total", "", "", `${totalHrs} h`, ""]],
-                      },
-                    },
-                  ],
-                });
-                toast.success("Timesheet PDF downloaded", {
-                  description: `${file} saved to your downloads`,
-                });
-              }}
-              disabled={allLogs.length === 0}
-            >
-              <FileType2 className="h-4 w-4" />
-              Export PDF
-            </Button>
+          {/* Action bar — centralized timesheet launcher + CSV quick-export */}
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="min-w-0">
+              <h2 className="text-sm font-semibold text-foreground">
+                Centralized Intern Timesheet
+              </h2>
+              <p className="text-xs text-muted-foreground">
+                Auto-generated from your clock-in/out sessions. Clean format
+                ready for download and submission.
+              </p>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  const head = ["Date", "Day", "Time In", "Time Out", "Hours Rendered"];
+                  const body = allLogs
+                    .filter((l) => l.clockOutAt)
+                    .sort((a, b) => a.clockInAt.localeCompare(b.clockInAt))
+                    .map((log) => {
+                      const d = new Date(log.clockInAt);
+                      const ms = log.durationMs ?? 0;
+                      const min = Math.round(ms / 60000);
+                      return [
+                        d.toLocaleDateString("en-US", { month: "short", day: "2-digit", year: "numeric" }),
+                        d.toLocaleDateString("en-US", { weekday: "long" }),
+                        formatTime(log.clockInAt),
+                        log.clockOutAt ? formatTime(log.clockOutAt) : "—",
+                        `${Math.floor(min / 60)}h ${String(min % 60).padStart(2, "0")}m`,
+                      ];
+                    });
+                  const file = downloadCsv(
+                    `timesheet-${new Date().toISOString().slice(0, 10)}`,
+                    head,
+                    body,
+                  );
+                  toast.success("Quick CSV exported", {
+                    description: `${allLogs.length} sessions → ${file}`,
+                  });
+                }}
+                disabled={allLogs.length === 0}
+              >
+                <FileSpreadsheet className="h-4 w-4" />
+                Quick CSV
+              </Button>
+              {isStudent && student && (
+                <CentralizedTimesheetLauncher
+                  trigger={
+                    <Button size="sm" className="gap-1.5">
+                      <FileType2 className="h-4 w-4" />
+                      Generate Timesheet
+                    </Button>
+                  }
+                  companyName={studentCompany?.name ?? "Practicum Host Company"}
+                  student={student}
+                  supervisorName={studentSupervisor?.name}
+                  sessions={allLogs}
+                  institutionName="Practicum Evaluation Portal"
+                />
+              )}
+            </div>
           </div>
-          <JibbleTimesheetGrid
-            sessions={allLogs}
-            entityLabel={
-              isStudent
-                ? `${student?.name ?? "Student"} · ${student?.studentNumber ?? ""}`
-                : `${roleLabel} time tracking`
-            }
-            jibbleUrl={toolsConfig.jibbleInviteUrl || undefined}
-            ownerUserId={userId}
-            ownerRole={role}
-          />
+
+          {/* Inline preview of the centralized timesheet document */}
+          {isStudent && student ? (
+            <div className="overflow-hidden rounded-xl border border-border bg-white shadow-sm">
+              <div className="border-b border-border bg-muted/30 px-4 py-2">
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                  Live preview · auto-built from your time clock data
+                </p>
+              </div>
+              <div className="max-h-[70vh] overflow-y-auto p-4 sm:p-6">
+                <CentralizedTimesheetDocument
+                  companyName={studentCompany?.name ?? "Practicum Host Company"}
+                  student={student}
+                  supervisorName={studentSupervisor?.name}
+                  sessions={allLogs}
+                  institutionName="Practicum Evaluation Portal"
+                />
+              </div>
+            </div>
+          ) : (
+            <JibbleTimesheetGrid
+              sessions={allLogs}
+              entityLabel={`${roleLabel} time tracking`}
+              jibbleUrl={toolsConfig.jibbleInviteUrl || undefined}
+              ownerUserId={userId}
+              ownerRole={role}
+            />
+          )}
+
           <p className="rounded-lg border border-dashed border-border bg-muted/20 p-3 text-xs text-muted-foreground">
             <Clock className="mr-1 inline h-3 w-3" />
-            This monthly timesheet mirrors your Jibble clock-in/out sessions.
-            {toolsConfig.jibbleInviteUrl
-              ? " Click “Open in Jibble” above to view the full timesheet in Jibble."
-              : " Connect Jibble in the coordinator dashboard to link the full timesheet."}
+            This timesheet auto-populates from your clock-in/out sessions —
+            no manual entry needed. Click “Generate Timesheet” to pick a date
+            range and download a clean PDF or CSV for submission.
           </p>
         </div>
       ) : (
