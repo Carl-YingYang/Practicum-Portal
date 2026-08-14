@@ -36,6 +36,7 @@ import { EmptyState } from "@/components/portal/shared/empty-state";
 import { JournalStatusCard } from "@/components/portal/shared/journal-status-card";
 import { SchoolIdentityModal } from "@/components/portal/shared/school-identity-modal";
 import { StatCardSkeleton, TableSkeleton } from "@/components/portal/shared/skeletons";
+import { ActiveClockMonitor } from "@/components/portal/shared/active-clock-monitor";
 import { useInitialLoading } from "@/components/portal/shared/page-transition";
 import { Button } from "@/components/ui/button";
 
@@ -116,6 +117,12 @@ export function SupervisorDashboard() {
         <StatCard label="Pending Evaluations" value={unevaluated.length} icon={ClipboardCheck} tone="amber" hint="Interns without a submitted eval" compact />
         <StatCard label="Journals to Review" value={pendingJournals.length} icon={FileCheck2} tone="emerald" hint="Awaiting your approval" compact />
       </div>
+
+      {/* Live "who's on the clock right now" strip — hidden automatically when nobody is active */}
+      <ActiveClockMonitor
+        supervisorId={supervisorId}
+        navigateView="supervisor.intern-view"
+      />
 
       {/* 2-col split: Pending my review (3fr) + Right Side Info (2fr) */}
       <div className="grid grid-cols-1 gap-3 lg:grid-cols-5">

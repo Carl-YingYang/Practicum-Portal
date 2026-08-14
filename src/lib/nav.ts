@@ -53,6 +53,14 @@ export const navConfig: Record<Role, NavItem[]> = {
     { key: "dashboard", label: "Dashboard", shortLabel: "Home", view: "supervisor.dashboard", icon: "dashboard", section: "Overview" },
     { key: "interns", label: "My Interns", shortLabel: "Interns", view: "supervisor.interns", icon: "students", section: "Interns" },
     {
+      key: "timeMonitor",
+      label: "Time Tracking",
+      shortLabel: "Time",
+      view: "supervisor.time-monitor",
+      icon: "timeMonitor",
+      section: "Workflow",
+    },
+    {
       key: "evaluations",
       label: "Evaluations",
       shortLabel: "Evals",
