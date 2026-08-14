@@ -31,6 +31,7 @@ import {
   elapsedMs,
   formatDuration,
   formatTimer,
+  formatTime,
   getCompany,
   getStudent,
   getSupervisor,
@@ -39,7 +40,7 @@ import {
   totalCompletedTimeMs,
   weeklyTimeMs,
 } from "@/lib/selectors";
-import type { Student } from "@/lib/types";
+import type { Student, TimeLog } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 /** Re-renders every 5s for live "on the clock" elapsed timers. */
@@ -52,12 +53,43 @@ function useTicker(intervalMs = 5000): number {
   return now;
 }
 
+/** Human-friendly "Xh ago" / "Xd ago" label for a past ISO timestamp. */
+function formatTimeAgo(iso: string | null | undefined, now = Date.now()): string {
+  if (!iso) return "never";
+  const then = new Date(iso).getTime();
+  if (Number.isNaN(then)) return "never";
+  const diff = Math.max(0, now - then);
+  const min = Math.floor(diff / 60000);
+  if (min < 1) return "just now";
+  if (min < 60) return `${min}m ago`;
+  const hr = Math.floor(min / 60);
+  if (hr < 24) return `${hr}h ago`;
+  const day = Math.floor(hr / 24);
+  if (day < 7) return `${day}d ago`;
+  const wk = Math.floor(day / 7);
+  return `${wk}w ago`;
+}
+
+/** Returns the most-recent completed time log for a user (newest-first). */
+function lastCompletedLog(
+  timeLogs: TimeLog[],
+  userId: string
+): TimeLog | undefined {
+  return completedTimeLogsForUser(timeLogs, userId)[0];
+}
+
 interface InternClockRow {
   id: string;
   name: string;
   studentNumber: string;
+  position: string;
+  companyName?: string;
   status: "active" | "off";
   elapsedMs: number;
+  clockInIso?: string;
+  note?: string;
+  lastSeenIso?: string;
+  lastSeenLabel: string;
   weekMs: number;
   loggedHours: number;
   requiredHours: number;
@@ -123,12 +155,20 @@ export function SupervisorTimeMonitor() {
     return interns
       .map((st) => {
         const active = activeTimeLog(timeLogs, st.id);
+        const lastLog = lastCompletedLog(timeLogs, st.id);
+        const lastSeenIso = lastLog?.clockOutAt ?? undefined;
         return {
           id: st.id,
           name: st.name,
           studentNumber: st.studentNumber,
+          position: st.position,
+          companyName: getCompany(companies, st.companyId)?.name,
           status: active ? ("active" as const) : ("off" as const),
           elapsedMs: active ? elapsedMs(active, now) : 0,
+          clockInIso: active?.clockInAt,
+          note: active?.note ?? lastLog?.note,
+          lastSeenIso,
+          lastSeenLabel: active ? "now" : formatTimeAgo(lastSeenIso, now),
           weekMs: weeklyTimeMs(timeLogs, st.id, now),
           loggedHours: st.loggedHours,
           requiredHours: st.requiredHours,
@@ -139,15 +179,24 @@ export function SupervisorTimeMonitor() {
         if (a.status !== b.status) return a.status === "active" ? -1 : 1;
         return b.weekMs - a.weekMs;
       });
-  }, [interns, timeLogs, now]);
+  }, [interns, timeLogs, now, companies]);
+
+  // Active interns only — for the prominent live board at the top.
+  const activeRows = React.useMemo(
+    () => rows.filter((r) => r.status === "active"),
+    [rows]
+  );
 
   /** Export the live team table (one row per intern) to CSV. */
   const handleExportCsv = () => {
     const head = [
       "Intern",
       "Student Number",
+      "Position",
+      "Company",
       "Status",
       "Elapsed (live)",
+      "Last Seen",
       "This Week",
       "Logged Hours",
       "Required Hours",
@@ -156,8 +205,11 @@ export function SupervisorTimeMonitor() {
     const body = rows.map((r) => [
       r.name,
       r.studentNumber,
+      r.position,
+      r.companyName ?? "—",
       r.status === "active" ? "On the clock" : "Off",
       r.status === "active" ? formatTimer(r.elapsedMs) : "—",
+      r.lastSeenLabel,
       formatDuration(r.weekMs),
       r.loggedHours,
       r.requiredHours,
@@ -210,10 +262,15 @@ export function SupervisorTimeMonitor() {
             </span>
           </div>
         ) : (
-          <span className="inline-flex w-fit items-center gap-1.5 rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-600 ring-1 ring-inset ring-slate-200 dark:bg-slate-800/60 dark:text-slate-300 dark:ring-slate-700">
-            <span className="h-1.5 w-1.5 rounded-full bg-slate-400" />
-            Off
-          </span>
+          <div className="flex flex-col">
+            <span className="inline-flex w-fit items-center gap-1.5 rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-600 ring-1 ring-inset ring-slate-200 dark:bg-slate-800/60 dark:text-slate-300 dark:ring-slate-700">
+              <span className="h-1.5 w-1.5 rounded-full bg-slate-400" />
+              Off
+            </span>
+            <span className="mt-1 text-[11px] text-muted-foreground">
+              Last seen {r.lastSeenLabel}
+            </span>
+          </div>
         ),
       sortValue: (r) => (r.status === "active" ? 1 : 0),
     },
@@ -386,6 +443,95 @@ export function SupervisorTimeMonitor() {
           />
         </div>
 
+        {/* Currently Active Interns — prominent live board */}
+        <SectionCard
+          title="Currently Active Interns"
+          description={
+            activeRows.length > 0
+              ? `${activeRows.length} ${activeRows.length === 1 ? "intern is" : "interns are"} clocked in right now.`
+              : "No interns are clocked in right now."
+          }
+          actions={
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-semibold text-emerald-800 ring-1 ring-inset ring-emerald-200 dark:bg-emerald-950/50 dark:text-emerald-300 dark:ring-emerald-900/60">
+              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" />
+              LIVE
+            </span>
+          }
+        >
+          {activeRows.length === 0 ? (
+            <EmptyState
+              icon={Radio}
+              title="Nobody on the clock"
+              description="When your interns clock in, they'll appear here in real time with a live timer."
+              tone="slate"
+              compact
+            />
+          ) : (
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+              {activeRows.map((r) => (
+                <button
+                  key={r.id}
+                  onClick={() =>
+                    navigate("supervisor.intern-view", { studentId: r.id })
+                  }
+                  className="group flex flex-col gap-3 rounded-xl border border-emerald-200 bg-emerald-50/60 p-4 text-left transition-all hover:-translate-y-0.5 hover:border-emerald-300 hover:shadow-md dark:border-emerald-900/50 dark:bg-emerald-950/20 dark:hover:border-emerald-700"
+                >
+                  {/* Row 1: avatar + identity */}
+                  <div className="flex items-center gap-3">
+                    <div className="relative">
+                      <Avatar name={r.name} size="md" />
+                      <span className="absolute -bottom-0.5 -right-0.5 h-3.5 w-3.5 rounded-full border-2 border-card bg-emerald-500">
+                        <span className="absolute inset-0 animate-ping rounded-full bg-emerald-400 opacity-75" />
+                      </span>
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-semibold text-foreground">
+                        {r.name}
+                      </p>
+                      <p className="truncate font-mono text-[11px] text-muted-foreground">
+                        {r.studentNumber} · {r.position}
+                      </p>
+                      {r.companyName && (
+                        <p className="truncate text-[11px] text-muted-foreground/80">
+                          {r.companyName}
+                        </p>
+                      )}
+                    </div>
+                    <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold text-emerald-800 ring-1 ring-inset ring-emerald-200 dark:bg-emerald-900/50 dark:text-emerald-300 dark:ring-emerald-900/60">
+                      <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" />
+                      Active
+                    </span>
+                  </div>
+                  {/* Row 2: big live timer */}
+                  <div className="flex items-end justify-between gap-2 rounded-lg bg-card/80 px-3 py-2 ring-1 ring-emerald-100 dark:ring-emerald-900/40">
+                    <div className="min-w-0">
+                      <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                        Elapsed
+                      </p>
+                      <p className="font-mono text-lg font-bold tabular-nums text-emerald-700 dark:text-emerald-300">
+                        {formatTimer(r.elapsedMs)}
+                      </p>
+                    </div>
+                    <div className="min-w-0 text-right">
+                      <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                        Since
+                      </p>
+                      <p className="font-mono text-xs tabular-nums text-foreground">
+                        {r.clockInIso ? formatTime(r.clockInIso) : "—"}
+                      </p>
+                    </div>
+                  </div>
+                  {r.note && (
+                    <p className="truncate text-[11px] text-muted-foreground">
+                      <span className="font-medium">Note:</span> {r.note}
+                    </p>
+                  )}
+                </button>
+              ))}
+            </div>
+          )}
+        </SectionCard>
+
         {/* Full team table */}
         <SectionCard
           title="Intern Time Tracking"
@@ -453,9 +599,13 @@ export function SupervisorTimeMonitor() {
                     </p>
                   </div>
                 </div>
-                {r.status === "active" && (
+                {r.status === "active" ? (
                   <p className="font-mono text-[11px] tabular-nums text-emerald-700 dark:text-emerald-300">
                     Elapsed: {formatTimer(r.elapsedMs)}
+                  </p>
+                ) : (
+                  <p className="text-[11px] text-muted-foreground">
+                    Last seen {r.lastSeenLabel}
                   </p>
                 )}
                 <div className="flex items-center justify-end pt-1 text-xs font-medium text-primary">
