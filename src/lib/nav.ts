@@ -98,6 +98,7 @@ export const navConfig: Record<Role, NavItem[]> = {
     { key: "timesheets", label: "Timesheets", shortLabel: "Timesheets", view: "coordinator.timesheets", icon: "timeClock", section: "Workflow" },
     { key: "reports", label: "Reports", shortLabel: "Reports", view: "coordinator.reports", icon: "reports", section: "Insights" },
     { key: "settings", label: "School Settings", shortLabel: "Settings", view: "coordinator.settings-school", icon: "settings", section: "Configuration" },
+    { key: "tools", label: "External Tools", shortLabel: "Tools", view: "coordinator.settings-tools", icon: "forms", section: "Configuration" },
   ],
 };
 
@@ -157,6 +158,7 @@ export const viewTitles: Record<ViewKey, string> = {
   "coordinator.bulk-create": "Bulk Create Users",
   "coordinator.coordinator-new": "Add Coordinator",
   "coordinator.settings-school": "School Settings",
+  "coordinator.settings-tools": "External Tools Setup",
   "coordinator.subscription": "Billing & Usage Summary",
   "coordinator.profile": "My Profile",
 };

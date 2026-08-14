@@ -713,6 +713,7 @@ export type ViewKey =
   | "coordinator.bulk-create"
   | "coordinator.coordinator-new"
   | "coordinator.settings-school"
+  | "coordinator.settings-tools"
   | "coordinator.subscription"
   | "coordinator.profile";
 

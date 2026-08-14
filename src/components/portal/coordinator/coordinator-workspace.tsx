@@ -23,6 +23,7 @@ import { UserManagement } from "./user-management";
 import { BulkCreateUsers } from "./bulk-create-users";
 import { CoordinatorForm } from "./coordinator-form";
 import { SchoolIdentitySettings } from "../settings/school-identity-settings";
+import { ExternalToolsSetup } from "./external-tools-setup";
 
 /**
  * Barrel + router for the Coordinator workspace. Reads `view` + `viewParams`
@@ -67,6 +68,8 @@ export function CoordinatorWorkspace() {
       return <CoordinatorForm coordinatorId={viewParams.coordinatorId} />;
     case "coordinator.settings-school":
       return <SchoolIdentitySettings />;
+    case "coordinator.settings-tools":
+      return <ExternalToolsSetup />;
     case "coordinator.reports":
       return <CoordinatorReports />;
     case "coordinator.time-monitor":
@@ -101,4 +104,5 @@ export {
   UserManagement,
   BulkCreateUsers,
   CoordinatorForm,
+  ExternalToolsSetup,
 };
