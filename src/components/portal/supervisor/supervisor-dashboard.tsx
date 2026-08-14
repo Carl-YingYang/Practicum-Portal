@@ -190,15 +190,15 @@ export function SupervisorDashboard() {
 
           {/* Time Tracking Quick Action */}
           <button
-            onClick={() => navigate("supervisor.time-monitor")}
+            onClick={() => navigate("supervisor.interns")}
             className="group flex w-full items-center gap-3 rounded-xl border border-border/60 bg-card p-3.5 text-left transition-all duration-200 hover:-translate-y-0.5 hover:border-teal-300 hover:shadow-md dark:hover:border-teal-800"
           >
             <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-teal-50 text-teal-700 dark:bg-teal-950/40 dark:text-teal-300 transition-transform duration-200 group-hover:scale-110">
               <Timer className="h-5 w-5" strokeWidth={2} />
             </span>
             <div className="min-w-0 flex-1">
-              <p className="text-sm font-semibold text-foreground">Time Tracking</p>
-              <p className="text-xs text-muted-foreground">Monitor intern clock-in/out in real time</p>
+              <p className="text-sm font-semibold text-foreground">My Interns — Live Attendance</p>
+              <p className="text-xs text-muted-foreground">See who's clocked in now & full roster</p>
             </div>
             <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground/50 transition-transform group-hover:translate-x-0.5 group-hover:text-foreground/70" />
           </button>

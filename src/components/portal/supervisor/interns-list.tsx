@@ -1,232 +1,642 @@
 "use client";
 
-import { useMemo, useState, useEffect } from "react";
-import { Search, Users, FileSpreadsheet, Radio } from "lucide-react";
+import * as React from "react";
 import { useAppStore } from "@/store/use-app-store";
-import {
-  studentsForSupervisor,
-  evaluationsForStudent,
-  averageScore,
-  getCompany,
-  hoursPercent,
-  activeTimeLog,
-  elapsedMs,
-} from "@/lib/selectors";
 import { PageHeader } from "@/components/portal/layout/page-header";
-import { InternCard } from "@/components/portal/shared/intern-card";
+import { SectionCard } from "@/components/portal/shared/section-card";
+import { StatCard } from "@/components/portal/shared/stat-card";
+import { DataTable, type Column } from "@/components/portal/shared/data-table";
+import { Avatar } from "@/components/portal/shared/avatar";
 import { EmptyState } from "@/components/portal/shared/empty-state";
+import { TimeLogReportLauncher } from "@/components/portal/shared/time-log-report-launcher";
+import { CentralizedTimesheetLauncher } from "@/components/portal/shared/centralized-timesheet-launcher";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import {
+  Timer,
+  Users,
+  Radio,
+  TrendingUp,
+  Hourglass,
+  ArrowRight,
+  Download,
+  FileSpreadsheet,
+  FileText,
+} from "lucide-react";
 import { downloadCsv } from "@/lib/client-pdf";
 import { toast } from "sonner";
+import {
+  activeTimeLog,
+  activeTimeLogsForRole,
+  completedTimeLogsForUser,
+  elapsedMs,
+  formatDuration,
+  formatTimer,
+  formatTime,
+  getCompany,
+  getSupervisor,
+  hoursPercent,
+  studentsForSupervisor,
+  totalCompletedTimeMs,
+  weeklyTimeMs,
+} from "@/lib/selectors";
+import type { TimeLog } from "@/lib/types";
+import { cn } from "@/lib/utils";
 
-/** Re-renders every 5s so live "on the clock" timers on each card stay fresh. */
+/** Re-renders every 5s for live "on the clock" elapsed timers. */
 function useTicker(intervalMs = 5000): number {
-  const [now, setNow] = useState(() => Date.now());
-  useEffect(() => {
+  const [now, setNow] = React.useState(() => Date.now());
+  React.useEffect(() => {
     const id = setInterval(() => setNow(Date.now()), intervalMs);
     return () => clearInterval(id);
   }, [intervalMs]);
   return now;
 }
 
+/** Human-friendly "Xh ago" / "Xd ago" label for a past ISO timestamp. */
+function formatTimeAgo(iso: string | null | undefined, now = Date.now()): string {
+  if (!iso) return "never";
+  const then = new Date(iso).getTime();
+  if (Number.isNaN(then)) return "never";
+  const diff = Math.max(0, now - then);
+  const min = Math.floor(diff / 60000);
+  if (min < 1) return "just now";
+  if (min < 60) return `${min}m ago`;
+  const hr = Math.floor(min / 60);
+  if (hr < 24) return `${hr}h ago`;
+  const day = Math.floor(hr / 24);
+  if (day < 7) return `${day}d ago`;
+  const wk = Math.floor(day / 7);
+  return `${wk}w ago`;
+}
+
+/** Returns the most-recent completed time log for a user (newest-first). */
+function lastCompletedLog(
+  timeLogs: TimeLog[],
+  userId: string
+): TimeLog | undefined {
+  return completedTimeLogsForUser(timeLogs, userId)[0];
+}
+
+interface InternClockRow {
+  id: string;
+  name: string;
+  studentNumber: string;
+  position: string;
+  companyName?: string;
+  status: "active" | "off";
+  elapsedMs: number;
+  clockInIso?: string;
+  note?: string;
+  lastSeenIso?: string;
+  lastSeenLabel: string;
+  weekMs: number;
+  loggedHours: number;
+  requiredHours: number;
+  pct: number;
+}
+
+/**
+ * My Interns — the supervisor's primary team view.
+ *
+ * Combines three things in one page:
+ * 1. Team KPI cards (on-the-clock count, weekly hours, total, avg progress)
+ * 2. "Currently Active Interns" live board (who is clocked in RIGHT NOW)
+ * 3. Full intern roster table with live clock-in/out status + last-seen
+ *
+ * This replaces the old simple intern-card grid so supervisors get a single,
+ * clear place to see who is present and how everyone is tracking.
+ */
 export function InternsList() {
   const currentUser = useAppStore((s) => s.currentUser);
   const students = useAppStore((s) => s.students);
-  const evaluations = useAppStore((s) => s.evaluations);
   const companies = useAppStore((s) => s.companies);
-  const schoolIdentity = useAppStore((s) => s.schoolIdentity);
-  const navigate = useAppStore((s) => s.navigate);
-
-  const supervisorId = currentUser?.supervisorId ?? "";
-  const [query, setQuery] = useState("");
+  const supervisors = useAppStore((s) => s.supervisors);
   const timeLogs = useAppStore((s) => s.timeLogs);
+  const navigate = useAppStore((s) => s.navigate);
   const now = useTicker(5000);
 
-  const interns = useMemo(
+  const supervisorId = currentUser?.supervisorId ?? "";
+  const supervisor = getSupervisor(supervisors, supervisorId);
+
+  const interns = React.useMemo(
     () => studentsForSupervisor(students, supervisorId),
     [students, supervisorId]
   );
 
-  const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    if (!q) return interns;
-    return interns.filter(
-      (s) =>
-        s.name.toLowerCase().includes(q) ||
-        s.studentNumber.toLowerCase().includes(q)
+  const activeCount = React.useMemo(() => {
+    const activeIds = new Set(
+      activeTimeLogsForRole(timeLogs, "student").map((t) => t.userId)
     );
-  }, [interns, query]);
+    return interns.filter((i) => activeIds.has(i.id)).length;
+  }, [timeLogs, interns]);
 
-  // Active (on the clock) interns — for the summary bar and per-card indicators.
-  const activeCount = useMemo(() => {
-    return filtered.filter((s) => activeTimeLog(timeLogs, s.id)).length;
-  }, [filtered, timeLogs]);
+  const teamWeekMs = React.useMemo(
+    () =>
+      interns.reduce((sum, st) => sum + weeklyTimeMs(timeLogs, st.id, now), 0),
+    [interns, timeLogs, now]
+  );
 
-  /** Export the filtered interns to CSV. */
+  // Build report rows for the PDF (completed sessions per intern)
+  const reportRows = React.useMemo(
+    () =>
+      interns.map((st) => ({
+        student: st,
+        companyName: getCompany(companies, st.companyId)?.name,
+        supervisorName: supervisor?.name,
+        sessions: completedTimeLogsForUser(timeLogs, st.id),
+      })),
+    [interns, companies, supervisor, timeLogs]
+  );
+  const reportTotalSessions = reportRows.reduce(
+    (n, r) => n + r.sessions.length,
+    0
+  );
+  const reportTotalMs = reportRows.reduce(
+    (ms, r) => ms + totalCompletedTimeMs(timeLogs, r.student.id),
+    0
+  );
+
+  const rows: InternClockRow[] = React.useMemo(() => {
+    return interns
+      .map((st) => {
+        const active = activeTimeLog(timeLogs, st.id);
+        const lastLog = lastCompletedLog(timeLogs, st.id);
+        const lastSeenIso = lastLog?.clockOutAt ?? undefined;
+        return {
+          id: st.id,
+          name: st.name,
+          studentNumber: st.studentNumber,
+          position: st.position,
+          companyName: getCompany(companies, st.companyId)?.name,
+          status: active ? ("active" as const) : ("off" as const),
+          elapsedMs: active ? elapsedMs(active, now) : 0,
+          clockInIso: active?.clockInAt,
+          note: active?.note ?? lastLog?.note,
+          lastSeenIso,
+          lastSeenLabel: active ? "now" : formatTimeAgo(lastSeenIso, now),
+          weekMs: weeklyTimeMs(timeLogs, st.id, now),
+          loggedHours: st.loggedHours,
+          requiredHours: st.requiredHours,
+          pct: hoursPercent(st),
+        };
+      })
+      .sort((a, b) => {
+        if (a.status !== b.status) return a.status === "active" ? -1 : 1;
+        return b.weekMs - a.weekMs;
+      });
+  }, [interns, timeLogs, now, companies]);
+
+  // Active interns only — for the prominent live board at the top.
+  const activeRows = React.useMemo(
+    () => rows.filter((r) => r.status === "active"),
+    [rows]
+  );
+
+  /** Export the live team table (one row per intern) to CSV. */
   const handleExportCsv = () => {
-    if (filtered.length === 0) {
+    if (rows.length === 0) {
       toast.error("No interns to export.");
       return;
     }
     const head = [
-      "Student",
+      "Intern",
       "Student Number",
-      "Course",
+      "Position",
       "Company",
-      "Email",
-      "Required Hours",
-      "Logged Hours",
-      "Completion %",
-      "Last Evaluation",
       "Status",
+      "Elapsed (live)",
+      "Last Seen",
+      "This Week",
+      "Logged Hours",
+      "Required Hours",
+      "Completion %",
     ];
-    const body = filtered.map((s) => {
-      const studentEvals = evaluationsForStudent(evaluations, s.id).filter(
-        (e) => e.supervisorId === supervisorId
-      );
-      const submitted = studentEvals.find((e) => e.status === "submitted");
-      const lastScore = submitted ? averageScore(submitted) : 0;
-      const pct = hoursPercent(s);
-      const status = submitted
-        ? "Evaluated"
-        : studentEvals.find((e) => e.status === "draft")
-          ? "Draft"
-          : "Pending";
-      return [
-        s.name,
-        s.studentNumber,
-        s.course,
-        getCompany(companies, s.companyId)?.name ?? "—",
-        s.email,
-        String(s.requiredHours),
-        String(s.loggedHours),
-        `${pct}%`,
-        lastScore > 0 ? lastScore.toFixed(2) : "—",
-        status,
-      ];
-    });
+    const body = rows.map((r) => [
+      r.name,
+      r.studentNumber,
+      r.position,
+      r.companyName ?? "—",
+      r.status === "active" ? "On the clock" : "Off",
+      r.status === "active" ? formatTimer(r.elapsedMs) : "—",
+      r.lastSeenLabel,
+      formatDuration(r.weekMs),
+      r.loggedHours,
+      r.requiredHours,
+      `${Math.min(100, Math.round(r.pct))}%`,
+    ]);
     const stamp = new Date().toISOString().slice(0, 10);
     const filename = `my-interns-${stamp}.csv`;
     downloadCsv(filename, head, body);
     toast.success("CSV exported", {
-      description: `${filtered.length} interns exported to ${filename}.`,
+      description: `${rows.length} interns exported to ${filename}`,
     });
   };
 
+  const columns: Column<InternClockRow>[] = [
+    {
+      key: "student",
+      header: "Intern",
+      cell: (r) => (
+        <div className="flex items-center gap-3">
+          <div className="relative">
+            <Avatar name={r.name} size="md" />
+            {r.status === "active" && (
+              <span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-card bg-emerald-500" />
+            )}
+          </div>
+          <div className="min-w-0 flex-col">
+            <span className="block truncate text-sm font-semibold text-foreground">
+              {r.name}
+            </span>
+            <span className="font-mono text-[11px] text-muted-foreground">
+              {r.studentNumber}
+            </span>
+          </div>
+        </div>
+      ),
+      sortValue: (r) => r.name,
+    },
+    {
+      key: "status",
+      header: "Status",
+      cell: (r) =>
+        r.status === "active" ? (
+          <div className="flex flex-col">
+            <span className="inline-flex w-fit items-center gap-1.5 rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-semibold text-emerald-800 ring-1 ring-inset ring-emerald-200 dark:bg-emerald-950/50 dark:text-emerald-300 dark:ring-emerald-900/60">
+              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" />
+              On the clock
+            </span>
+            <span className="mt-1 font-mono text-[11px] tabular-nums text-muted-foreground">
+              {formatTimer(r.elapsedMs)}
+            </span>
+          </div>
+        ) : (
+          <div className="flex flex-col">
+            <span className="inline-flex w-fit items-center gap-1.5 rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-600 ring-1 ring-inset ring-slate-200 dark:bg-slate-800/60 dark:text-slate-300 dark:ring-slate-700">
+              <span className="h-1.5 w-1.5 rounded-full bg-slate-400" />
+              Off
+            </span>
+            <span className="mt-1 text-[11px] text-muted-foreground">
+              Last seen {r.lastSeenLabel}
+            </span>
+          </div>
+        ),
+      sortValue: (r) => (r.status === "active" ? 1 : 0),
+    },
+    {
+      key: "week",
+      header: "This Week",
+      cell: (r) => (
+        <span className="font-mono text-sm font-medium tabular-nums text-foreground">
+          {formatDuration(r.weekMs)}
+        </span>
+      ),
+      sortValue: (r) => r.weekMs,
+      align: "right",
+    },
+    {
+      key: "progress",
+      header: "Progress",
+      hideOnMobile: true,
+      cell: (r) => (
+        <div className="flex flex-col items-end gap-0.5">
+          <span className="font-mono text-sm font-semibold tabular-nums text-foreground">
+            {r.loggedHours}h / {r.requiredHours}h
+          </span>
+          <div className="h-1.5 w-20 overflow-hidden rounded-full bg-muted">
+            <div
+              className={cn(
+                "h-full rounded-full transition-all",
+                r.pct >= 100
+                  ? "bg-emerald-500"
+                  : r.pct >= 60
+                    ? "bg-teal-500"
+                    : "bg-amber-500"
+              )}
+              style={{ width: `${Math.min(100, r.pct)}%` }}
+            />
+          </div>
+        </div>
+      ),
+      sortValue: (r) => r.pct,
+      align: "right",
+    },
+    {
+      key: "actions",
+      header: "",
+      align: "right",
+      cell: (r) => {
+        const st = interns.find((i) => i.id === r.id);
+        return (
+          <div className="flex items-center justify-end gap-1">
+            {st && (
+              <CentralizedTimesheetLauncher
+                trigger={
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-muted-foreground"
+                    onClick={(e) => e.stopPropagation()}
+                    aria-label={`View timesheet for ${r.name}`}
+                  >
+                    <FileText className="h-3.5 w-3.5" />
+                    <span className="hidden sm:inline">Timesheet</span>
+                  </Button>
+                }
+                companyName={getCompany(companies, st.companyId)?.name ?? "Practicum Host"}
+                student={st}
+                supervisorName={supervisor?.name}
+                sessions={completedTimeLogsForUser(timeLogs, st.id)}
+                institutionName="Practicum Evaluation Portal"
+              />
+            )}
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-muted-foreground"
+              onClick={(e) => {
+                e.stopPropagation();
+                navigate("supervisor.intern-view", { studentId: r.id });
+              }}
+            >
+              Details
+              <ArrowRight className="h-3.5 w-3.5" />
+            </Button>
+          </div>
+        );
+      },
+    },
+  ];
+
   return (
-    <div>
+    <>
       <PageHeader
         title="My Interns"
-        description="All interns assigned to your supervision."
+        description="All interns assigned to your supervision — with live clock-in/out status."
         actions={
           <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
             <Button
               variant="outline"
+              size="sm"
               onClick={handleExportCsv}
-              disabled={filtered.length === 0}
               className="w-full sm:w-auto"
             >
               <FileSpreadsheet className="h-4 w-4" />
               Export CSV
             </Button>
-            <div className="relative w-full sm:w-72">
-              <Search className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                placeholder="Search name or student #…"
-                className="pl-9"
-                aria-label="Search interns"
-              />
-            </div>
+            <TimeLogReportLauncher
+              trigger={
+                <Button variant="outline" size="sm" className="w-full sm:w-auto">
+                  <Download className="h-4 w-4" />
+                  Export PDF
+                </Button>
+              }
+              title="My Interns — Time Log Report"
+              subtitle={`${interns.length} interns · Supervisor: ${supervisor?.name ?? "—"}`}
+              summaryStats={[
+                { label: "Interns", value: String(interns.length) },
+                { label: "Total Sessions", value: String(reportTotalSessions) },
+                { label: "Total Tracked", value: formatDuration(reportTotalMs) },
+                {
+                  label: "On the Clock Now",
+                  value: String(activeCount),
+                },
+                {
+                  label: "Hours This Week",
+                  value: formatDuration(teamWeekMs),
+                },
+              ]}
+              rows={reportRows}
+            />
           </div>
         }
       />
 
-      {filtered.length === 0 ? (
-        <EmptyState
-          icon={Users}
-          title={query ? "No matches found" : "No interns assigned"}
+      <div className="space-y-6">
+        {/* Team KPI cards */}
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <StatCard
+            label="On the Clock Now"
+            value={activeCount}
+            icon={Radio}
+            tone="emerald"
+            hint={`${activeCount === 1 ? "intern is" : "interns are"} clocked in right now`}
+          />
+          <StatCard
+            label="Hours This Week"
+            value={formatDuration(teamWeekMs)}
+            icon={TrendingUp}
+            tone="teal"
+            hint="Rolling 7-day team total"
+          />
+          <StatCard
+            label="Total Interns"
+            value={interns.length}
+            icon={Users}
+            tone="slate"
+            hint="Under your supervision"
+          />
+          <StatCard
+            label="Avg Progress"
+            value={`${
+              interns.length
+                ? Math.round(
+                    interns.reduce((s, i) => s + hoursPercent(i), 0) /
+                      interns.length
+                  )
+                : 0
+            }%`}
+            icon={Hourglass}
+            tone="amber"
+            hint="Mean cohort-hour completion"
+          />
+        </div>
+
+        {/* Currently Active Interns — prominent live board */}
+        <SectionCard
+          title="Currently Active Interns"
           description={
-            query
-              ? "Try a different search term."
-              : "You don't have any interns assigned to you yet."
+            activeRows.length > 0
+              ? `${activeRows.length} ${activeRows.length === 1 ? "intern is" : "interns are"} clocked in right now.`
+              : "No interns are clocked in right now."
           }
-          tone={query ? "slate" : "amber"}
-        />
-      ) : (
-        <>
-          {/* Active-now summary bar */}
-          {activeCount > 0 && (
-            <div className="mb-4 flex items-center gap-2.5 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2.5 dark:border-emerald-900/60 dark:bg-emerald-950/30">
-              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300">
-                <Radio className="h-4 w-4" />
-              </span>
-              <div className="min-w-0 flex-1">
-                <p className="text-sm font-semibold text-emerald-800 dark:text-emerald-200">
-                  {activeCount} {activeCount === 1 ? "intern is" : "interns are"} on the clock right now
-                </p>
-                <p className="text-[11px] text-emerald-700/80 dark:text-emerald-400/80">
-                  Active interns are sorted to the top with a green pulse on their avatar.
-                </p>
-              </div>
-              <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold text-emerald-800 ring-1 ring-inset ring-emerald-200 dark:bg-emerald-900/50 dark:text-emerald-300 dark:ring-emerald-900/60">
-                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" />
-                LIVE
-              </span>
+          actions={
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-semibold text-emerald-800 ring-1 ring-inset ring-emerald-200 dark:bg-emerald-950/50 dark:text-emerald-300 dark:ring-emerald-900/60">
+              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" />
+              LIVE
+            </span>
+          }
+        >
+          {activeRows.length === 0 ? (
+            <EmptyState
+              icon={Radio}
+              title="Nobody on the clock"
+              description="When your interns clock in, they'll appear here in real time with a live timer."
+              tone="slate"
+              compact
+            />
+          ) : (
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+              {activeRows.map((r) => (
+                <button
+                  key={r.id}
+                  onClick={() =>
+                    navigate("supervisor.intern-view", { studentId: r.id })
+                  }
+                  className="group flex flex-col gap-3 rounded-xl border border-emerald-200 bg-emerald-50/60 p-4 text-left transition-all hover:-translate-y-0.5 hover:border-emerald-300 hover:shadow-md dark:border-emerald-900/50 dark:bg-emerald-950/20 dark:hover:border-emerald-700"
+                >
+                  {/* Row 1: avatar + identity */}
+                  <div className="flex items-center gap-3">
+                    <div className="relative">
+                      <Avatar name={r.name} size="md" />
+                      <span className="absolute -bottom-0.5 -right-0.5 h-3.5 w-3.5 rounded-full border-2 border-card bg-emerald-500">
+                        <span className="absolute inset-0 animate-ping rounded-full bg-emerald-400 opacity-75" />
+                      </span>
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-semibold text-foreground">
+                        {r.name}
+                      </p>
+                      <p className="truncate font-mono text-[11px] text-muted-foreground">
+                        {r.studentNumber} · {r.position}
+                      </p>
+                      {r.companyName && (
+                        <p className="truncate text-[11px] text-muted-foreground/80">
+                          {r.companyName}
+                        </p>
+                      )}
+                    </div>
+                    <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold text-emerald-800 ring-1 ring-inset ring-emerald-200 dark:bg-emerald-900/50 dark:text-emerald-300 dark:ring-emerald-900/60">
+                      <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" />
+                      Active
+                    </span>
+                  </div>
+                  {/* Row 2: big live timer */}
+                  <div className="flex items-end justify-between gap-2 rounded-lg bg-card/80 px-3 py-2 ring-1 ring-emerald-100 dark:ring-emerald-900/40">
+                    <div className="min-w-0">
+                      <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                        Elapsed
+                      </p>
+                      <p className="font-mono text-lg font-bold tabular-nums text-emerald-700 dark:text-emerald-300">
+                        {formatTimer(r.elapsedMs)}
+                      </p>
+                    </div>
+                    <div className="min-w-0 text-right">
+                      <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                        Since
+                      </p>
+                      <p className="font-mono text-xs tabular-nums text-foreground">
+                        {r.clockInIso ? formatTime(r.clockInIso) : "—"}
+                      </p>
+                    </div>
+                  </div>
+                  {r.note && (
+                    <p className="truncate text-[11px] text-muted-foreground">
+                      <span className="font-medium">Note:</span> {r.note}
+                    </p>
+                  )}
+                </button>
+              ))}
             </div>
           )}
+        </SectionCard>
 
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-            {/* Sort active interns to the top so present interns are seen first. */}
-            {[...filtered]
-              .sort((a, b) => {
-                const aActive = activeTimeLog(timeLogs, a.id) ? 1 : 0;
-                const bActive = activeTimeLog(timeLogs, b.id) ? 1 : 0;
-                if (aActive !== bActive) return bActive - aActive;
-                return 0;
-              })
-              .map((s) => {
-                const studentEvals = evaluationsForStudent(evaluations, s.id).filter(
-                  (e) => e.supervisorId === supervisorId
-                );
-                const submitted = studentEvals.find((e) => e.status === "submitted");
-                const draft = studentEvals.find((e) => e.status === "draft");
-                const active = activeTimeLog(timeLogs, s.id);
-                return (
-                  <InternCard
-                    key={s.id}
-                    student={s}
-                    companyName={getCompany(companies, s.companyId)?.name}
-                    schoolName={schoolIdentity.shortName}
-                    lastScore={submitted ? averageScore(submitted) : undefined}
-                    hasEvaluation={!!submitted}
-                    isActive={!!active}
-                    activeElapsedMs={active ? elapsedMs(active, now) : 0}
-                    onOpen={() =>
-                      navigate("supervisor.intern-view", { studentId: s.id })
-                    }
-                    onEvaluate={() => {
-                      if (submitted) {
-                        navigate("supervisor.intern-view", { studentId: s.id });
-                      } else if (draft) {
-                        navigate("supervisor.evaluation-new", {
-                          evaluationId: draft.id,
-                        });
-                      } else {
-                        navigate("supervisor.evaluation-new", {
-                          preselectStudentId: s.id,
-                        });
-                      }
-                    }}
-                    evaluateLabel={submitted ? "View" : draft ? "Edit Draft" : "Evaluate"}
-                  />
-                );
-              })}
-          </div>
-        </>
-      )}
-    </div>
+        {/* Full team table */}
+        <SectionCard
+          title="All Interns"
+          description="Live clock-in/out status and hour progress for your team."
+          noPadding
+          actions={
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-semibold text-emerald-800 ring-1 ring-inset ring-emerald-200 dark:bg-emerald-950/50 dark:text-emerald-300 dark:ring-emerald-900/60">
+              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" />
+              LIVE
+            </span>
+          }
+        >
+          <DataTable
+            columns={columns}
+            rows={rows}
+            getRowId={(r) => r.id}
+            defaultSortKey="status"
+            defaultSortDir="desc"
+            onRowClick={(r) =>
+              navigate("supervisor.intern-view", { studentId: r.id })
+            }
+            mobileCard={(r) => (
+              <div className="space-y-2.5">
+                <div className="flex items-start gap-2.5">
+                  <div className="relative">
+                    <Avatar name={r.name} size="sm" />
+                    {r.status === "active" && (
+                      <span className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-card bg-emerald-500" />
+                    )}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-semibold text-foreground">
+                      {r.name}
+                    </p>
+                    <p className="font-mono text-[10px] text-muted-foreground">
+                      {r.studentNumber}
+                    </p>
+                  </div>
+                  {r.status === "active" ? (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold text-emerald-800 ring-1 ring-inset ring-emerald-200 dark:bg-emerald-950/50 dark:text-emerald-300 dark:ring-emerald-900/60">
+                      <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" />
+                      Live
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-600 ring-1 ring-inset ring-slate-200 dark:bg-slate-800/60 dark:text-slate-300 dark:ring-slate-700">
+                      Off
+                    </span>
+                  )}
+                </div>
+                <div className="grid grid-cols-2 gap-2 border-t border-border/60 pt-2 text-xs">
+                  <div>
+                    <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                      This week
+                    </p>
+                    <p className="font-mono font-semibold tabular-nums text-foreground">
+                      {formatDuration(r.weekMs)}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                      Progress
+                    </p>
+                    <p className="font-mono font-semibold tabular-nums text-foreground">
+                      {r.loggedHours}/{r.requiredHours}h
+                    </p>
+                  </div>
+                </div>
+                {r.status === "active" ? (
+                  <p className="font-mono text-[11px] tabular-nums text-emerald-700 dark:text-emerald-300">
+                    Elapsed: {formatTimer(r.elapsedMs)}
+                  </p>
+                ) : (
+                  <p className="text-[11px] text-muted-foreground">
+                    Last seen {r.lastSeenLabel}
+                  </p>
+                )}
+                <div className="flex items-center justify-end pt-1 text-xs font-medium text-primary">
+                  Details
+                  <ArrowRight className="h-3.5 w-3.5" />
+                </div>
+              </div>
+            )}
+            emptyState={
+              <div className="p-5">
+                <EmptyState
+                  icon={Timer}
+                  title="No interns assigned"
+                  description="Interns assigned to you will appear here."
+                />
+              </div>
+            }
+          />
+        </SectionCard>
+      </div>
+    </>
   );
 }
+
+export default InternsList;

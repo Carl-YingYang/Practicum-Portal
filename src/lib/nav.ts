@@ -53,14 +53,6 @@ export const navConfig: Record<Role, NavItem[]> = {
     { key: "dashboard", label: "Dashboard", shortLabel: "Home", view: "supervisor.dashboard", icon: "dashboard", section: "Overview" },
     { key: "interns", label: "My Interns", shortLabel: "Interns", view: "supervisor.interns", icon: "students", section: "Interns" },
     {
-      key: "timeMonitor",
-      label: "Time Tracking",
-      shortLabel: "Time",
-      view: "supervisor.time-monitor",
-      icon: "timeMonitor",
-      section: "Workflow",
-    },
-    {
       key: "evaluations",
       label: "Evaluations",
       shortLabel: "Evals",
@@ -140,7 +132,7 @@ export const viewTitles: Record<ViewKey, string> = {
   "supervisor.journals": "Journal Approvals",
   "supervisor.journal-review": "Review Journal",
   "supervisor.reports": "Reports & PDFs",
-  "supervisor.time-monitor": "Time Tracking",
+  "supervisor.time-monitor": "My Interns",
   "supervisor.time-clock": "Time Clock",
   "supervisor.forms": "Shared Forms",
   "supervisor.form-view": "View Form",

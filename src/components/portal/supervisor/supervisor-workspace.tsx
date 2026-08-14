@@ -10,7 +10,6 @@ import { EvaluationsList } from "./evaluations-list";
 import { JournalApprovalQueue } from "./journal-approval-queue";
 import { JournalReview } from "./journal-review";
 import { SupervisorReports } from "./supervisor-reports";
-import { SupervisorTimeMonitor } from "./supervisor-time-monitor";
 import { SupervisorProfile } from "./supervisor-profile";
 import { SupervisorFormsList } from "./supervisor-forms-list";
 import { SupervisorFormWorkspace } from "./supervisor-form-workspace";
@@ -42,8 +41,10 @@ export function SupervisorWorkspace() {
       return <SupervisorFormWorkspace formId={viewParams.formId} />;
     case "supervisor.reports":
       return <SupervisorReports />;
+    // Alias: time-monitor now points to My Interns (the live board + roster
+    // were merged into the My Interns page per the supervisor's request).
     case "supervisor.time-monitor":
-      return <SupervisorTimeMonitor />;
+      return <InternsList />;
     case "supervisor.profile":
       return <SupervisorProfile />;
     default:
@@ -62,7 +63,6 @@ export {
   JournalApprovalQueue,
   JournalReview,
   SupervisorReports,
-  SupervisorTimeMonitor,
   SupervisorProfile,
   SupervisorFormsList,
   SupervisorFormWorkspace,
