@@ -5,8 +5,8 @@ import { Avatar } from "./avatar";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { Student } from "@/lib/types";
-import { hoursPercent } from "@/lib/selectors";
-import { ChevronRight, GraduationCap } from "lucide-react";
+import { hoursPercent, formatTimer } from "@/lib/selectors";
+import { ChevronRight, GraduationCap, Radio } from "lucide-react";
 
 interface InternCardProps {
   student: Student;
@@ -18,6 +18,10 @@ interface InternCardProps {
   onOpen: () => void;
   onEvaluate?: () => void;
   evaluateLabel?: string;
+  /** Whether this intern is currently on the clock (has an open time-log session). */
+  isActive?: boolean;
+  /** Live elapsed ms for the active session (only shown when isActive is true). */
+  activeElapsedMs?: number;
 }
 
 /**
@@ -40,6 +44,8 @@ export function InternCard({
   onOpen,
   onEvaluate,
   evaluateLabel = "Evaluate",
+  isActive = false,
+  activeElapsedMs = 0,
 }: InternCardProps) {
   const pct = Math.min(100, hoursPercent(student));
   // Suppress unused warnings — onEvaluate/evaluateLabel are kept in the API
@@ -62,7 +68,18 @@ export function InternCard({
     >
       {/* Row 1: avatar + name/ID + chevron */}
       <div className="flex items-center gap-3">
-        <Avatar name={student.name} size="md" />
+        <div className="relative">
+          <Avatar name={student.name} size="md" />
+          {isActive && (
+            <span
+              className="absolute -bottom-0.5 -right-0.5 h-3.5 w-3.5 rounded-full border-2 border-card bg-emerald-500"
+              title="On the clock now"
+              aria-label="On the clock now"
+            >
+              <span className="absolute inset-0 animate-ping rounded-full bg-emerald-400 opacity-75" />
+            </span>
+          )}
+        </div>
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-semibold text-foreground">
             {student.name}
@@ -74,8 +91,28 @@ export function InternCard({
             {student.position}
           </p>
         </div>
-        <ChevronRight className="h-5 w-5 shrink-0 text-muted-foreground/60" />
+        {isActive ? (
+          <div className="flex flex-col items-end gap-0.5">
+            <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-emerald-100 px-2.5 py-1 text-[11px] font-semibold text-emerald-800 ring-1 ring-inset ring-emerald-200 dark:bg-emerald-950/50 dark:text-emerald-300 dark:ring-emerald-900/60">
+              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" />
+              On the clock
+            </span>
+            <span className="font-mono text-[10px] tabular-nums text-emerald-700 dark:text-emerald-400">
+              {formatTimer(activeElapsedMs)}
+            </span>
+          </div>
+        ) : (
+          <ChevronRight className="h-5 w-5 shrink-0 text-muted-foreground/60" />
+        )}
       </div>
+
+      {/* Live banner — only when active */}
+      {isActive && (
+        <div className="mt-2.5 flex items-center gap-1.5 rounded-lg bg-emerald-50 px-2.5 py-1.5 text-[11px] font-medium text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-300">
+          <Radio className="h-3 w-3 shrink-0" />
+          <span>Present now · {formatTimer(activeElapsedMs)} elapsed</span>
+        </div>
+      )}
 
       {/* Row 2: slim progress bar + hours summary */}
       <div className="mt-3.5">
