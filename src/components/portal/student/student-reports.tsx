@@ -267,8 +267,8 @@ export function StudentReports() {
         {
           heading: "4. Tools & Integration",
           keyValue: [
-            { label: "Jibble", value: toolsConfig?.jibble ? "Connected" : "Not connected" },
-            { label: "Google Workspace", value: toolsConfig?.google ? "Connected" : "Not connected" },
+            { label: "Jibble", value: toolsConfig?.jibble ? "Linked" : "Not linked" },
+            { label: "Google Workspace", value: toolsConfig?.google ? "Linked" : "Not linked" },
           ],
         },
         {

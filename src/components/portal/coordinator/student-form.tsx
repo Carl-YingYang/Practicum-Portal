@@ -33,14 +33,6 @@ import { toast } from "sonner";
 const UNASSIGNED = "__unassigned__";
 const WORK_MODES: WorkMode[] = ["onsite", "hybrid", "remote"];
 
-function genTempPassword(): string {
-  return (
-    "Tmp-" +
-    Math.random().toString(36).slice(2, 6).toUpperCase() +
-    Math.random().toString(36).slice(2, 6)
-  );
-}
-
 /** Convert an ISO datetime string to a yyyy-MM-dd value for <input type=date>. */
 function toDateInput(iso: string | null | undefined): string {
   if (!iso) return "";
@@ -84,13 +76,13 @@ export function StudentForm({ studentId }: { studentId?: ViewParams["studentId"]
   const [startDate, setStartDate] = React.useState("");
   const [endDate, setEndDate] = React.useState("");
   const [supervisorId, setSupervisorId] = React.useState<string | null>(null);
-  const [tempPassword] = React.useState(() => genTempPassword());
   const [errors, setErrors] = React.useState<Record<string, string>>({});
   const [credsOpen, setCredsOpen] = React.useState(false);
   const [createdCreds, setCreatedCreds] = React.useState<{
     name: string;
     email: string;
     tempPassword: string;
+    userId: string;
     studentId: string;
   } | null>(null);
 
@@ -292,7 +284,8 @@ export function StudentForm({ studentId }: { studentId?: ViewParams["studentId"]
       setCreatedCreds({
         name: name.trim(),
         email: email.trim(),
-        tempPassword,
+        tempPassword: result.tempPassword,
+        userId: result.idNumber,
         studentId: result.studentId,
       });
       setCredsOpen(true);
@@ -531,10 +524,12 @@ export function StudentForm({ studentId }: { studentId?: ViewParams["studentId"]
           onOpenChange={setCredsOpen}
           name={createdCreds.name}
           email={createdCreds.email}
+          role="student"
+          userId={createdCreds.userId}
           tempPassword={createdCreds.tempPassword}
           onDone={() => {
             toast.success("Student created", {
-              description: `${createdCreds.name} added to the cohort.`,
+              description: `${createdCreds.name} was added and invited to sign in.`,
             });
             navigate("coordinator.student-view", { studentId: createdCreds.studentId });
           }}

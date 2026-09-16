@@ -668,9 +668,9 @@ export function ImportUsersSheet({ open, onOpenChange }: ImportUsersSheetProps) 
                 • <span className="font-medium text-foreground">Supervisor</span> (students only) — name or email of an existing supervisor. Matched case-insensitively.
               </li>
               <li>
-                • Students sign in with their{" "}
-                <span className="font-medium text-foreground">StudentNumber</span> as the password; supervisors get an auto-generated{" "}
-                <span className="font-medium text-foreground">EMP-XXX</span>.
+                • New accounts start as{" "}
+                <span className="font-medium text-foreground">Invited</span>: they sign in with the{" "}
+                <span className="font-medium text-foreground">one-time temporary password</span> shown in the results, then set a personal password.
               </li>
             </ul>
           </div>
@@ -792,8 +792,8 @@ function ResultsView({ records }: { records: CreatedRecord[] }) {
         <div>
           <p className="font-semibold">Copy these credentials now.</p>
           <p className="mt-0.5 opacity-90">
-            The User ID column is each user&apos;s login password. The temp password is a backup
-            code. Export to Excel to share with users.
+            Each user signs in with this temporary password and then chooses a
+            personal one at first sign-in. Export to Excel to share securely.
           </p>
         </div>
       </div>

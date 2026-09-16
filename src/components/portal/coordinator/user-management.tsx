@@ -3,14 +3,22 @@
 import * as React from "react";
 import { useAppStore } from "@/store/use-app-store";
 import { formatDate, getCompany } from "@/lib/selectors";
-import type { Company, Coordinator, Student, Supervisor } from "@/lib/types";
+import type {
+  AccountStatus,
+  Company,
+  Coordinator,
+  Role,
+  Student,
+  Supervisor,
+} from "@/lib/types";
 import { PageHeader } from "@/components/portal/layout/page-header";
 import { DataTable, type Column } from "@/components/portal/shared/data-table";
 import { SectionCard } from "@/components/portal/shared/section-card";
 import { EmptyState } from "@/components/portal/shared/empty-state";
 import { ConfirmDialog } from "@/components/portal/shared/confirm-dialog";
+import { CredentialsDialog } from "@/components/portal/shared/credentials-dialog";
 import { Avatar } from "@/components/portal/shared/avatar";
-import { Badge } from "@/components/portal/shared/badges";
+import { AccountStatusBadge, Badge } from "@/components/portal/shared/badges";
 import { MobileListCard } from "@/components/portal/shared/mobile-list-card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -37,12 +45,15 @@ import {
   Search,
   MoreHorizontal,
   Eye,
+  KeyRound,
   UserX,
+  UserCheck,
   GraduationCap,
   ClipboardCheck,
   ShieldCheck,
   Layers,
   ChevronDown,
+  RotateCcw,
 } from "lucide-react";
 import { toast } from "sonner";
 import { exportToCsv } from "@/lib/csv-export";
@@ -56,6 +67,35 @@ import { ImportUsersSheet } from "@/components/portal/coordinator/import-users-s
 type UserRole = "student" | "supervisor" | "coordinator";
 type UserStatus = "active" | "inactive";
 
+/**
+ * Derive the visible ACCOUNT status for any role record.
+ *  - Disabled: coordinator disabled the account, or the record itself is
+ *    deactivated (placement/employment) — either blocks sign-in.
+ *  - Invited: provisioned with a one-time temporary password that hasn't
+ *    been replaced yet (first-login password change pending).
+ *  - Active: everything else (legacy seeds are implicitly active).
+ */
+function accountStatusOf(rec: {
+  status: UserStatus;
+  accountStatus?: AccountStatus;
+  mustChangePassword?: boolean;
+}): AccountStatus {
+  if (rec.accountStatus === "disabled" || rec.status === "inactive")
+    return "disabled";
+  if (rec.accountStatus === "invited" || rec.mustChangePassword)
+    return "invited";
+  return "active";
+}
+
+/** The effective login password for the credentials export. */
+function effectivePasswordOf(rec: {
+  password?: string;
+  idNumber?: string;
+  studentNumber?: string;
+}): string {
+  return rec.password ?? rec.idNumber ?? rec.studentNumber ?? "—";
+}
+
 interface UnifiedUser {
   id: string;
   /** The role-specific record id used to view/edit (studentId / supervisorId / coordinatorId). */
@@ -68,6 +108,10 @@ interface UnifiedUser {
   companyId: string;
   companyName: string;
   status: UserStatus;
+  /** Account lifecycle (Invited / Active / Disabled). */
+  accountStatus: AccountStatus;
+  /** Effective login password (temporary until first-login change). */
+  tempPassword: string;
   createdAt: string;
 }
 
@@ -89,6 +133,8 @@ function buildUserList(
       companyId: s.companyId,
       companyName: company?.name ?? "—",
       status: s.status,
+      accountStatus: accountStatusOf(s),
+      tempPassword: effectivePasswordOf(s),
       createdAt: s.createdAt,
     };
   });
@@ -100,10 +146,12 @@ function buildUserList(
       role: "supervisor" as const,
       name: sup.name,
       email: sup.email,
-      idNumber: "",
+      idNumber: sup.idNumber ?? "",
       companyId: sup.companyId,
       companyName: company?.name ?? "—",
       status: sup.status,
+      accountStatus: accountStatusOf(sup),
+      tempPassword: effectivePasswordOf(sup),
       createdAt: sup.createdAt,
     };
   });
@@ -113,10 +161,12 @@ function buildUserList(
     role: "coordinator" as const,
     name: c.name,
     email: c.email,
-    idNumber: "",
+    idNumber: c.idNumber ?? "",
     companyId: "",
     companyName: c.department,
     status: c.status,
+    accountStatus: accountStatusOf(c),
+    tempPassword: effectivePasswordOf(c),
     createdAt: c.createdAt,
   }));
   return [...coordinatorRows, ...supervisorRows, ...studentRows];
@@ -128,16 +178,36 @@ export function UserManagement() {
   const supervisors = useAppStore((s) => s.supervisors);
   const coordinators = useAppStore((s) => s.coordinators);
   const companies = useAppStore((s) => s.companies);
-  const updateStudent = useAppStore((s) => s.updateStudent);
-  const updateSupervisor = useAppStore((s) => s.updateSupervisor);
-  const updateCoordinator = useAppStore((s) => s.updateCoordinator);
+  const setAccountStatus = useAppStore((s) => s.setAccountStatus);
+  const resetAccountCredentials = useAppStore(
+    (s) => s.resetAccountCredentials
+  );
+  const currentUserId = useAppStore((s) => s.currentUser?.id);
 
   const [search, setSearch] = React.useState("");
   const [roleFilter, setRoleFilter] = React.useState<string>("all");
   const [statusFilter, setStatusFilter] = React.useState<string>("all");
-  const [deactivateTarget, setDeactivateTarget] =
-    React.useState<UnifiedUser | null>(null);
+  const [statusTarget, setStatusTarget] = React.useState<UnifiedUser | null>(
+    null
+  );
+  const [statusNext, setStatusNext] = React.useState<AccountStatus>("disabled");
+  const [resetTarget, setResetTarget] = React.useState<UnifiedUser | null>(
+    null
+  );
+  const [resetCreds, setResetCreds] = React.useState<{
+    name: string;
+    email: string;
+    role: Role;
+    tempPassword: string;
+  } | null>(null);
   const [importOpen, setImportOpen] = React.useState(false);
+
+  const filtersActive = !!search || roleFilter !== "all" || statusFilter !== "all";
+  const clearFilters = () => {
+    setSearch("");
+    setRoleFilter("all");
+    setStatusFilter("all");
+  };
 
   const allRows = React.useMemo(
     () => buildUserList(students, supervisors, coordinators, companies),
@@ -164,7 +234,9 @@ export function UserManagement() {
   }, [allRows, search, roleFilter, statusFilter]);
 
   const totalUsers = allRows.length;
-  const activeCount = allRows.filter((r) => r.status === "active").length;
+  const activeCount = allRows.filter((r) => r.accountStatus === "active").length;
+  const invitedCount = allRows.filter((r) => r.accountStatus === "invited").length;
+  const disabledCount = allRows.filter((r) => r.accountStatus === "disabled").length;
 
   const handleView = (r: UnifiedUser) => {
     if (r.role === "student") {
@@ -177,20 +249,32 @@ export function UserManagement() {
     }
   };
 
-  const handleDeactivate = () => {
-    if (!deactivateTarget) return;
-    const t = deactivateTarget;
-    if (t.role === "student") {
-      updateStudent(t.recordId, { status: "inactive" });
-    } else if (t.role === "supervisor") {
-      updateSupervisor(t.recordId, { status: "inactive" });
-    } else {
-      updateCoordinator(t.recordId, { status: "inactive" });
-    }
-    toast.success(`${t.name} deactivated`, {
-      description: "The user can no longer sign in.",
-    });
-    setDeactivateTarget(null);
+  const confirmStatusChange = () => {
+    if (!statusTarget) return;
+    const t = statusTarget;
+    setAccountStatus(t.role, t.recordId, statusNext);
+    toast.success(
+      statusNext === "disabled"
+        ? `${t.name}'s account was disabled`
+        : `${t.name}'s account is now active`,
+      {
+        description:
+          statusNext === "disabled"
+            ? "They can no longer sign in; their records are preserved."
+            : "They can sign in again with their existing password.",
+      }
+    );
+    setStatusTarget(null);
+  };
+
+  const confirmReset = () => {
+    if (!resetTarget) return;
+    const result = resetAccountCredentials(
+      resetTarget.role,
+      resetTarget.recordId
+    );
+    setResetTarget(null);
+    setResetCreds(result);
   };
 
   const handleExportAll = () => {
@@ -200,7 +284,7 @@ export function UserManagement() {
       "Role",
       "ID Number",
       "Company / Department",
-      "Status",
+      "Account Status",
       "Created",
     ];
     const data = allRows.map((r) => [
@@ -213,13 +297,51 @@ export function UserManagement() {
           : "Coordinator",
       r.idNumber || "—",
       r.companyName,
-      r.status === "active" ? "Active" : "Inactive",
+      r.accountStatus === "active"
+        ? "Active"
+        : r.accountStatus === "invited"
+          ? "Invited"
+          : "Disabled",
       formatDate(r.createdAt),
     ]);
     const stamp = new Date().toISOString().slice(0, 10);
     exportToCsv(`users-${stamp}.csv`, headers, data);
     toast.success("Export ready", {
       description: `${allRows.length} users exported to CSV.`,
+    });
+  };
+
+  /** Credentials CSV — includes each account's current login password. */
+  const handleExportCredentials = () => {
+    const headers = [
+      "Name",
+      "Email",
+      "Role",
+      "User ID",
+      "Account Status",
+      "Current Password",
+    ];
+    const data = allRows.map((r) => [
+      r.name,
+      r.email,
+      r.role === "student"
+        ? "Student"
+        : r.role === "supervisor"
+          ? "Supervisor"
+          : "Coordinator",
+      r.idNumber || "—",
+      r.accountStatus === "active"
+        ? "Active"
+        : r.accountStatus === "invited"
+          ? "Invited"
+          : "Disabled",
+      r.tempPassword,
+    ]);
+    const stamp = new Date().toISOString().slice(0, 10);
+    exportToCsv(`account-credentials-${stamp}.csv`, headers, data);
+    toast.success("Credentials CSV downloaded", {
+      description:
+        "Includes passwords — share only through secure channels.",
     });
   };
 
@@ -289,13 +411,9 @@ export function UserManagement() {
     },
     {
       key: "status",
-      header: "Status",
-      sortValue: (r) => r.status,
-      cell: (r) => (
-        <Badge tone={r.status === "active" ? "emerald" : "slate"}>
-          {r.status === "active" ? "Active" : "Inactive"}
-        </Badge>
-      ),
+      header: "Account status",
+      sortValue: (r) => r.accountStatus,
+      cell: (r) => <AccountStatusBadge status={r.accountStatus} />,
     },
     {
       key: "createdAt",
@@ -325,20 +443,44 @@ export function UserManagement() {
               <MoreHorizontal className="h-4 w-4" />
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+          <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()} className="w-60">
             <DropdownMenuItem onClick={() => handleView(r)}>
               <Eye className="h-4 w-4" />
               View
             </DropdownMenuItem>
-            <DropdownMenuSeparator />
             <DropdownMenuItem
-              variant="destructive"
-              onClick={() => setDeactivateTarget(r)}
-              disabled={r.status === "inactive"}
+              onClick={() => setResetTarget(r)}
+              disabled={r.role === "coordinator" && r.recordId === currentUserId}
             >
-              <UserX className="h-4 w-4" />
-              Deactivate
+              <KeyRound className="h-4 w-4" />
+              Reset credentials…
             </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            {r.accountStatus === "disabled" ? (
+              <DropdownMenuItem
+                onClick={() => {
+                  setStatusTarget(r);
+                  setStatusNext("active");
+                }}
+              >
+                <UserCheck className="h-4 w-4" />
+                Enable account
+              </DropdownMenuItem>
+            ) : (
+              <DropdownMenuItem
+                variant="destructive"
+                onClick={() => {
+                  setStatusTarget(r);
+                  setStatusNext("disabled");
+                }}
+                disabled={
+                  r.role === "coordinator" && r.recordId === currentUserId
+                }
+              >
+                <UserX className="h-4 w-4" />
+                Disable account
+              </DropdownMenuItem>
+            )}
           </DropdownMenuContent>
         </DropdownMenu>
       ),
@@ -353,6 +495,15 @@ export function UserManagement() {
         breadcrumb="User Management"
         actions={
           <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
+            <Button
+              variant="ghost"
+              onClick={handleExportCredentials}
+              className="w-full sm:w-auto"
+              aria-label="Download credentials as CSV"
+            >
+              <KeyRound className="h-4 w-4" />
+              <span className="sm:hidden lg:inline">Credentials CSV</span>
+            </Button>
             <Button
               variant="outline"
               onClick={handleExportAll}
@@ -449,12 +600,43 @@ export function UserManagement() {
                 <SelectValue placeholder="Status" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All status</SelectItem>
+                <SelectItem value="all">All statuses</SelectItem>
+                <SelectItem value="invited">Invited</SelectItem>
                 <SelectItem value="active">Active</SelectItem>
-                <SelectItem value="inactive">Inactive</SelectItem>
+                <SelectItem value="disabled">Disabled</SelectItem>
               </SelectContent>
             </Select>
           </div>
+          {filtersActive && (
+            <div className="lg:flex lg:shrink-0">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-9 text-muted-foreground"
+                onClick={clearFilters}
+              >
+                <RotateCcw className="h-3.5 w-3.5" />
+                Clear filters
+              </Button>
+            </div>
+          )}
+        </div>
+
+        {/* Status summary strip */}
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 border-b border-border/60 px-4 py-2.5 text-xs text-muted-foreground">
+          <span className="inline-flex items-center gap-1.5">
+            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" aria-hidden />
+            {activeCount} active
+          </span>
+          <span className="inline-flex items-center gap-1.5">
+            <span className="h-1.5 w-1.5 rounded-full bg-amber-500" aria-hidden />
+            {invitedCount} invited
+          </span>
+          <span className="inline-flex items-center gap-1.5">
+            <span className="h-1.5 w-1.5 rounded-full bg-red-500" aria-hidden />
+            {disabledCount} disabled
+          </span>
+          <span className="ml-auto hidden sm:inline">No public sign-up — all accounts are provisioned here</span>
         </div>
 
         <DataTable
@@ -487,11 +669,7 @@ export function UserManagement() {
                   <span className="truncate">{r.email}</span>
                 </span>
               }
-              status={
-                <Badge tone={r.status === "active" ? "emerald" : "slate"}>
-                  {r.status === "active" ? "Active" : "Inactive"}
-                </Badge>
-              }
+              status={<AccountStatusBadge status={r.accountStatus} />}
               meta={`${r.companyName}${
                 r.idNumber ? ` · ${r.idNumber}` : ""
               }`}
@@ -513,18 +691,49 @@ export function UserManagement() {
       </SectionCard>
 
       <ConfirmDialog
-        open={!!deactivateTarget}
-        onOpenChange={(o) => !o && setDeactivateTarget(null)}
-        title="Deactivate user?"
+        open={!!statusTarget}
+        onOpenChange={(o) => !o && setStatusTarget(null)}
+        title={
+          statusNext === "disabled" ? "Disable this account?" : "Enable this account?"
+        }
         description={
-          deactivateTarget
-            ? `${deactivateTarget.name} (${deactivateTarget.email}) will no longer be able to sign in. Their records are preserved.`
+          statusTarget
+            ? statusNext === "disabled"
+              ? `${statusTarget.name} (${statusTarget.email}) will no longer be able to sign in. Their records are preserved.`
+              : `${statusTarget.name} (${statusTarget.email}) will be able to sign in again with their existing password.`
             : ""
         }
-        confirmLabel="Deactivate"
-        destructive
-        onConfirm={handleDeactivate}
+        confirmLabel={
+          statusNext === "disabled" ? "Disable account" : "Enable account"
+        }
+        destructive={statusNext === "disabled"}
+        onConfirm={confirmStatusChange}
       />
+
+      <ConfirmDialog
+        open={!!resetTarget}
+        onOpenChange={(o) => !o && setResetTarget(null)}
+        title="Reset credentials?"
+        description={
+          resetTarget
+            ? `A new one-time temporary password will be generated for ${resetTarget.name} (${resetTarget.email}). Their current password stops working and they must change it at next sign-in.`
+            : ""
+        }
+        confirmLabel="Reset credentials"
+        onConfirm={confirmReset}
+      />
+
+      {resetCreds && (
+        <CredentialsDialog
+          open={!!resetCreds}
+          onOpenChange={(o) => !o && setResetCreds(null)}
+          name={resetCreds.name}
+          email={resetCreds.email}
+          role={resetCreds.role}
+          tempPassword={resetCreds.tempPassword}
+          onDone={() => setResetCreds(null)}
+        />
+      )}
 
       <ImportUsersSheet open={importOpen} onOpenChange={setImportOpen} />
     </div>

@@ -22,14 +22,6 @@ import {
 import { AlertCircle, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
 
-function genTempPassword(): string {
-  return (
-    "Tmp-" +
-    Math.random().toString(36).slice(2, 6).toUpperCase() +
-    Math.random().toString(36).slice(2, 6)
-  );
-}
-
 /**
  * CoordinatorForm — create (or edit) a Practicum Coordinator account.
  *
@@ -58,13 +50,13 @@ export function CoordinatorForm({
   const [email, setEmail] = React.useState("");
   const [title, setTitle] = React.useState("");
   const [department, setDepartment] = React.useState<string>("");
-  const [tempPassword] = React.useState(() => genTempPassword());
   const [errors, setErrors] = React.useState<Record<string, string>>({});
   const [credsOpen, setCredsOpen] = React.useState(false);
   const [createdCreds, setCreatedCreds] = React.useState<{
     name: string;
     email: string;
     tempPassword: string;
+    userId: string;
     coordinatorId: string;
   } | null>(null);
 
@@ -158,7 +150,8 @@ export function CoordinatorForm({
       setCreatedCreds({
         name: name.trim(),
         email: email.trim(),
-        tempPassword,
+        tempPassword: result.tempPassword,
+        userId: result.idNumber,
         coordinatorId: result.coordinatorId,
       });
       setCredsOpen(true);
@@ -273,10 +266,12 @@ export function CoordinatorForm({
           onOpenChange={setCredsOpen}
           name={createdCreds.name}
           email={createdCreds.email}
+          role="coordinator"
+          userId={createdCreds.userId}
           tempPassword={createdCreds.tempPassword}
           onDone={() => {
             toast.success("Coordinator created", {
-              description: `${createdCreds.name} can now sign in.`,
+              description: `${createdCreds.name} was added and invited to sign in.`,
             });
             navigate("coordinator.user-management");
           }}

@@ -26,14 +26,6 @@ import { toast } from "sonner";
 
 const SALUTATIONS = ["Mr.", "Ms.", "Mrs.", "Dr.", "Engr.", "Atty.", "Hon.", "Prof."];
 
-function genTempPassword(): string {
-  return (
-    "Tmp-" +
-    Math.random().toString(36).slice(2, 6).toUpperCase() +
-    Math.random().toString(36).slice(2, 6)
-  );
-}
-
 export function SupervisorForm({
   supervisorId,
 }: {
@@ -65,13 +57,13 @@ export function SupervisorForm({
   const [department, setDepartment] = React.useState<Department | "">("");
   const [capacity, setCapacity] = React.useState("5");
   const [schoolYear, setSchoolYear] = React.useState<string>("");
-  const [tempPassword] = React.useState(() => genTempPassword());
   const [errors, setErrors] = React.useState<Record<string, string>>({});
   const [credsOpen, setCredsOpen] = React.useState(false);
   const [createdCreds, setCreatedCreds] = React.useState<{
     name: string;
     email: string;
     tempPassword: string;
+    userId: string;
     supervisorId: string;
   } | null>(null);
 
@@ -218,7 +210,8 @@ export function SupervisorForm({
       setCreatedCreds({
         name: name.trim(),
         email: email.trim(),
-        tempPassword,
+        tempPassword: result.tempPassword,
+        userId: result.idNumber,
         supervisorId: result.supervisorId,
       });
       setCredsOpen(true);
@@ -380,6 +373,8 @@ export function SupervisorForm({
           onOpenChange={setCredsOpen}
           name={createdCreds.name}
           email={createdCreds.email}
+          role="supervisor"
+          userId={createdCreds.userId}
           tempPassword={createdCreds.tempPassword}
           onDone={() => {
             toast.success("Supervisor created", {

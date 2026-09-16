@@ -129,11 +129,63 @@ export interface User {
    * ID; for seed demo accounts it's a readable slug.
    */
   idNumber?: string;
+  /** Account lifecycle snapshot for the signed-in user (undefined = active). */
+  accountStatus?: AccountStatus;
+  /** When true, the portal routes this session to the first-login gate. */
+  mustChangePassword?: boolean;
   /** initials avatar background */
   avatarColor: string;
 }
 
 export type StudentStatus = "active" | "inactive";
+
+/**
+ * Prototype account lifecycle (controlled provisioning — no public
+ * self-registration). Seeds are implicitly "active".
+ *  - invited: provisioned by the Coordinator with a one-time temporary
+ *    password; the user must change it at first sign-in.
+ *  - active: signed in and set a personal password.
+ *  - disabled: cannot sign in; records are preserved.
+ */
+export type AccountStatus = "invited" | "active" | "disabled";
+
+export const ACCOUNT_STATUS_LABELS: Record<AccountStatus, string> = {
+  invited: "Invited",
+  active: "Active",
+  disabled: "Disabled",
+};
+
+/**
+ * Mock-only account credentials attached to each role record.
+ * The prototype keeps these in memory (never sent to a server); they map
+ * 1:1 onto a future Supabase Auth rollout.
+ */
+export interface AccountCredentials {
+  /** Account lifecycle. Legacy/seed records omit it, which means "active". */
+  accountStatus?: AccountStatus;
+  /** When true, the next sign-in is routed to the first-login password change. */
+  mustChangePassword?: boolean;
+  /**
+   * Current effective password. When undefined, the User ID (idNumber /
+   * studentNumber) remains the password — the original prototype behaviour.
+   */
+  password?: string;
+}
+
+/** Result of the mock first-login password change. */
+export type FirstLoginPasswordResult =
+  | { ok: true }
+  | { ok: false; reason: "no-session" | "bad-temp" | "weak-password" };
+
+/** One account summary row for the credentials CSV export. */
+export interface CredentialCsvRow {
+  name: string;
+  email: string;
+  userId: string;
+  role: Role;
+  status: AccountStatus;
+  tempPassword: string;
+}
 
 /** Department enum — shared between Student and Supervisor for matching. */
 export type Department =
@@ -170,7 +222,7 @@ export const WORK_MODE_LABELS: Record<WorkMode, string> = {
   remote: "Remote",
 };
 
-export interface Student {
+export interface Student extends AccountCredentials {
   id: string;
   studentNumber: string;
   name: string;
@@ -235,7 +287,7 @@ export interface Company {
 
 export type SupervisorStatus = "active" | "inactive";
 
-export interface Supervisor {
+export interface Supervisor extends AccountCredentials {
   id: string;
   name: string;
   email: string;
@@ -279,7 +331,7 @@ export const COORDINATOR_DEPARTMENTS: string[] = [
 ];
 
 /** Coordinator — university staff who manage the practicum program. */
-export interface Coordinator {
+export interface Coordinator extends AccountCredentials {
   id: string;
   name: string;
   email: string;

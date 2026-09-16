@@ -139,10 +139,10 @@ export function GoogleDocEditor({
           ))}
         </div>
         <div className="ml-auto flex items-center gap-1">
-          {/* Connected badge */}
+          {/* Linked badge — the doc is a manual link, not an API connection */}
           <span className="hidden items-center gap-1.5 rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-medium text-emerald-700 ring-1 ring-inset ring-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:ring-emerald-900/50 sm:inline-flex">
             <Cloud className="h-3 w-3" />
-            Connected to Google Docs
+            Linked Google Doc
           </span>
           {docUrl && (
             <a

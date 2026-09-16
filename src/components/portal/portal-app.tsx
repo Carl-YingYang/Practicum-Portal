@@ -5,6 +5,7 @@ import dynamic from "next/dynamic";
 import { Loader2 } from "lucide-react";
 import { useAppStore } from "@/store/use-app-store";
 import { LoginScreen } from "@/components/portal/auth/login-screen";
+import { FirstLoginPasswordChange } from "@/components/portal/auth/first-login-password";
 import { AppShell } from "@/components/portal/layout/app-shell";
 
 // Role workspaces are code-split so the initial `/` compile only builds the
@@ -78,6 +79,12 @@ export function PortalApp() {
   // Public route.
   if (!currentUser || view === "login") {
     return <LoginScreen />;
+  }
+
+  // Invited accounts must replace their one-time temporary password with a
+  // personal one before reaching any workspace — focused, unskippable gate.
+  if (currentUser.mustChangePassword) {
+    return <FirstLoginPasswordChange />;
   }
 
   // Role-scoped workspaces.

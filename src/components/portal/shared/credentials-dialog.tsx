@@ -12,9 +12,11 @@ import { BottomSheet } from "@/components/portal/shared/bottom-sheet";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Copy, Check, KeyRound, AlertCircle } from "lucide-react";
+import { Copy, Check, KeyRound, AlertCircle, ClipboardList } from "lucide-react";
 import { toast } from "sonner";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { ROLE_LABELS, type Role } from "@/lib/types";
+import { cn } from "@/lib/utils";
 
 interface CredentialsDialogProps {
   open: boolean;
@@ -22,11 +24,19 @@ interface CredentialsDialogProps {
   name: string;
   email: string;
   tempPassword: string;
+  /** Account role — shown as a chip when provided. */
+  role?: Role;
+  /** Prototype account id (User ID) — shown when provided. */
+  userId?: string;
   onDone: () => void;
 }
 
 /**
  * CredentialsDialog — responsive one-time credentials reveal.
+ *
+ * Shown once after the Coordinator provisions an account (or resets its
+ * password). Deliberately honest: this is mock prototype state, not a
+ * secure credential delivery channel.
  *
  * Per Responsive Contract §2.13:
  *  - Mobile (`< md`): BottomSheet (slides up, thumb-reachable copy buttons).
@@ -38,76 +48,119 @@ export function CredentialsDialog({
   name,
   email,
   tempPassword,
+  role,
+  userId,
   onDone,
 }: CredentialsDialogProps) {
   const isMobile = useIsMobile();
-  const [copied, setCopied] = React.useState<"email" | "pass" | null>(null);
+  const [copied, setCopied] = React.useState<string | null>(null);
 
-  const copy = (text: string, which: "email" | "pass") => {
+  const copy = (text: string, which: string, label: string) => {
     navigator.clipboard?.writeText(text).then(() => {
       setCopied(which);
-      toast.success("Copied to clipboard");
+      toast.success(`Copied ${label}`);
       setTimeout(() => setCopied(null), 1500);
     });
   };
 
+  const copyAll = () => {
+    const lines = [
+      `Name: ${name}`,
+      `Email: ${email}`,
+      ...(userId ? [`User ID: ${userId}`] : []),
+      ...(role ? [`Role: ${ROLE_LABELS[role]}`] : []),
+      `Temporary password: ${tempPassword}`,
+      "",
+      "Note: this temporary password must be changed at first sign-in.",
+    ];
+    navigator.clipboard?.writeText(lines.join("\n")).then(() => {
+      toast.success("All credentials copied", {
+        description: "Paste them into a secure message to the user.",
+      });
+    });
+  };
+
+  const rows: { key: string; label: string; value: string; mono?: boolean }[] =
+    [
+      { key: "name", label: "Name", value: name },
+      { key: "email", label: "Email", value: email },
+      ...(userId
+        ? [{ key: "uid", label: "User ID", value: userId, mono: true }]
+        : []),
+      {
+        key: "pass",
+        label: "Temporary password",
+        value: tempPassword,
+        mono: true,
+      },
+    ];
+
   const body = (
-    <div className="space-y-3 py-2">
-      <div className="space-y-1.5">
-        <Label className="text-xs text-muted-foreground">Email</Label>
-        <div className="flex gap-2">
-          <Input readOnly value={email} className="font-mono text-sm" />
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={() => copy(email, "email")}
-            aria-label="Copy email"
-          >
-            {copied === "email" ? (
-              <Check className="h-4 w-4 text-emerald-600" />
-            ) : (
-              <Copy className="h-4 w-4" />
-            )}
-          </Button>
+    <div className="space-y-3 py-1">
+      {role && (
+        <div className="flex items-center justify-between rounded-md border border-border/60 bg-muted/30 px-3 py-2">
+          <div className="min-w-0">
+            <p className="truncate text-xs text-muted-foreground">Role</p>
+            <p className="text-sm font-medium text-foreground">
+              {ROLE_LABELS[role]}
+            </p>
+          </div>
+          <span className="rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-medium text-primary ring-1 ring-inset ring-primary/20">
+            {ROLE_LABELS[role]}
+          </span>
         </div>
-      </div>
-      <div className="space-y-1.5">
-        <Label className="text-xs text-muted-foreground">Temporary password</Label>
-        <div className="flex gap-2">
-          <Input readOnly value={tempPassword} className="font-mono text-sm" />
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={() => copy(tempPassword, "pass")}
-            aria-label="Copy password"
-          >
-            {copied === "pass" ? (
-              <Check className="h-4 w-4 text-emerald-600" />
-            ) : (
-              <Copy className="h-4 w-4" />
-            )}
-          </Button>
+      )}
+      {rows.map((row) => (
+        <div key={row.key} className="space-y-1.5">
+          <Label className="text-xs text-muted-foreground">{row.label}</Label>
+          <div className="flex gap-2">
+            <Input
+              readOnly
+              value={row.value}
+              className={cn(row.mono ? "font-mono text-sm" : "text-sm")}
+              aria-label={row.label}
+            />
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => copy(row.value, row.key, row.label.toLowerCase())}
+              aria-label={`Copy ${row.label.toLowerCase()}`}
+              className="shrink-0"
+            >
+              {copied === row.key ? (
+                <Check className="h-4 w-4 text-emerald-600" />
+              ) : (
+                <Copy className="h-4 w-4" />
+              )}
+            </Button>
+          </div>
         </div>
-      </div>
-      <div className="flex items-start gap-2 rounded-lg bg-amber-50 p-3 text-xs text-amber-800 dark:bg-amber-950/40 dark:text-amber-300">
+      ))}
+      <div className="flex items-start gap-2 rounded-md bg-amber-50 p-3 text-xs leading-relaxed text-amber-800 dark:bg-amber-950/40 dark:text-amber-300">
         <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
         <span>
-          The user will be asked to change this password on first sign-in. We
-          can&apos;t recover it for you later — store it somewhere safe.
+          Shown only once. The user must change this temporary password at
+          first sign-in. Prototype note: credentials are simulated in memory —
+          this is not a secure delivery channel.
         </span>
       </div>
     </div>
   );
 
   const footer = (
-    <div className="flex justify-end">
+    <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+      <Button variant="outline" onClick={copyAll} className="w-full sm:w-auto">
+        <ClipboardList className="h-4 w-4" />
+        Copy all credentials
+      </Button>
       <Button
         onClick={() => {
           onOpenChange(false);
           onDone();
         }}
+        className="w-full sm:w-auto"
       >
-        I&apos;ve copied the details
+        Done
       </Button>
     </div>
   );
@@ -120,16 +173,16 @@ export function CredentialsDialog({
         title="Account created — copy credentials"
         description={
           <>
-            These login details for{" "}
-            <span className="font-medium text-foreground">{name}</span> are shown
-            only once. Hand them to the user securely.
+            Login details for{" "}
+            <span className="font-medium text-foreground">{name}</span>. Hand
+            them to the user securely.
           </>
         }
         maxHeight={90}
       >
         <div className="space-y-4 pb-4">
-          <div className="flex h-11 w-11 items-center justify-center rounded-full bg-teal-50 dark:bg-teal-950/60">
-            <KeyRound className="h-5 w-5 text-teal-700 dark:text-teal-300" />
+          <div className="flex h-11 w-11 items-center justify-center rounded-full bg-primary/10 text-primary">
+            <KeyRound className="h-5 w-5" />
           </div>
           {body}
           {footer}
@@ -142,17 +195,18 @@ export function CredentialsDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <div className="mb-2 flex h-11 w-11 items-center justify-center rounded-full bg-teal-50 dark:bg-teal-950/60">
-            <KeyRound className="h-5 w-5 text-teal-700 dark:text-teal-300" />
+          <div className="mb-2 flex h-11 w-11 items-center justify-center rounded-full bg-primary/10 text-primary">
+            <KeyRound className="h-5 w-5" />
           </div>
           <DialogTitle>Account created — copy credentials</DialogTitle>
           <DialogDescription>
-            These login details for <span className="font-medium text-foreground">{name}</span> are
-            shown only once. Hand them to the user securely.
+            Login details for{" "}
+            <span className="font-medium text-foreground">{name}</span>. Hand
+            them to the user securely.
           </DialogDescription>
         </DialogHeader>
         {body}
-        {footer}
+        <div className="mt-2">{footer}</div>
       </DialogContent>
     </Dialog>
   );

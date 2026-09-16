@@ -184,13 +184,13 @@ export function ExternalToolsSetup() {
   const setToolsConfig = useAppStore((s) => s.setToolsConfig);
 
   // Connection status — how many of the 4 tools have a valid URL.
-  const connectedCount = React.useMemo(() => {
+  const linkedCount = React.useMemo(() => {
     return TOOLS.filter((t) =>
       isValidUrl(toolsConfig[t.urlField] as string),
     ).length;
   }, [toolsConfig]);
 
-  const connectedPct = Math.round((connectedCount / TOOLS.length) * 100);
+  const linkedPct = Math.round((linkedCount / TOOLS.length) * 100);
 
   const handleSave = <K extends keyof ToolsConfig>(
     field: K,
@@ -203,7 +203,7 @@ export function ExternalToolsSetup() {
         description: "Make sure it starts with http:// or https://",
       });
     } else if (typeof value === "string" && value) {
-      toast.success(`${label} connected`, {
+      toast.success(`${label} linked`, {
         description: "The link is now live for students and supervisors.",
       });
     } else {
@@ -234,25 +234,25 @@ export function ExternalToolsSetup() {
     <div>
       <PageHeader
         title="External Tools Setup"
-        description="Connect Google Docs, Forms, Drive, and Jibble. Use the Quick-Create buttons to spin up new resources, then paste their URLs here."
+        description="Link Google Docs, Forms, Drive, and Jibble — optional manual URLs. Built-in Forms and the built-in Time Clock work without them."
         breadcrumb="Configuration · External Tools"
         actions={
           <div className="flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-1.5">
             <Sparkles className="h-4 w-4 text-amber-500" />
             <span className="text-sm font-medium text-foreground">
-              {connectedCount}/{TOOLS.length} connected
+              {linkedCount}/{TOOLS.length} linked
             </span>
             <div className="ml-1 h-2 w-20 overflow-hidden rounded-full bg-muted">
               <div
                 className={cn(
                   "h-full rounded-full transition-all",
-                  connectedPct === 100
+                  linkedPct === 100
                     ? "bg-emerald-500"
-                    : connectedPct >= 50
+                    : linkedPct >= 50
                       ? "bg-teal-500"
                       : "bg-amber-500",
                 )}
-                style={{ width: `${connectedPct}%` }}
+                style={{ width: `${linkedPct}%` }}
               />
             </div>
           </div>
@@ -275,7 +275,7 @@ export function ExternalToolsSetup() {
               connecting anything. These external tools are{" "}
               <strong className="text-foreground">optional</strong>: link a
               Google Drive folder and journal template so students can draft in
-              Docs, or connect a Google Form if you prefer collecting responses
+              Docs, or link a Google Form if you prefer collecting responses
               there. Click{" "}
               <span className="font-medium text-teal-700 dark:text-teal-300">
                 Quick Create
@@ -293,7 +293,7 @@ export function ExternalToolsSetup() {
           const Icon = tool.icon;
           const accent = ACCENT_STYLES[tool.accent];
           const url = toolsConfig[tool.urlField] as string;
-          const connected = isValidUrl(url);
+          const linked = isValidUrl(url);
           const extraUrl = tool.extraField
             ? (toolsConfig[tool.extraField] as string)
             : "";
@@ -317,18 +317,18 @@ export function ExternalToolsSetup() {
                     <h3 className="text-sm font-semibold text-foreground">
                       {tool.title}
                     </h3>
-                    {connected ? (
+                    {linked ? (
                       <span
                         className={cn(
                           "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide",
                           accent.badge,
                         )}
                       >
-                        <Check className="h-3 w-3" /> Connected
+                        <Check className="h-3 w-3" /> Linked
                       </span>
                     ) : (
                       <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                        <CloudOff className="h-3 w-3" /> Not connected
+                        <CloudOff className="h-3 w-3" /> Not linked
                       </span>
                     )}
                   </div>
@@ -358,7 +358,7 @@ export function ExternalToolsSetup() {
                         variant="ghost"
                         size="sm"
                         className="gap-1.5"
-                        disabled={!connected}
+                        disabled={!linked}
                         onClick={() => handleOpen(tool)}
                       >
                         <ExternalLink className="h-3.5 w-3.5" />
@@ -366,9 +366,9 @@ export function ExternalToolsSetup() {
                       </Button>
                     </TooltipTrigger>
                     <TooltipContent>
-                      {connected
-                        ? "Open the connected resource in a new tab"
-                        : "Connect a URL first"}
+                      {linked
+                        ? "Open the linked resource in a new tab"
+                        : "Link a URL first"}
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
@@ -397,7 +397,7 @@ export function ExternalToolsSetup() {
                     handleSave(tool.urlField, url, tool.title)
                   }
                   className={cn(
-                    connected && "border-emerald-300 dark:border-emerald-800",
+                    linked && "border-emerald-300 dark:border-emerald-800",
                   )}
                 />
                 {tool.extraField && (
@@ -536,11 +536,11 @@ export function ExternalToolsSetup() {
       {/* Status footer */}
       <div className="mt-6 flex items-center justify-between gap-3 rounded-xl border border-border bg-card px-4 py-3">
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          {connectedCount === TOOLS.length ? (
+          {linkedCount === TOOLS.length ? (
             <>
               <Cloud className="h-4 w-4 text-emerald-500" />
               <span>
-                All external tools connected. Students will see quick-launch
+                All external tools linked. Students will see quick-launch
                 buttons on their dashboard.
               </span>
             </>
@@ -548,8 +548,8 @@ export function ExternalToolsSetup() {
             <>
               <CloudOff className="h-4 w-4 text-amber-500" />
               <span>
-                {TOOLS.length - connectedCount} tool
-                {TOOLS.length - connectedCount === 1 ? "" : "s"} not connected
+                {TOOLS.length - linkedCount} tool
+                {TOOLS.length - linkedCount === 1 ? "" : "s"} not linked
                 yet — the portal still works with built-in forms &amp; time
                 clock.
               </span>

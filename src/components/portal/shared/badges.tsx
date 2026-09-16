@@ -9,6 +9,7 @@ import {
   Send,
   UserX,
   RotateCcw,
+  KeyRound,
   type LucideIcon,
 } from "lucide-react";
 import type {
@@ -17,6 +18,7 @@ import type {
   FormStatus,
   FormSubmissionStatus,
   Role,
+  AccountStatus,
 } from "@/lib/types";
 
 type Tone = "slate" | "amber" | "emerald" | "red" | "teal";
@@ -195,6 +197,25 @@ export function ScoreBadge({ score, className }: { score: number; className?: st
   return (
     <Badge tone={tone} className={cn("tabular-nums font-semibold", className)}>
       {score === 0 ? "—" : score.toFixed(1)}
+    </Badge>
+  );
+}
+
+// ---- Account status badge (controlled provisioning lifecycle) ----
+const accountStatusConfig: Record<
+  AccountStatus,
+  { tone: Tone; label: string; icon: LucideIcon }
+> = {
+  invited: { tone: "amber", label: "Invited", icon: KeyRound },
+  active: { tone: "emerald", label: "Active", icon: CheckCircle2 },
+  disabled: { tone: "red", label: "Disabled", icon: XCircle },
+};
+
+export function AccountStatusBadge({ status }: { status: AccountStatus }) {
+  const cfg = accountStatusConfig[status];
+  return (
+    <Badge tone={cfg.tone} dot>
+      {cfg.label}
     </Badge>
   );
 }

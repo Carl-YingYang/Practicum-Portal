@@ -22,11 +22,13 @@ import {
   timeLogs as seedTimeLogs,
 } from "@/lib/mock-data";
 import {
+  type AccountStatus,
   type ActivityLog,
   type ActivityType,
   type Company,
   type Coordinator,
   type Evaluation,
+  type FirstLoginPasswordResult,
   type FormAssignment,
   type FormAssignmentTarget,
   type FormBlock,
@@ -141,6 +143,31 @@ interface AppState {
     email: string,
     password: string
   ) => "ok" | "no-user" | "bad-pw" | "inactive";
+  /**
+   * First-login flow: replace the one-time temporary password with a personal
+   * one. Activates the account (Invited → Active) so the user can proceed.
+   */
+  completeFirstLoginPasswordChange: (
+    tempPassword: string,
+    newPassword: string
+  ) => FirstLoginPasswordResult;
+  /**
+   * Coordinator: enable or disable an account (its sign-in ability) without
+   * touching the underlying placement/employment record.
+   */
+  setAccountStatus: (
+    role: Role,
+    recordId: string,
+    status: AccountStatus
+  ) => void;
+  /**
+   * Coordinator: issue a fresh one-time temporary password. The account
+   * returns to "Invited" and must change the password at next sign-in.
+   */
+  resetAccountCredentials: (
+    role: Role,
+    recordId: string
+  ) => { name: string; email: string; role: Role; tempPassword: string };
   logout: () => void;
 
   // --- navigation actions ---
@@ -676,11 +703,11 @@ export const useAppStore = create<AppState>((set, get) => ({
       return true;
     }
 
-    // 2. Coordinators created in-app (incl. login-page self-registration).
+    // 2. Coordinators created in-app by another coordinator.
     const coord = get().coordinators.find(
       (c) => c.email.toLowerCase() === lower
     );
-    if (coord && coord.status === "active") {
+    if (coord && coord.status === "active" && coord.accountStatus !== "disabled") {
       const user: User = {
         id: `u-coord-${coord.id}`,
         name: coord.name,
@@ -688,6 +715,8 @@ export const useAppStore = create<AppState>((set, get) => ({
         role: "coordinator",
         coordinatorId: coord.id,
         idNumber: coord.idNumber ?? `COORD-${coord.id.slice(-4).toUpperCase()}`,
+        accountStatus: coord.accountStatus ?? "active",
+        mustChangePassword: coord.mustChangePassword ?? false,
         avatarColor: coord.avatarColor,
       };
       set({
@@ -701,7 +730,7 @@ export const useAppStore = create<AppState>((set, get) => ({
 
     // 3. Students created in-app.
     const stu = get().students.find((s) => s.email.toLowerCase() === lower);
-    if (stu && stu.status === "active") {
+    if (stu && stu.status === "active" && stu.accountStatus !== "disabled") {
       const user: User = {
         id: `u-stu-${stu.id}`,
         name: stu.name,
@@ -710,6 +739,8 @@ export const useAppStore = create<AppState>((set, get) => ({
         studentId: stu.id,
         // For students, their login ID IS their student number.
         idNumber: stu.studentNumber,
+        accountStatus: stu.accountStatus ?? "active",
+        mustChangePassword: stu.mustChangePassword ?? false,
         avatarColor: "#0f766e",
       };
       set({
@@ -723,7 +754,7 @@ export const useAppStore = create<AppState>((set, get) => ({
 
     // 4. Supervisors created in-app.
     const sup = get().supervisors.find((s) => s.email.toLowerCase() === lower);
-    if (sup && sup.status === "active") {
+    if (sup && sup.status === "active" && sup.accountStatus !== "disabled") {
       const user: User = {
         id: `u-sup-${sup.id}`,
         name: sup.name,
@@ -731,6 +762,8 @@ export const useAppStore = create<AppState>((set, get) => ({
         role: "supervisor",
         supervisorId: sup.id,
         idNumber: sup.idNumber ?? `EMP-${sup.id.slice(-4).toUpperCase()}`,
+        accountStatus: sup.accountStatus ?? "active",
+        mustChangePassword: sup.mustChangePassword ?? false,
         avatarColor: "#d97706",
       };
       set({
@@ -746,16 +779,19 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   /**
-   * loginByCredentials — validates BOTH email (username) and idNumber
-   * (password). Returns one of:
+   * loginByCredentials — validates BOTH email (username) and password.
+   * Returns one of:
    *   - "ok"      → login succeeded, currentUser set
    *   - "no-user" → no account with that email
    *   - "bad-pw"  → email found, but password didn't match
-   *   - "inactive"→ account exists but is deactivated
+   *   - "inactive"→ account disabled or deactivated
    *
-   * The "user ID = password" model: students use their studentNumber,
-   * supervisors/coordinators use their assigned idNumber. Demo accounts
-   * use the idNumber field on the mock User.
+   * Password model (prototype):
+   *   - Accounts provisioned by a coordinator start with a one-time
+   *     TEMPORARY password (shown once in the credentials dialog) and are
+   *     routed through the first-login password change.
+   *   - Seed/demo accounts keep the original "User ID = password" behaviour.
+   *   - Once a user sets a personal password, that password wins.
    */
   loginByCredentials: (email, password) => {
     const lower = email.trim().toLowerCase();
@@ -787,16 +823,19 @@ export const useAppStore = create<AppState>((set, get) => ({
       (c) => c.email.toLowerCase() === lower
     );
     if (coord) {
-      if (coord.status !== "active") return "inactive";
-      const expected = coord.idNumber ?? `COORD-${coord.id.slice(-4).toUpperCase()}`;
-      if (pwMatch(expected, pw)) {
+      if (coord.status !== "active" || coord.accountStatus === "disabled")
+        return "inactive";
+      const fallback = coord.idNumber ?? `COORD-${coord.id.slice(-4).toUpperCase()}`;
+      if (pwMatch(coord.password ?? fallback, pw)) {
         const user: User = {
           id: `u-coord-${coord.id}`,
           name: coord.name,
           email: coord.email,
           role: "coordinator",
           coordinatorId: coord.id,
-          idNumber: expected,
+          idNumber: fallback,
+          accountStatus: coord.accountStatus ?? "active",
+          mustChangePassword: coord.mustChangePassword ?? false,
           avatarColor: coord.avatarColor,
         };
         set({
@@ -813,8 +852,9 @@ export const useAppStore = create<AppState>((set, get) => ({
     // 3. Students.
     const stu = get().students.find((s) => s.email.toLowerCase() === lower);
     if (stu) {
-      if (stu.status !== "active") return "inactive";
-      if (pwMatch(stu.studentNumber, pw)) {
+      if (stu.status !== "active" || stu.accountStatus === "disabled")
+        return "inactive";
+      if (pwMatch(stu.password ?? stu.studentNumber, pw)) {
         const user: User = {
           id: `u-stu-${stu.id}`,
           name: stu.name,
@@ -822,6 +862,8 @@ export const useAppStore = create<AppState>((set, get) => ({
           role: "student",
           studentId: stu.id,
           idNumber: stu.studentNumber,
+          accountStatus: stu.accountStatus ?? "active",
+          mustChangePassword: stu.mustChangePassword ?? false,
           avatarColor: "#0f766e",
         };
         set({
@@ -838,16 +880,19 @@ export const useAppStore = create<AppState>((set, get) => ({
     // 4. Supervisors.
     const sup = get().supervisors.find((s) => s.email.toLowerCase() === lower);
     if (sup) {
-      if (sup.status !== "active") return "inactive";
-      const expected = sup.idNumber ?? `EMP-${sup.id.slice(-4).toUpperCase()}`;
-      if (pwMatch(expected, pw)) {
+      if (sup.status !== "active" || sup.accountStatus === "disabled")
+        return "inactive";
+      const fallback = sup.idNumber ?? `EMP-${sup.id.slice(-4).toUpperCase()}`;
+      if (pwMatch(sup.password ?? fallback, pw)) {
         const user: User = {
           id: `u-sup-${sup.id}`,
           name: sup.name,
           email: sup.email,
           role: "supervisor",
           supervisorId: sup.id,
-          idNumber: expected,
+          idNumber: fallback,
+          accountStatus: sup.accountStatus ?? "active",
+          mustChangePassword: sup.mustChangePassword ?? false,
           avatarColor: "#d97706",
         };
         set({
@@ -862,6 +907,181 @@ export const useAppStore = create<AppState>((set, get) => ({
     }
 
     return "no-user";
+  },
+
+  /**
+   * First-login gate: swap the one-time temporary password for a personal
+   * one, mark the record Active, and refresh the session user.
+   */
+  completeFirstLoginPasswordChange: (tempPassword, newPassword) => {
+    const cur = get().currentUser;
+    if (!cur) return { ok: false, reason: "no-session" };
+    if (newPassword.length < 8) return { ok: false, reason: "weak-password" };
+
+    // Resolve the signed-in user's backing record.
+    if (cur.role === "student" && cur.studentId) {
+      const rec = get().students.find((s) => s.id === cur.studentId);
+      if (!rec) return { ok: false, reason: "no-session" };
+      const effective = rec.password ?? rec.studentNumber;
+      if (effective.toLowerCase() !== tempPassword.trim().toLowerCase())
+        return { ok: false, reason: "bad-temp" };
+      const updated: Student = {
+        ...rec,
+        password: newPassword,
+        mustChangePassword: false,
+        accountStatus: "active",
+      };
+      set((s) => ({
+        students: s.students.map((x) => (x.id === rec.id ? updated : x)),
+        currentUser: { ...cur, mustChangePassword: false, accountStatus: "active" as const },
+      }));
+      return { ok: true };
+    }
+
+    if (cur.role === "supervisor" && cur.supervisorId) {
+      const rec = get().supervisors.find((x) => x.id === cur.supervisorId);
+      if (!rec) return { ok: false, reason: "no-session" };
+      const effective =
+        rec.password ?? rec.idNumber ?? `EMP-${rec.id.slice(-4).toUpperCase()}`;
+      if (effective.toLowerCase() !== tempPassword.trim().toLowerCase())
+        return { ok: false, reason: "bad-temp" };
+      const updated: Supervisor = {
+        ...rec,
+        password: newPassword,
+        mustChangePassword: false,
+        accountStatus: "active",
+      };
+      set((s) => ({
+        supervisors: s.supervisors.map((x) => (x.id === rec.id ? updated : x)),
+        currentUser: { ...cur, mustChangePassword: false, accountStatus: "active" as const },
+      }));
+      return { ok: true };
+    }
+
+    if (cur.role === "coordinator" && cur.coordinatorId) {
+      const rec = get().coordinators.find((x) => x.id === cur.coordinatorId);
+      if (!rec) return { ok: false, reason: "no-session" };
+      const effective =
+        rec.password ?? rec.idNumber ?? `COORD-${rec.id.slice(-4).toUpperCase()}`;
+      if (effective.toLowerCase() !== tempPassword.trim().toLowerCase())
+        return { ok: false, reason: "bad-temp" };
+      const updated: Coordinator = {
+        ...rec,
+        password: newPassword,
+        mustChangePassword: false,
+        accountStatus: "active",
+      };
+      set((s) => ({
+        coordinators: s.coordinators.map((x) => (x.id === rec.id ? updated : x)),
+        currentUser: { ...cur, mustChangePassword: false, accountStatus: "active" as const },
+      }));
+      return { ok: true };
+    }
+
+    return { ok: false, reason: "no-session" };
+  },
+
+  /**
+   * Coordinator: flip an account between active / disabled (sign-in ability).
+   * Placement/employment records are untouched. The signed-in coordinator
+   * cannot disable their own account.
+   */
+  setAccountStatus: (role, recordId, status) => {
+    const cur = get().currentUser;
+    if (status === "disabled" && cur) {
+      const ownsRecord =
+        (role === "student" && cur.studentId === recordId) ||
+        (role === "supervisor" && cur.supervisorId === recordId) ||
+        (role === "coordinator" && cur.coordinatorId === recordId);
+      if (ownsRecord) return; // never lock yourself out
+    }
+    set((s) => {
+      if (role === "student") {
+        return {
+          students: s.students.map((x) =>
+            x.id === recordId ? { ...x, accountStatus: status } : x
+          ),
+        };
+      }
+      if (role === "supervisor") {
+        return {
+          supervisors: s.supervisors.map((x) =>
+            x.id === recordId ? { ...x, accountStatus: status } : x
+          ),
+        };
+      }
+      return {
+        coordinators: s.coordinators.map((x) =>
+          x.id === recordId ? { ...x, accountStatus: status } : x
+        ),
+      };
+    });
+  },
+
+  /**
+   * Coordinator: generate a fresh one-time temporary password. The account
+   * returns to "Invited"; the previous password stops working.
+   */
+  resetAccountCredentials: (role, recordId) => {
+    const tempPassword = genTempPassword();
+    let name = "";
+    let email = "";
+    if (role === "student") {
+      const rec = get().students.find((x) => x.id === recordId);
+      if (rec) {
+        name = rec.name;
+        email = rec.email;
+        set((s) => ({
+          students: s.students.map((x) =>
+            x.id === recordId
+              ? {
+                  ...x,
+                  password: tempPassword,
+                  mustChangePassword: true,
+                  accountStatus: "invited" as const,
+                }
+              : x
+          ),
+        }));
+      }
+    } else if (role === "supervisor") {
+      const rec = get().supervisors.find((x) => x.id === recordId);
+      if (rec) {
+        name = rec.name;
+        email = rec.email;
+        set((s) => ({
+          supervisors: s.supervisors.map((x) =>
+            x.id === recordId
+              ? {
+                  ...x,
+                  password: tempPassword,
+                  mustChangePassword: true,
+                  accountStatus: "invited" as const,
+                }
+              : x
+          ),
+        }));
+      }
+    } else {
+      const rec = get().coordinators.find((x) => x.id === recordId);
+      if (rec) {
+        name = rec.name;
+        email = rec.email;
+        set((s) => ({
+          coordinators: s.coordinators.map((x) =>
+            x.id === recordId
+              ? {
+                  ...x,
+                  password: tempPassword,
+                  mustChangePassword: true,
+                  accountStatus: "invited" as const,
+                }
+              : x
+          ),
+        }));
+      }
+    }
+    return { name, email, role, tempPassword };
   },
 
   logout: () =>
@@ -1083,6 +1303,11 @@ export const useAppStore = create<AppState>((set, get) => ({
       startDate: input.startDate ?? null,
       endDate: input.endDate ?? null,
       workMode: input.workMode ?? "onsite",
+      // Controlled provisioning: the one-time temporary password IS the
+      // login credential until the user sets a personal one at first sign-in.
+      accountStatus: "invited",
+      mustChangePassword: true,
+      password: tempPassword,
       createdAt: now,
     };
     set((s) => ({
@@ -1094,7 +1319,8 @@ export const useAppStore = create<AppState>((set, get) => ({
         s.currentUser?.id ?? ""
       ),
     }));
-    // For students, the login password IS their student number.
+    // The student signs in with email + temporary password, then sets a
+    // personal password on first login. The User ID remains their student number.
     return { studentId: id, tempPassword, idNumber: input.studentNumber };
   },
 
@@ -1126,6 +1352,9 @@ export const useAppStore = create<AppState>((set, get) => ({
       phone: input.phone,
       salutation: input.salutation,
       schoolYear: input.schoolYear,
+      accountStatus: "invited",
+      mustChangePassword: true,
+      password: tempPassword,
       createdAt: now,
     };
     set((s) => ({
@@ -1193,6 +1422,9 @@ export const useAppStore = create<AppState>((set, get) => ({
       status: "active",
       avatarColor,
       idNumber,
+      accountStatus: "invited",
+      mustChangePassword: true,
+      password: tempPassword,
       createdAt: now,
     };
     set((s) => ({
