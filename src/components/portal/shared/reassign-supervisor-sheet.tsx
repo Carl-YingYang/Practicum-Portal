@@ -14,7 +14,7 @@ interface ReassignSupervisorSheetProps {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   /** The student being reassigned. */
-  student: Student | null;
+  student?: Student | null;
   /** Optional: list of students for bulk-assign. Overrides `student` if provided. */
   students?: Student[];
   onDone?: () => void;
@@ -66,8 +66,12 @@ export function ReassignSupervisorSheet({
     const sup = getSupervisor(supervisors, picked);
     if (!sup) return;
 
+    const additions = targets.filter((st) => st.supervisorId !== picked).length;
+    const existingLoad = useAppStore.getState().students.filter((st) => st.supervisorId === picked && st.status === "active").length;
+    if (sup.status !== "active" || existingLoad + additions > sup.capacity) { toast.error("This assignment exceeds the supervisor’s capacity."); return; }
+    if (targets.some((st) => st.companyId && st.companyId !== sup.companyId)) { toast.error("Choose a supervisor from the student’s company."); return; }
     targets.forEach((st) => {
-      updateStudent(st.id, { supervisorId: picked });
+      updateStudent(st.id, { supervisorId: picked, companyId: st.companyId || sup.companyId });
     });
 
     if (isBulk) {

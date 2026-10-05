@@ -1,5 +1,6 @@
 "use client";
 
+import { downloadFormPdf } from "@/lib/form-export";
 import * as React from "react";
 import { SlideOver } from "@/components/portal/shared/slide-over";
 import { FormBlockRenderer } from "@/components/portal/shared/form-block-renderer";
@@ -31,7 +32,7 @@ import {
   MessageSquare,
   ArrowLeft, // Dinagdag natin ang ArrowLeft para sa mobile back button
 } from "lucide-react";
-import { portalUsers } from "@/lib/mock-data";
+import { useAccountUsers } from "@/lib/use-account-users";
 import { type FormSubmission, FORM_CATEGORY_LABELS, type FormSubmissionStatus } from "@/lib/types";
 import { format, formatDistanceToNow } from "date-fns";
 
@@ -44,13 +45,15 @@ export function SubmissionReviewSlideOver({
   onOpenChange: (v: boolean) => void;
   submissionId?: string;
 }) {
+  const portalUsers = useAccountUsers();
   const { toast } = useToast();
   const submission = useAppStore((s) =>
     s.formSubmissions.find((x) => x.id === submissionId)
   );
-  const form = useAppStore((s) =>
+  const liveForm = useAppStore((s) =>
     s.formDocuments.find((d) => d.id === submission?.formId)
   );
+  const form = submission?.formSnapshot ?? liveForm;
   const students = useAppStore((s) => s.students);
   const reviewSubmission = useAppStore((s) => s.reviewSubmission);
 
@@ -96,6 +99,7 @@ export function SubmissionReviewSlideOver({
 
   function handleConfirm() {
     if (!decision || !submission) return;
+    if (decision === "request_revision" && !reviewNote.trim()) { toast({ title: "Add a revision note", description: "Tell the respondent what needs to change.", variant: "destructive" }); return; }
     reviewSubmission(submission.id, decision, reviewNote.trim() || undefined);
     const label = decision === "approve" ? "approved" : "sent back for revision";
     toast({
@@ -108,10 +112,10 @@ export function SubmissionReviewSlideOver({
   }
 
   function handlePrint() {
-    toast({ title: "Print preview", description: "In production this would open a print-friendly view." });
+    window.print();
   }
   function handleDownload() {
-    toast({ title: "Export queued", description: "A PDF export would be generated in production." });
+    if (form && submission) downloadFormPdf(form, submission.values, submitter?.name);
   }
 
   return (

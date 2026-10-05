@@ -1,6 +1,10 @@
 "use client";
+import { assignmentAppliesTo } from "@/lib/selectors";
+import { configuredTerm } from "@/lib/prototype";
 
 import * as React from "react";
+import { responseErrors } from "@/lib/prototype";
+import { downloadFormPdf } from "@/lib/form-export";
 import { useAppStore } from "@/store/use-app-store";
 import { PageHeader } from "@/components/portal/layout/page-header";
 import { SectionCard } from "@/components/portal/shared/section-card";
@@ -65,9 +69,11 @@ export function SupervisorFormWorkspace({ formId }: { formId?: string }) {
   const navigate = useAppStore((s) => s.navigate);
   const back = useAppStore((s) => s.back);
   const canBack = useAppStore((s) => s.history.length > 0);
-  const form = useAppStore((s) => s.formDocuments.find((d) => d.id === formId));
+  const liveForm = useAppStore((s) => s.formDocuments.find((d) => d.id === formId));
   const currentUser = useAppStore((s) => s.currentUser);
   const submissions = useAppStore((s) => s.formSubmissions);
+  const toolsConfig = useAppStore((s) => s.toolsConfig);
+  const assignments = useAppStore((s) => s.formAssignments);
   const students = useAppStore((s) => s.students);
   const supervisors = useAppStore((s) => s.supervisors);
   const companies = useAppStore((s) => s.companies);
@@ -83,7 +89,7 @@ export function SupervisorFormWorkspace({ formId }: { formId?: string }) {
       .sort((a, b) => a.name.localeCompare(b.name));
   }, [students, currentUser]);
 
-  const isStudentTargeted = form?.category === "evaluation" || form?.category === "ojt";
+  const isStudentTargeted = liveForm?.category === "evaluation" || liveForm?.category === "ojt";
   const [selectedStudentId, setSelectedStudentId] = React.useState<string | undefined>(
     isStudentTargeted && myInterns.length > 0 ? myInterns[0].id : undefined
   );
@@ -117,34 +123,35 @@ export function SupervisorFormWorkspace({ formId }: { formId?: string }) {
       companyName: studentCompany?.name ?? supervisorCompany?.name,
       supervisorName: supervisor?.name,
       supervisorTitle: supervisor?.title,
-      term: "2024-2025",
+      term: configuredTerm(toolsConfig),
     });
-  }, [currentUser, supervisors, students, companies, selectedStudentId]);
+  }, [currentUser, supervisors, students, companies, selectedStudentId, toolsConfig]);
 
   // local values mirror the submission's values (so typing feels instant)
+  const form = currentSubmission?.formSnapshot ?? liveForm;
+  const valuesRef = React.useRef<Record<string, FieldValue>>({});
   const [values, setValues] = React.useState<Record<string, FieldValue>>({});
   const [saveState, setSaveState] = React.useState<"idle" | "saving" | "saved">("idle");
   const saveTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // sync local values when the submission changes
   React.useEffect(() => {
-    setValues(currentSubmission?.values ?? {});
+    valuesRef.current = currentSubmission?.values ?? {};
+    setValues(valuesRef.current);
     setSaveState("idle");
   }, [currentSubmission?.id]);
 
   // autosave (debounced) — only if the user has actually started a submission
   function handleValueChange(blockId: string, value: FieldValue) {
-    const next = { ...values, [blockId]: value };
+    const next = { ...valuesRef.current, [blockId]: value };
+    valuesRef.current = next;
     setValues(next);
     if (!formId || !currentUser) return;
     // ensure a submission exists
     const subId = currentSubmission?.id ?? startFormResponse({ formId, targetStudentId: selectedStudentId });
-    setSaveState("saving");
-    if (saveTimer.current) clearTimeout(saveTimer.current);
-    saveTimer.current = setTimeout(() => {
-      saveSubmissionDraft(subId, next);
-      setSaveState("saved");
-    }, 600);
+    if (!subId) { toast({ title: "Cannot start this response", description: "Check the assignment and selected intern.", variant: "destructive" }); return; }
+    saveSubmissionDraft(subId, next);
+    setSaveState("saved");
   }
 
   if (!form) {
@@ -164,7 +171,8 @@ export function SupervisorFormWorkspace({ formId }: { formId?: string }) {
     );
   }
 
-  if (form.status !== "published") {
+  const hasAssignment = currentUser && assignments.some((a) => a.formId === formId && assignmentAppliesTo(a, currentUser));
+  if ((!liveForm || liveForm.status !== "published" || !hasAssignment) && !currentSubmission) {
     return (
       <div className="space-y-4">
         <PageHeader title={form.title} showBack={canBack} />
@@ -192,13 +200,14 @@ export function SupervisorFormWorkspace({ formId }: { formId?: string }) {
     status === "approved";
 
   function handlePrint() {
-    toast({ title: "Print preview", description: "In production this would open a print-friendly view." });
+    window.print();
   }
   function handleDownload() {
-    toast({ title: "Export queued", description: "A PDF export would be generated in production." });
+    if (form) downloadFormPdf(form, valuesRef.current, currentUser?.name);
   }
   function handleReset() {
     if (!currentSubmission) return;
+    valuesRef.current = {};
     setValues({});
     saveSubmissionDraft(currentSubmission.id, {});
     toast({ title: "Responses cleared" });
@@ -209,7 +218,10 @@ export function SupervisorFormWorkspace({ formId }: { formId?: string }) {
       return;
     }
     // save latest values first
-    saveSubmissionDraft(currentSubmission.id, values);
+    if (!form) return;
+    const errors = responseErrors(form, valuesRef.current);
+    if (errors.length) { toast({ title: "Complete the form", description: errors[0], variant: "destructive" }); return; }
+    saveSubmissionDraft(currentSubmission.id, valuesRef.current);
     submitFormResponse(currentSubmission.id);
     toast({
       title: "Form submitted",
@@ -251,7 +263,7 @@ export function SupervisorFormWorkspace({ formId }: { formId?: string }) {
             </Button>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-8 w-8">
+                <Button variant="ghost" size="icon" className="h-8 w-8" aria-label="More form actions">
                   <MoreHorizontal className="h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>

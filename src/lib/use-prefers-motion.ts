@@ -24,11 +24,9 @@ export function usePrefersMotion(): boolean {
       mq.addEventListener("change", update);
       return () => mq.removeEventListener("change", update);
     } else {
-      // @ts-expect-error legacy
       mq.addListener(update);
       return () => {
-        // @ts-expect-error legacy
-        mq.removeListener(update);
+          mq.removeListener(update);
       };
     }
   }, []);

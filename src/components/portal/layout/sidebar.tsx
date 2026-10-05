@@ -110,7 +110,7 @@ export function Sidebar({ collapsed, onToggleCollapse }: SidebarProps) {
     <aside
       className={cn(
         "flex h-full flex-col border-r border-sidebar-border bg-sidebar transition-[width] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]",
-        collapsed ? "w-[68px]" : "w-[248px]"
+        collapsed ? "w-[68px]" : "w-[208px]"
       )}
     >
       {/* Header — brand + dedicated toggle button.
@@ -125,7 +125,7 @@ export function Sidebar({ collapsed, onToggleCollapse }: SidebarProps) {
           )}
         >
           <div
-            className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-[5px] bg-white/15 ring-1 ring-white/20"
+            className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-[5px] bg-sidebar-accent ring-1 ring-sidebar-border"
             title={collapsed ? schoolIdentity.name : undefined}
           >
             {hasLogo ? (
@@ -146,7 +146,7 @@ export function Sidebar({ collapsed, onToggleCollapse }: SidebarProps) {
               <p className="truncate text-[14px] font-bold leading-tight tracking-[-0.01em] text-sidebar-foreground">
                 {schoolIdentity.shortName || schoolIdentity.name}
               </p>
-              <p className="truncate text-[9.5px] font-semibold uppercase tracking-[0.12em] text-sidebar-foreground/40">
+              <p className="truncate text-[9.5px] font-semibold uppercase tracking-[0.12em] text-sidebar-foreground/70">
                 {schoolIdentity.tagline}
               </p>
             </div>
@@ -156,7 +156,7 @@ export function Sidebar({ collapsed, onToggleCollapse }: SidebarProps) {
           {!collapsed && (
             <button
               onClick={onToggleCollapse}
-              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-[5px] text-sidebar-foreground/50 transition-colors hover:bg-white/[0.08] hover:text-sidebar-foreground/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-primary/40"
+              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-[5px] text-sidebar-foreground/75 transition-colors hover:bg-white/[0.08] hover:text-sidebar-foreground/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-primary/40"
               aria-label="Collapse sidebar"
               title="Collapse"
             >
@@ -169,7 +169,7 @@ export function Sidebar({ collapsed, onToggleCollapse }: SidebarProps) {
         {collapsed && (
           <button
             onClick={onToggleCollapse}
-            className="flex h-9 w-full items-center justify-center border-t border-sidebar-border/60 text-sidebar-foreground/50 transition-colors hover:bg-white/[0.06] hover:text-sidebar-foreground/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-primary/40"
+            className="flex h-9 w-full items-center justify-center border-t border-sidebar-border/60 text-sidebar-foreground/75 transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-primary/40"
             aria-label="Expand sidebar"
             title="Expand"
           >
@@ -202,12 +202,13 @@ export function Sidebar({ collapsed, onToggleCollapse }: SidebarProps) {
                       key={item.key}
                       onClick={() => navigate(item.view)}
                       title={collapsed ? item.label : undefined}
+                      aria-current={active ? "page" : undefined}
                       className={cn(
                         "group relative flex h-8 w-full items-center gap-2.5 rounded-[5px] text-[13px] font-medium transition-all duration-150",
                         collapsed ? "justify-center px-0" : "px-2.5",
                         active
-                          ? "bg-white/[0.14] text-sidebar-foreground"
-                          : "text-sidebar-foreground/60 hover:bg-white/[0.06] hover:text-sidebar-foreground/90"
+                          ? "bg-sidebar-accent text-sidebar-foreground"
+                          : "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-foreground/90"
                       )}
                     >
                       {/* Left accent bar for active state — crisp, full-row height */}
@@ -219,7 +220,7 @@ export function Sidebar({ collapsed, onToggleCollapse }: SidebarProps) {
                           "h-[16px] w-[16px] shrink-0 transition-colors",
                           active
                             ? "text-sidebar-primary"
-                            : "text-sidebar-foreground/50 group-hover:text-sidebar-foreground/75"
+                            : "text-sidebar-foreground/75 group-hover:text-sidebar-foreground/75"
                         )}
                         strokeWidth={active ? 2.3 : 2}
                       />
@@ -230,7 +231,7 @@ export function Sidebar({ collapsed, onToggleCollapse }: SidebarProps) {
                             "ml-auto flex h-[17px] min-w-[17px] items-center justify-center rounded-full px-1.5 text-[10.5px] font-semibold tabular-nums leading-none",
                             active
                               ? "bg-sidebar-primary text-sidebar-primary-foreground"
-                              : "bg-white/12 text-sidebar-foreground/75"
+                              : "bg-sidebar-accent text-sidebar-foreground/75"
                           )}
                         >
                           {badge}
@@ -256,7 +257,7 @@ export function Sidebar({ collapsed, onToggleCollapse }: SidebarProps) {
           onClick={goProfile}
           title={collapsed ? currentUser.name : undefined}
           className={cn(
-            "group flex h-9 w-full items-center gap-2.5 rounded-[5px] px-2 text-left transition-colors hover:bg-white/[0.06]",
+            "group flex h-9 w-full items-center gap-2.5 rounded-[5px] px-2 text-left transition-colors hover:bg-sidebar-accent",
             collapsed && "justify-center px-0"
           )}
         >
@@ -267,11 +268,11 @@ export function Sidebar({ collapsed, onToggleCollapse }: SidebarProps) {
                 <p className="truncate text-[12.5px] font-semibold leading-tight text-sidebar-foreground">
                   {currentUser.name}
                 </p>
-                <p className="truncate text-[10.5px] font-medium uppercase tracking-[0.06em] text-sidebar-foreground/40">
+                <p className="truncate text-[10.5px] font-medium uppercase tracking-[0.06em] text-sidebar-foreground/70">
                   {ROLE_LABELS[role]}
                 </p>
               </div>
-              <ChevronRight className="h-3.5 w-3.5 shrink-0 text-sidebar-foreground/35 transition-transform group-hover:translate-x-0.5 group-hover:text-sidebar-foreground/60" />
+              <ChevronRight className="h-3.5 w-3.5 shrink-0 text-sidebar-foreground/35 transition-transform group-hover:translate-x-0.5 group-hover:text-sidebar-foreground/80" />
             </>
           )}
         </button>
@@ -360,8 +361,8 @@ export function MobileSidebar({
         className={cn(
           "group relative flex h-10 w-full items-center gap-3 rounded-md px-3 text-sm font-medium transition-colors",
           active
-            ? "bg-white/12 text-sidebar-foreground"
-            : "text-sidebar-foreground/65 active:bg-white/8"
+            ? "bg-sidebar-accent text-sidebar-foreground"
+            : "text-sidebar-foreground/80 active:bg-sidebar-accent"
         )}
       >
         {active && (
@@ -370,7 +371,7 @@ export function MobileSidebar({
         <Icon
           className={cn(
             "h-[18px] w-[18px] shrink-0",
-            active ? "text-sidebar-primary" : "text-sidebar-foreground/55"
+            active ? "text-sidebar-primary" : "text-sidebar-foreground/75"
           )}
           strokeWidth={active ? 2.3 : 2}
         />
@@ -381,7 +382,7 @@ export function MobileSidebar({
               "flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-xs font-semibold tabular-nums",
               active
                 ? "bg-sidebar-primary text-sidebar-primary-foreground"
-                : "bg-white/12 text-sidebar-foreground/80"
+                : "bg-sidebar-accent text-sidebar-foreground/80"
             )}
           >
             {badge}
@@ -400,7 +401,7 @@ export function MobileSidebar({
       >
         <SheetHeader className="space-y-0 border-b border-sidebar-border px-4 py-4">
           <SheetTitle className="flex items-center gap-2.5">
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-md bg-white/15 ring-1 ring-white/20">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-md bg-sidebar-accent ring-1 ring-sidebar-border">
               {schoolIdentity.logoDataUrl ? (
                 <img
                   src={schoolIdentity.logoDataUrl}
@@ -415,7 +416,7 @@ export function MobileSidebar({
               <span className="block truncate font-heading text-base font-bold leading-tight text-sidebar-foreground">
                 {schoolIdentity.shortName || schoolIdentity.name}
               </span>
-              <span className="block truncate text-xs font-normal text-sidebar-foreground/55">
+              <span className="block truncate text-xs font-normal text-sidebar-foreground/75">
                 {ROLE_LABELS[role]} workspace
               </span>
             </div>
@@ -427,7 +428,7 @@ export function MobileSidebar({
             {groupedPrimary.map((group, gi) => (
               <div key={gi} className={gi > 0 ? "mt-4" : ""}>
                 {group.section && (
-                  <p className="px-2.5 pb-1 pt-1 text-[10px] font-semibold uppercase tracking-[0.1em] text-sidebar-foreground/40">
+                  <p className="px-2.5 pb-1 pt-1 text-[10px] font-semibold uppercase tracking-[0.1em] text-sidebar-foreground/70">
                     {group.section}
                   </p>
                 )}
@@ -439,7 +440,7 @@ export function MobileSidebar({
 
             {secondaryItems.length > 0 && (
               <div className="mt-4">
-                <p className="px-2.5 pb-1 pt-1 text-[10px] font-semibold uppercase tracking-[0.1em] text-sidebar-foreground/40">
+                <p className="px-2.5 pb-1 pt-1 text-[10px] font-semibold uppercase tracking-[0.1em] text-sidebar-foreground/70">
                   More
                 </p>
                 <nav className="space-y-0.5" aria-label="More sections">
@@ -456,18 +457,18 @@ export function MobileSidebar({
         >
           <button
             onClick={goProfile}
-            className="flex h-11 w-full items-center gap-3 rounded-md px-2 text-left transition-colors hover:bg-white/8"
+            className="flex h-11 w-full items-center gap-3 rounded-md px-2 text-left transition-colors hover:bg-sidebar-accent"
           >
             <Avatar name={currentUser.name} size="md" color={currentUser.avatarColor} />
             <div className="min-w-0 flex-1">
               <p className="truncate text-sm font-semibold leading-tight text-sidebar-foreground">
                 {currentUser.name}
               </p>
-              <p className="truncate text-xs text-sidebar-foreground/55">
+              <p className="truncate text-xs text-sidebar-foreground/75">
                 {ROLE_LABELS[role]}
               </p>
             </div>
-            <ChevronRight className="h-4 w-4 shrink-0 text-sidebar-foreground/40" />
+            <ChevronRight className="h-4 w-4 shrink-0 text-sidebar-foreground/70" />
           </button>
         </div>
       </SheetContent>

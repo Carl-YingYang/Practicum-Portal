@@ -1,6 +1,9 @@
 "use client";
 
 import { create } from "zustand";
+import { persist, createJSONStorage } from "zustand/middleware";
+import { accountUsers, recalculateHours, validateTimeEntry, responseErrors, DEFAULT_SCHOOL_ID } from "@/lib/prototype";
+import { assignmentAppliesTo } from "@/lib/selectors";
 import { v4 as uuid } from "uuid";
 import {
   activityLog as seedActivity,
@@ -60,7 +63,10 @@ interface HistoryEntry {
   params: ViewParams;
 }
 
-interface AppState {
+export interface AppState {
+  hasHydrated: boolean;
+  hydratePrototype: () => Promise<void>;
+  resetPrototype: () => void;
   // --- data collections ---
   companies: Company[];
   supervisors: Supervisor[];
@@ -321,6 +327,7 @@ interface AppState {
   assignForm: (input: {
     formId: string;
     target: FormAssignmentTarget;
+    targetUserIds?: string[];
     dueDate?: string;
   }) => string;
   /** Remove an assignment. */
@@ -369,9 +376,7 @@ function logActivity(
 
 function genTempPassword(): string {
   return (
-    "Tmp-" +
-    Math.random().toString(36).slice(2, 6).toUpperCase() +
-    Math.random().toString(36).slice(2, 6)
+    "Tmp-" + uuid().replaceAll("-", "").slice(0, 12)
   );
 }
 
@@ -407,10 +412,22 @@ function buildDefaultBlock(type: FormBlockType, id: string): FormBlock {
   }
 }
 
-export const useAppStore = create<AppState>((set, get) => ({
+export const useAppStore = create<AppState>()(persist((set, get) => ({
+  hasHydrated: false,
+  hydratePrototype: async () => {
+    await useAppStore.persist.rehydrate();
+    const state = get();
+    const students = recalculateHours(state.students, state.timeLogs);
+    const formSubmissions = state.formSubmissions.map((sub) => ({ ...sub, formSnapshot: sub.formSnapshot ?? structuredClone(state.formDocuments.find((form) => form.id === sub.formId)) }));
+    const currentUser = state.currentUser ? accountUsers({ ...state, students }).find((u) => u.id === state.currentUser!.id && u.accountStatus !== "disabled") ?? null : null;
+    set({ students, formSubmissions, currentUser, hasHydrated: true, view: currentUser ? roleHomeView[currentUser.role] : "login", viewParams: {}, history: [] });
+  },
+  resetPrototype: () => {
+    set({ companies: seedCompanies, supervisors: seedSupervisors, students: recalculateHours(seedStudents, seedTimeLogs), coordinators: seedCoordinators, evaluations: seedEvaluations, journals: seedJournals, timeLogs: seedTimeLogs, activity: seedActivity, formDocuments: seedFormDocuments, formAssignments: seedFormAssignments, formSubmissions: seedFormSubmissions, currentUser: null, view: "login", viewParams: {}, history: [] });
+  },
   companies: seedCompanies,
   supervisors: seedSupervisors,
-  students: seedStudents,
+  students: recalculateHours(seedStudents, seedTimeLogs),
   coordinators: seedCoordinators,
   schools: seedSchools,
   evaluations: seedEvaluations,
@@ -667,246 +684,30 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   login: (role) => {
-    const user = mockUsers.find((u) => u.role === role) ?? mockUsers[0];
-    set({
-      currentUser: user,
-      view: roleHomeView[role],
-      viewParams: {},
-      history: [],
-    });
+    const user = accountUsers(get()).find((u) => u.role === role && u.accountStatus !== "disabled");
+    if (user) get().loginAs(user.id);
   },
-
   loginAs: (userId) => {
-    const user = mockUsers.find((u) => u.id === userId);
-    if (!user) return;
-    set({
-      currentUser: user,
-      view: roleHomeView[user.role],
-      viewParams: {},
-      history: [],
-    });
+    const user = accountUsers(get()).find((u) => u.id === userId && u.accountStatus !== "disabled");
+    if (user) set({ currentUser: user, view: roleHomeView[user.role], viewParams: {}, history: [] });
   },
-
   loginByEmail: (email) => {
-    const lower = email.trim().toLowerCase();
-    if (!lower) return false;
-
-    // 1. Seed demo accounts (static).
-    const mockMatch = mockUsers.find((u) => u.email.toLowerCase() === lower);
-    if (mockMatch) {
-      set({
-        currentUser: mockMatch,
-        view: roleHomeView[mockMatch.role],
-        viewParams: {},
-        history: [],
-      });
-      return true;
-    }
-
-    // 2. Coordinators created in-app by another coordinator.
-    const coord = get().coordinators.find(
-      (c) => c.email.toLowerCase() === lower
-    );
-    if (coord && coord.status === "active" && coord.accountStatus !== "disabled") {
-      const user: User = {
-        id: `u-coord-${coord.id}`,
-        name: coord.name,
-        email: coord.email,
-        role: "coordinator",
-        coordinatorId: coord.id,
-        idNumber: coord.idNumber ?? `COORD-${coord.id.slice(-4).toUpperCase()}`,
-        accountStatus: coord.accountStatus ?? "active",
-        mustChangePassword: coord.mustChangePassword ?? false,
-        avatarColor: coord.avatarColor,
-      };
-      set({
-        currentUser: user,
-        view: roleHomeView["coordinator"],
-        viewParams: {},
-        history: [],
-      });
-      return true;
-    }
-
-    // 3. Students created in-app.
-    const stu = get().students.find((s) => s.email.toLowerCase() === lower);
-    if (stu && stu.status === "active" && stu.accountStatus !== "disabled") {
-      const user: User = {
-        id: `u-stu-${stu.id}`,
-        name: stu.name,
-        email: stu.email,
-        role: "student",
-        studentId: stu.id,
-        // For students, their login ID IS their student number.
-        idNumber: stu.studentNumber,
-        accountStatus: stu.accountStatus ?? "active",
-        mustChangePassword: stu.mustChangePassword ?? false,
-        avatarColor: "#0f766e",
-      };
-      set({
-        currentUser: user,
-        view: roleHomeView["student"],
-        viewParams: {},
-        history: [],
-      });
-      return true;
-    }
-
-    // 4. Supervisors created in-app.
-    const sup = get().supervisors.find((s) => s.email.toLowerCase() === lower);
-    if (sup && sup.status === "active" && sup.accountStatus !== "disabled") {
-      const user: User = {
-        id: `u-sup-${sup.id}`,
-        name: sup.name,
-        email: sup.email,
-        role: "supervisor",
-        supervisorId: sup.id,
-        idNumber: sup.idNumber ?? `EMP-${sup.id.slice(-4).toUpperCase()}`,
-        accountStatus: sup.accountStatus ?? "active",
-        mustChangePassword: sup.mustChangePassword ?? false,
-        avatarColor: "#d97706",
-      };
-      set({
-        currentUser: user,
-        view: roleHomeView["supervisor"],
-        viewParams: {},
-        history: [],
-      });
-      return true;
-    }
-
-    return false;
+    // Prototype helper used only for local role previews. Normal sign-in uses credentials.
+    const user = accountUsers(get()).find((u) => u.email.toLowerCase() === email.trim().toLowerCase() && u.accountStatus !== "disabled");
+    if (!user) return false;
+    get().loginAs(user.id);
+    return true;
   },
-
-  /**
-   * loginByCredentials — validates BOTH email (username) and password.
-   * Returns one of:
-   *   - "ok"      → login succeeded, currentUser set
-   *   - "no-user" → no account with that email
-   *   - "bad-pw"  → email found, but password didn't match
-   *   - "inactive"→ account disabled or deactivated
-   *
-   * Password model (prototype):
-   *   - Accounts provisioned by a coordinator start with a one-time
-   *     TEMPORARY password (shown once in the credentials dialog) and are
-   *     routed through the first-login password change.
-   *   - Seed/demo accounts keep the original "User ID = password" behaviour.
-   *   - Once a user sets a personal password, that password wins.
-   */
   loginByCredentials: (email, password) => {
-    const lower = email.trim().toLowerCase();
-    if (!lower || !password) return "no-user";
-    const pw = password.trim();
-
-    // Helper: case-insensitive password compare (IDs like "EMP-001" should
-    // match regardless of case the user typed).
-    const pwMatch = (a?: string, b?: string) =>
-      !!a && !!b && a.toLowerCase() === b.toLowerCase();
-
-    // 1. Seed demo accounts.
-    const mockMatch = mockUsers.find((u) => u.email.toLowerCase() === lower);
-    if (mockMatch) {
-      if (pwMatch(mockMatch.idNumber, pw)) {
-        set({
-          currentUser: mockMatch,
-          view: roleHomeView[mockMatch.role],
-          viewParams: {},
-          history: [],
-        });
-        return "ok";
-      }
-      return "bad-pw";
-    }
-
-    // 2. Coordinators.
-    const coord = get().coordinators.find(
-      (c) => c.email.toLowerCase() === lower
-    );
-    if (coord) {
-      if (coord.status !== "active" || coord.accountStatus === "disabled")
-        return "inactive";
-      const fallback = coord.idNumber ?? `COORD-${coord.id.slice(-4).toUpperCase()}`;
-      if (pwMatch(coord.password ?? fallback, pw)) {
-        const user: User = {
-          id: `u-coord-${coord.id}`,
-          name: coord.name,
-          email: coord.email,
-          role: "coordinator",
-          coordinatorId: coord.id,
-          idNumber: fallback,
-          accountStatus: coord.accountStatus ?? "active",
-          mustChangePassword: coord.mustChangePassword ?? false,
-          avatarColor: coord.avatarColor,
-        };
-        set({
-          currentUser: user,
-          view: roleHomeView["coordinator"],
-          viewParams: {},
-          history: [],
-        });
-        return "ok";
-      }
-      return "bad-pw";
-    }
-
-    // 3. Students.
-    const stu = get().students.find((s) => s.email.toLowerCase() === lower);
-    if (stu) {
-      if (stu.status !== "active" || stu.accountStatus === "disabled")
-        return "inactive";
-      if (pwMatch(stu.password ?? stu.studentNumber, pw)) {
-        const user: User = {
-          id: `u-stu-${stu.id}`,
-          name: stu.name,
-          email: stu.email,
-          role: "student",
-          studentId: stu.id,
-          idNumber: stu.studentNumber,
-          accountStatus: stu.accountStatus ?? "active",
-          mustChangePassword: stu.mustChangePassword ?? false,
-          avatarColor: "#0f766e",
-        };
-        set({
-          currentUser: user,
-          view: roleHomeView["student"],
-          viewParams: {},
-          history: [],
-        });
-        return "ok";
-      }
-      return "bad-pw";
-    }
-
-    // 4. Supervisors.
-    const sup = get().supervisors.find((s) => s.email.toLowerCase() === lower);
-    if (sup) {
-      if (sup.status !== "active" || sup.accountStatus === "disabled")
-        return "inactive";
-      const fallback = sup.idNumber ?? `EMP-${sup.id.slice(-4).toUpperCase()}`;
-      if (pwMatch(sup.password ?? fallback, pw)) {
-        const user: User = {
-          id: `u-sup-${sup.id}`,
-          name: sup.name,
-          email: sup.email,
-          role: "supervisor",
-          supervisorId: sup.id,
-          idNumber: fallback,
-          accountStatus: sup.accountStatus ?? "active",
-          mustChangePassword: sup.mustChangePassword ?? false,
-          avatarColor: "#d97706",
-        };
-        set({
-          currentUser: user,
-          view: roleHomeView["supervisor"],
-          viewParams: {},
-          history: [],
-        });
-        return "ok";
-      }
-      return "bad-pw";
-    }
-
-    return "no-user";
+    const user = accountUsers(get()).find((u) => u.email.toLowerCase() === email.trim().toLowerCase());
+    if (!user) return "no-user";
+    if (user.accountStatus === "disabled") return "inactive";
+    const state = get();
+    const record = user.role === "student" ? state.students.find((r) => r.id === user.studentId) : user.role === "supervisor" ? state.supervisors.find((r) => r.id === user.supervisorId) : state.coordinators.find((r) => r.id === user.coordinatorId);
+    const expected = record?.password ?? user.idNumber;
+    if (password !== expected) return "bad-pw";
+    set({ currentUser: user, view: roleHomeView[user.role], viewParams: {}, history: [] });
+    return "ok";
   },
 
   /**
@@ -916,14 +717,14 @@ export const useAppStore = create<AppState>((set, get) => ({
   completeFirstLoginPasswordChange: (tempPassword, newPassword) => {
     const cur = get().currentUser;
     if (!cur) return { ok: false, reason: "no-session" };
-    if (newPassword.length < 8) return { ok: false, reason: "weak-password" };
+    if (newPassword.length < 8 || !/[A-Z]/.test(newPassword) || !/[0-9]/.test(newPassword) || newPassword == tempPassword) return { ok: false, reason: "weak-password" };
 
     // Resolve the signed-in user's backing record.
     if (cur.role === "student" && cur.studentId) {
       const rec = get().students.find((s) => s.id === cur.studentId);
       if (!rec) return { ok: false, reason: "no-session" };
       const effective = rec.password ?? rec.studentNumber;
-      if (effective.toLowerCase() !== tempPassword.trim().toLowerCase())
+      if (effective !== tempPassword)
         return { ok: false, reason: "bad-temp" };
       const updated: Student = {
         ...rec,
@@ -943,7 +744,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       if (!rec) return { ok: false, reason: "no-session" };
       const effective =
         rec.password ?? rec.idNumber ?? `EMP-${rec.id.slice(-4).toUpperCase()}`;
-      if (effective.toLowerCase() !== tempPassword.trim().toLowerCase())
+      if (effective !== tempPassword)
         return { ok: false, reason: "bad-temp" };
       const updated: Supervisor = {
         ...rec,
@@ -963,7 +764,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       if (!rec) return { ok: false, reason: "no-session" };
       const effective =
         rec.password ?? rec.idNumber ?? `COORD-${rec.id.slice(-4).toUpperCase()}`;
-      if (effective.toLowerCase() !== tempPassword.trim().toLowerCase())
+      if (effective !== tempPassword)
         return { ok: false, reason: "bad-temp" };
       const updated: Coordinator = {
         ...rec,
@@ -1151,7 +952,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   updateJournalDraft: (id, input) =>
     set((s) => ({
       journals: s.journals.map((j) =>
-        j.id === id && j.status === "draft"
+        j.id === id && (j.status === "draft" || j.status === "rejected")
           ? { ...j, ...input }
           : j
       ),
@@ -1160,7 +961,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   submitJournal: (id) =>
     set((s) => {
       const j = s.journals.find((x) => x.id === id);
-      if (!j) return s;
+      if (!j || !["draft", "rejected"].includes(j.status)) return s;
       const now = new Date().toISOString();
       const st = s.students.find((x) => x.id === j.studentId);
       return {
@@ -1181,17 +982,10 @@ export const useAppStore = create<AppState>((set, get) => ({
   approveJournal: (id) =>
     set((s) => {
       const j = s.journals.find((x) => x.id === id);
-      if (!j) return s;
+      if (!j || j.status !== "pending") return s;
       const now = new Date().toISOString();
       const st = s.students.find((x) => x.id === j.studentId);
-      // bump logged hours by journal hours on approval
-      const students = s.students.map((st2) =>
-        st2.id === j.studentId
-          ? { ...st2, loggedHours: st2.loggedHours + j.hours }
-          : st2
-      );
       return {
-        students,
         journals: s.journals.map((x) =>
           x.id === id
             ? {
@@ -1215,7 +1009,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   rejectJournal: (id, reason) =>
     set((s) => {
       const j = s.journals.find((x) => x.id === id);
-      if (!j) return s;
+      if (!j || j.status !== "pending" || !reason.trim()) return s;
       const now = new Date().toISOString();
       const st = s.students.find((x) => x.id === j.studentId);
       return {
@@ -1244,7 +1038,10 @@ export const useAppStore = create<AppState>((set, get) => ({
     const now = new Date().toISOString();
     set((s) => {
       const existing = s.evaluations.find((e) => e.id === id);
+      if (existing?.status === "submitted") return s;
       const st = s.students.find((x) => x.id === input.studentId);
+      if (!st || st.supervisorId !== input.supervisorId || s.currentUser?.supervisorId !== input.supervisorId) return s;
+      if (input.submit && ![input.qualityOfWork, input.jobKnowledge, input.dependability].every((v) => Number.isInteger(v) && v >= 1 && v <= 5)) return s;
       const record: Evaluation = {
         id,
         studentId: input.studentId,
@@ -1282,6 +1079,11 @@ export const useAppStore = create<AppState>((set, get) => ({
     })),
 
   createStudent: (input) => {
+    const duplicate = accountUsers(get()).find((user) => user.email.trim().toLowerCase() === input.email.trim().toLowerCase());
+    if (duplicate) throw new Error("An account already uses this email address.");
+    const candidate = get().supervisors.find((sup) => sup.id === input.supervisorId);
+    const load = candidate ? get().students.filter((s) => s.supervisorId === candidate.id && s.status === "active").length : 0;
+    const assigned = candidate && candidate.status === "active" && candidate.accountStatus !== "disabled" && load < candidate.capacity && (!input.companyId || input.companyId === candidate.companyId) ? candidate : null;
     const id = uuid();
     const now = new Date().toISOString();
     const tempPassword = genTempPassword();
@@ -1295,8 +1097,9 @@ export const useAppStore = create<AppState>((set, get) => ({
       schoolYear: input.schoolYear,
       requiredHours: input.requiredHours,
       loggedHours: 0,
-      companyId: input.companyId,
-      supervisorId: input.supervisorId,
+      schoolId: get().coordinators.find((c) => c.id === get().currentUser?.coordinatorId)?.schoolId ?? DEFAULT_SCHOOL_ID,
+      companyId: input.companyId || assigned?.companyId || "",
+      supervisorId: assigned?.id ?? null,
       status: "active",
       position: input.position,
       department: input.department,
@@ -1332,6 +1135,8 @@ export const useAppStore = create<AppState>((set, get) => ({
     })),
 
   createSupervisor: (input) => {
+    const duplicate = accountUsers(get()).find((user) => user.email.trim().toLowerCase() === input.email.trim().toLowerCase());
+    if (duplicate) throw new Error("An account already uses this email address.");
     const id = uuid();
     const now = new Date().toISOString();
     const tempPassword = genTempPassword();
@@ -1385,7 +1190,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     if (existing) {
       // Merge any newly-provided rich fields onto the existing record.
       const hasNew = (Object.keys(input) as (keyof typeof input)[]).some(
-        (k) => k !== "name" && input[k] !== undefined && (existing as Record<string, unknown>)[k as string] === undefined
+        (k) => k !== "name" && input[k] !== undefined && (existing as unknown as Record<string, unknown>)[k as string] === undefined
       );
       if (hasNew) {
         set((s) => ({
@@ -1397,12 +1202,14 @@ export const useAppStore = create<AppState>((set, get) => ({
       return existing.id;
     }
     const id = uuid();
-    const company: Company = { id, name, ...input };
+    const company: Company = { ...input, id, name };
     set((s) => ({ companies: [...s.companies, company] }));
     return id;
   },
 
   createCoordinator: (input) => {
+    const duplicate = accountUsers(get()).find((user) => user.email.trim().toLowerCase() === input.email.trim().toLowerCase());
+    if (duplicate) throw new Error("An account already uses this email address.");
     const id = uuid();
     const now = new Date().toISOString();
     const tempPassword = genTempPassword();
@@ -1421,6 +1228,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       department: input.department ?? "Computer Studies",
       status: "active",
       avatarColor,
+      schoolId: get().coordinators.find((c) => c.id === get().currentUser?.coordinatorId)?.schoolId ?? DEFAULT_SCHOOL_ID,
       idNumber,
       accountStatus: "invited",
       mustChangePassword: true,
@@ -1448,6 +1256,8 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   // ---------------- Time clock ----------------
   clockIn: (userId, role, note) => {
+    const active = get().timeLogs.find((t) => t.userId === userId && t.clockOutAt === null);
+    if (active) return active.id;
     const id = uuid();
     const now = new Date().toISOString();
     const log: TimeLog = {
@@ -1506,17 +1316,7 @@ export const useAppStore = create<AppState>((set, get) => ({
               }
             : t
         ),
-        // accumulate the session hours into the student's loggedHours (students only)
-        students: st
-          ? s.students.map((stu) =>
-              stu.id === userId
-                ? {
-                    ...stu,
-                    loggedHours: stu.loggedHours + Math.round(hours * 100) / 100,
-                  }
-                : stu
-            )
-          : s.students,
+        students: recalculateHours(s.students, s.timeLogs.map((t) => t.id === active.id ? { ...t, clockOutAt: now.toISOString(), durationMs } : t)),
         activity: logActivity(
           s.activity,
           "time_clock_out",
@@ -1526,35 +1326,14 @@ export const useAppStore = create<AppState>((set, get) => ({
       };
     }),
 
-  deleteTimeLog: (id) =>
-    set((s) => {
-      const log = s.timeLogs.find((t) => t.id === id);
-      if (!log) return s;
-      // Reconcile student.loggedHours: subtract the deleted session's hours,
-      // but only for COMPLETED student sessions (active sessions haven't been
-      // counted yet, and supervisor/coordinator sessions don't touch loggedHours).
-      const isCompletedStudentSession =
-        log.role === "student" && log.clockOutAt !== null && log.durationMs;
-      const hoursToSubtract = isCompletedStudentSession
-        ? Math.round((log.durationMs! / 3600_000) * 100) / 100
-        : 0;
-      return {
-        timeLogs: s.timeLogs.filter((t) => t.id !== id),
-        students:
-          hoursToSubtract > 0
-            ? s.students.map((stu) =>
-                stu.id === log.userId
-                  ? {
-                      ...stu,
-                      loggedHours: Math.max(0, stu.loggedHours - hoursToSubtract),
-                    }
-                  : stu
-              )
-            : s.students,
-      };
-    }),
+  deleteTimeLog: (id) => set((s) => {
+    const timeLogs = s.timeLogs.filter((t) => t.id !== id);
+    return { timeLogs, students: recalculateHours(s.students, timeLogs) };
+  }),
 
   addManualTimeLog: ({ userId, role, clockInAt, clockOutAt, note }) => {
+    const error = validateTimeEntry(get().timeLogs, userId, clockInAt, clockOutAt);
+    if (error) throw new Error(error);
     const id = uuid();
     const inD = new Date(clockInAt);
     const outD = new Date(clockOutAt);
@@ -1580,16 +1359,7 @@ export const useAppStore = create<AppState>((set, get) => ({
           : s.currentUser?.name;
       return {
         timeLogs: [log, ...s.timeLogs],
-        students: isStudent
-          ? s.students.map((stu) =>
-              stu.id === userId
-                ? {
-                    ...stu,
-                    loggedHours: stu.loggedHours + Math.round(hours * 100) / 100,
-                  }
-                : stu
-            )
-          : s.students,
+        students: recalculateHours(s.students, [log, ...s.timeLogs]),
         activity: logActivity(
           s.activity,
           "time_clock_out",
@@ -1780,6 +1550,8 @@ export const useAppStore = create<AppState>((set, get) => ({
   deleteFormDocument: (id) =>
     set((s) => ({
       formDocuments: s.formDocuments.filter((d) => d.id !== id),
+      formAssignments: s.formAssignments.filter((a) => a.formId !== id),
+      formSubmissions: s.formSubmissions.filter((sub) => sub.formId !== id),
     })),
 
   duplicateFormDocument: (id) => {
@@ -1809,14 +1581,16 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   // ---------------- Form assignments & submissions ----------------
-  assignForm: ({ formId, target, dueDate }) => {
+  assignForm: ({ formId, target, targetUserIds = [], dueDate }) => {
+    if (!get().formDocuments.some((f) => f.id === formId && f.status === "published")) return "";
+    if (target === "specific_users" && targetUserIds.length === 0) return "";
     const id = uuid();
     const now = new Date().toISOString();
     const assignment: FormAssignment = {
       id,
       formId,
       target,
-      targetUserIds: [],
+      targetUserIds: target === "specific_users" ? [...new Set(targetUserIds)] : [],
       dueDate: dueDate ?? null,
       createdBy: get().currentUser?.id ?? "u-coord",
       createdAt: now,
@@ -1832,7 +1606,11 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   startFormResponse: ({ formId, targetStudentId }) => {
     const user = get().currentUser;
-    const userId = user?.id ?? "anonymous";
+    const form = get().formDocuments.find((f) => f.id === formId);
+    const assigned = user && get().formAssignments.some((a) => a.formId === formId && assignmentAppliesTo(a, user));
+    if (!user || user.accountStatus === "disabled" || !form || form.status !== "published" || !assigned) return "";
+    if (targetStudentId && (user.role !== "supervisor" || !get().students.some((s) => s.id === targetStudentId && s.supervisorId === user.supervisorId))) return "";
+    const userId = user.id;
     // Reuse an existing submission for this (form, user, targetStudent) if any.
     const existing = get().formSubmissions.find(
       (s) =>
@@ -1847,6 +1625,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     const submission: FormSubmission = {
       id,
       formId,
+      formSnapshot: structuredClone(form),
       userId,
       targetStudentId,
       values: {},
@@ -1865,7 +1644,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   saveSubmissionDraft: (submissionId, values) =>
     set((s) => ({
       formSubmissions: s.formSubmissions.map((sub) =>
-        sub.id === submissionId
+        sub.id === submissionId && sub.userId === s.currentUser?.id && ["in_progress", "needs_revision"].includes(sub.status)
           ? {
               ...sub,
               values,
@@ -1877,10 +1656,13 @@ export const useAppStore = create<AppState>((set, get) => ({
       ),
     })),
 
-  submitFormResponse: (submissionId) =>
+  submitFormResponse: (submissionId) => {
+    const sub = get().formSubmissions.find((s) => s.id === submissionId);
+    const form = sub?.formSnapshot ?? get().formDocuments.find((f) => f.id === sub?.formId);
+    if (!sub || !form || responseErrors(form, sub.values).length) return;
     set((s) => ({
       formSubmissions: s.formSubmissions.map((sub) =>
-        sub.id === submissionId
+        sub.id === submissionId && sub.userId === s.currentUser?.id && ["in_progress", "needs_revision"].includes(sub.status)
           ? {
               ...sub,
               status: "submitted" as const,
@@ -1889,12 +1671,13 @@ export const useAppStore = create<AppState>((set, get) => ({
             }
           : sub
       ),
-    })),
+    }));
+  },
 
   reviewSubmission: (submissionId, decision, note) =>
     set((s) => ({
       formSubmissions: s.formSubmissions.map((sub) =>
-        sub.id === submissionId
+        sub.id === submissionId && s.currentUser?.role === "coordinator" && ["submitted", "under_review"].includes(sub.status) && (decision === "approve" || !!note?.trim())
           ? {
               ...sub,
               status: (decision === "approve"
@@ -1907,4 +1690,17 @@ export const useAppStore = create<AppState>((set, get) => ({
           : sub
       ),
     })),
+}), {
+  name: "practo:prototype:v1",
+  version: 1,
+  skipHydration: true,
+  storage: createJSONStorage(() => ({
+    getItem: (key) => localStorage.getItem(key),
+    removeItem: (key) => localStorage.removeItem(key),
+    setItem: (key, value) => {
+      try { localStorage.setItem(key, value); }
+      catch { if (typeof window !== "undefined") window.dispatchEvent(new CustomEvent("practo:storage-error")); }
+    },
+  })),
+  partialize: (state) => ({ companies: state.companies, students: state.students, supervisors: state.supervisors, coordinators: state.coordinators, evaluations: state.evaluations, journals: state.journals, timeLogs: state.timeLogs, activity: state.activity, formDocuments: state.formDocuments, formAssignments: state.formAssignments, formSubmissions: state.formSubmissions, currentUser: state.currentUser }),
 }));

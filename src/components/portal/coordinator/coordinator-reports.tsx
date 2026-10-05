@@ -201,11 +201,11 @@ export function CoordinatorReports() {
     downloadPdfReport({
       filename: "all-evaluations-bundle",
       title: "All Evaluations — Cohort Bundle",
-      subtitle: `${submitted.length} submitted evaluations · Term 2024-2025`,
+      subtitle: `${submitted.length} submitted evaluations · All terms`,
       meta: [
         { label: "Students", value: String(students.length) },
         { label: "Submitted", value: String(submitted.length) },
-        { label: "Term", value: "2024-2025" },
+        { label: "Scope", value: "All terms" },
       ],
       sections: [
         {
@@ -247,7 +247,7 @@ export function CoordinatorReports() {
     downloadPdfReport({
       filename: "journal-compliance-report",
       title: "Journal Compliance Report",
-      subtitle: `${students.length} students · Term 2024-2025`,
+      subtitle: `${students.length} students · All terms`,
       meta: [
         { label: "Students", value: String(students.length) },
         {
@@ -306,7 +306,7 @@ export function CoordinatorReports() {
     downloadPdfReport({
       filename: `evaluation-${evalStudent.studentNumber}`,
       title: `Evaluation Report — ${evalStudent.name}`,
-      subtitle: `${evalStudent.studentNumber} · ${evalStudent.course} · ${companyName} · Term 2024-2025`,
+      subtitle: `${evalStudent.studentNumber} · ${evalStudent.course} · ${companyName} · All terms`,
       meta: [
         { label: "Student No.", value: evalStudent.studentNumber },
         { label: "Course", value: evalStudent.course },
@@ -479,7 +479,7 @@ export function CoordinatorReports() {
                 </Button>
               }
               title="Cohort Time Log Report"
-              subtitle={`${students.length} students · Term 2024-2025`}
+              subtitle={`${students.length} students · All terms`}
               summaryStats={[
                 { label: "Students", value: String(students.length) },
                 {
@@ -640,7 +640,7 @@ export function CoordinatorReports() {
         open={activeReport === "per-student-eval"}
         onOpenChange={(o) => !o && setActiveReport(null)}
         title={`Evaluation — ${evalStudent?.name ?? ""}`}
-        subtitle={evalStudent ? `${evalStudent.studentNumber} · Term 2024-2025` : ""}
+        subtitle={evalStudent ? `${evalStudent.studentNumber} · All terms` : ""}
         onDownloadPdf={buildPerStudentEvalPdf}
         downloadFilename={evalStudent ? `evaluation-${evalStudent.studentNumber}.pdf` : undefined}
       >
@@ -765,7 +765,7 @@ function AllEvaluationsPrintDoc({
       <div className="border-b border-slate-300 pb-2">
         <h1 className="text-lg font-bold">All Evaluations — Cohort Bundle</h1>
         <p className="text-xs text-slate-600">
-          {submitted.length} submitted · Term 2024-2025 · Generated {formatDate(new Date().toISOString())}
+          {submitted.length} submitted · All terms · Generated {formatDate(new Date().toISOString())}
         </p>
       </div>
       <table className="w-full text-xs">
@@ -904,7 +904,7 @@ function PerStudentEvalPrintDoc({
       <div className="border-b border-slate-300 pb-2">
         <h1 className="text-lg font-bold">Evaluation Report — {student.name}</h1>
         <p className="text-xs text-slate-600">
-          {student.studentNumber} · {student.course} · {companyName} · Term 2024-2025
+          {student.studentNumber} · {student.course} · {companyName} · All terms
         </p>
       </div>
       {submitted ? (

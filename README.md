@@ -1,179 +1,84 @@
-# Practicum Evaluation Portal
+# Practo — Practicum Portal prototype
 
-A **glue + accreditation portal** for Philippine university practicum / OJT
-programs. The portal owns auth, the cohort roster, the workflow status, the
-dashboard, and the accreditation PDF — and **delegates** journal writing
-(Google Docs), attendance (Jibble), and evaluations (Google Forms) to the best
-free existing tools, embedding them inline so students never leave the portal.
+An interactive practicum workspace for students, supervisors, and coordinators, built with Next.js 16, React 19, TypeScript, Tailwind 4, shadcn/ui, and Zustand.
 
-Built on **Next.js 16 (App Router) · TypeScript 5 · Tailwind CSS 4 ·
-shadcn/ui · Prisma (SQLite) · Zustand · TanStack Query**.
+The `practo/testing-platform` branch starts from `feature/sandbox-prototype` at `09a4245b2941952e29f6ee10653176717dbc974e`. It adds a white-default editorial interface, optional charcoal dark mode, browser persistence, and workflow fixes. See [the complete improvement log](docs/TESTING_PLATFORM.md), [the verification guide](docs/VERIFICATION.md), and [the changed-file inventory](docs/CHANGE_INVENTORY.md).
 
----
+## Run locally
 
-## Quick start (local development)
-
-### 1. Prerequisites
-
-| Tool  | Version | Why                                   |
-|-------|---------|---------------------------------------|
-| Node  | v24+    | Next.js 16 runtime                    |
-| Bun   | v1.3+   | Package manager + dev runner          |
-
-Install:
-- **Node.js** — <https://nodejs.org> (pick LTS)
-- **Bun** — <https://bun.sh/docs/install>
-  - macOS / Linux: `curl -fsSL https://bun.sh/install | bash`
-  - Windows (PowerShell): `powershell -c "irm bun.sh/install.ps1 | iex"`
-
-### 2. Clone & install
+Use Node 24 and npm. This branch's `package-lock.json` records the versions used for verification. The existing Bun lockfile belongs to the earlier baseline; use npm for reproducing this branch.
 
 ```bash
-git clone https://github.com/Carl-YingYang/Practicum-Portal.git
+git clone --branch practo/testing-platform https://github.com/Carl-YingYang/Practicum-Portal.git
 cd Practicum-Portal
-bun install
-```
-
-### 3. Configure environment
-
-```bash
+npm ci
 cp .env.example .env
-mkdir -p db
+npm run dev
 ```
 
-The default `.env` uses a relative SQLite path so it works on any machine:
-
-```
-DATABASE_URL=file:./db/custom.db
-```
-
-### 4. Set up the database
+Open http://localhost:3000. For production compilation:
 
 ```bash
-bun run db:push
+npm run build
+npm start
 ```
 
-This creates `db/custom.db` from `prisma/schema.prisma`. Re-run this command
-any time the schema changes.
+Google Fonts downloads are unnecessary: the UI uses system fonts. If the environment restricts network interface discovery, start with an explicit host: `npm start -- --hostname 127.0.0.1`.
 
-### 5. Run the dev server
+## Explore the roles
+
+Expand **Explore the prototype** on the sign-in screen. Demo previews bypass credentials and open the selected local role; they still respect disabled records and the password-change gate. The account menu also lets you switch demo roles.
+
+Normal sign-in uses the following seeded credentials until a coordinator resets the account:
+
+| Role | Email | Initial password |
+|---|---|---|
+| Student | juan.delacruz@university.edu | 2021-00123 |
+| Supervisor | maria.santos@acmecorp.com | EMP-001 |
+| Coordinator | patricia.lim@university.edu | COORD-001 |
+
+Newly provisioned or reset accounts use the generated temporary password and must choose a personal password at first sign-in. Personal passwords are case-sensitive. Credentials shown in provisioning exports are temporary credentials for invited accounts.
+
+## What persists
+
+Accounts, companies, students, supervisors, coordinators, journals, evaluations, attendance, activity, forms, assignments, responses, and the local session are stored in `practo:prototype:v1` in browser localStorage. Branding, schools, external tool links, and billing settings use their existing separate localStorage keys.
+
+**Reset demo data**, available in the profile menu and desktop footer, asks for confirmation, restores the domain fixtures, and signs you out. It keeps branding, external tool settings, and billing configuration. Refresh opens your role's dashboard; view history and in-progress screen selection are intentionally temporary. Draft journals, evaluation edits, and form responses save as they change.
+
+Use sample data and sample passwords: accounts and credentials are stored locally without server authentication or password hashing. Browser data does not sync across devices or between tabs in real time.
+
+## Hours and dates
+
+Completed attendance is the sole source of credited practicum hours. Approving a journal records review status and feedback; it does not add attendance hours. Deleting attendance recomputes the student's total. An active session survives refresh, but only a completed session contributes to the credited total.
+
+Manual attendance rejects invalid dates, reversed intervals, future completed entries, sessions longer than 24 hours, and overlapping sessions. Manual time inputs and common date/time formatting use Philippine time, `Asia/Manila`.
+
+New default cohort dates follow August 1 to July 31 of the current academic year. The coordinator can configure those dates in External Tools. Historical seed records keep their original dates and terms. Aggregate reports explicitly say **All terms** rather than implying that historical data belongs to the current term.
+
+## External tools and APIs
+
+Google Drive, Docs, Forms, and Jibble settings are optional links. They are not OAuth connections or background sync. Local journal edits are not written to Google Docs. Built-in journals, attendance, evaluations, and custom forms work without those services.
+
+The `/api/students`, `/api/supervisors`, `/api/forms`, and timesheet routes remain read-only fixture APIs. They do not read browser changes and do not form a production backend. The Prisma SQLite `User`/`Post` schema is optional scaffolding and is not the portal domain database. To exercise that scaffold:
 
 ```bash
-bun run dev
+npm run db:generate
+npm run db:push
 ```
 
-Open **<http://localhost:3000>** in your browser.
+`.env.example` matches the SQLite datasource (`DATABASE_URL="file:./dev.db"`). The database path is relative to the Prisma schema directory. Production deployment needs a real domain schema, server sessions and authorization, password hashing, persistence, uploads, integrations, audit records, and backup policy; see the improvement log's follow-up list.
 
-> ⚠️ Do **not** run `bun run build` — the build script is configured for the
-> sandbox deployment environment and may fail locally. For development, always
-> use `bun run dev`.
-
-### 6. (Optional) Lint
+## Verification
 
 ```bash
-bun run lint
+npm run typecheck
+npm test
+npm run lint
+npm run build
+npx playwright install chromium
+npm run test:browser
 ```
 
----
+The browser smoke test starts its own local production server on port 3101, so build first. It uses an isolated browser context and sample data. It checks all three dashboards, themes, attendance and journal persistence, a real custom-form PDF download, and mobile drawer navigation. It refreshes the screenshots in `docs/screenshots/`.
 
-## Demo accounts
-
-The login screen has three one-click demo buttons (no real auth in this MVP):
-
-| Button                  | Role                | What you can do                         |
-|-------------------------|---------------------|-----------------------------------------|
-| Juan Dela Cruz          | Student             | Write journals, clock in/out, view evals|
-| Maria Santos            | Company Supervisor  | Review/approve journals, eval interns   |
-| Prof. Patricia Lim      | Practicum Coordinator | Manage cohort, connect tools, export PDFs |
-
----
-
-## Project structure
-
-```
-Practicum-Portal/
-├── prisma/
-│   └── schema.prisma          # Database schema (SQLite)
-├── src/
-│   ├── app/                   # Next.js App Router (single `/` route)
-│   │   ├── layout.tsx
-│   │   ├── page.tsx           # Renders <PortalApp/>
-│   │   └── globals.css        # Design tokens (Tailwind v4)
-│   ├── components/
-│   │   ├── portal/
-│   │   │   ├── auth/          # Login + create-account
-│   │   │   ├── layout/        # AppShell, sidebar, topbar, bottom nav
-│   │   │   ├── shared/        # Reusable: cards, sheets, editors, grid
-│   │   │   ├── student/       # Student views
-│   │   │   ├── supervisor/    # Supervisor views
-│   │   │   ├── coordinator/   # Coordinator views
-│   │   │   └── portal-app.tsx # Root view-state router
-│   │   └── ui/                # shadcn/ui primitives
-│   ├── lib/                   # Types, selectors, mock data, utils
-│   ├── store/                 # Zustand store (app + tools config)
-│   └── hooks/                 # React hooks
-├── .env.example
-├── .gitignore
-├── package.json
-├── tsconfig.json
-├── eslint.config.mjs
-├── tailwind.config.ts
-└── next.config.ts
-```
-
----
-
-## Architecture notes
-
-- **Single `/` route** — the portal uses client-side view-state navigation via
-  Zustand (`navigate(view, params)`) because the deployment target restricts
-  to one route. All "pages" are components switched by `PortalApp`.
-- **Mock data** — students, supervisors, journals, evaluations, and time logs
-  are seeded mock data in the Zustand store, persisted to `localStorage`.
-  No real backend calls in this MVP.
-- **Free-first tool integration** — the coordinator dashboard has a "Connect
-  Tools" sheet where you paste URLs for Google Drive, Google Docs journal
-  template, Google Forms, and Jibble. These are embedded inline:
-  - **Journal form** = "Drafting Room" with a Google-Docs-style embedded
-    editor + a left rail listing the student's journals.
-  - **Time Clock → Timesheet tab** = a Jibble-style monthly timesheet grid
-    that reads from the portal's clock-in/out sessions.
-- **Delegation stays honest** — every embedded tool surface shows a
-  "Connected to Google Docs / Jibble" badge and an "Open original ↗" link so
-  users always know where the source of truth lives.
-
----
-
-## Tech stack
-
-| Concern         | Choice                                   |
-|-----------------|------------------------------------------|
-| Framework       | Next.js 16 (App Router)                  |
-| Language        | TypeScript 5                             |
-| Styling         | Tailwind CSS 4                           |
-| UI components   | shadcn/ui (New York) + Lucide icons      |
-| Database        | Prisma + SQLite                          |
-| State (client)  | Zustand                                  |
-| State (server)  | TanStack Query                           |
-| Auth            | NextAuth.js v4 (available, not wired)    |
-| Charts          | Recharts                                 |
-| Animations      | Framer Motion                            |
-
----
-
-## Scripts
-
-| Command             | What it does                              |
-|---------------------|-------------------------------------------|
-| `bun run dev`       | Start dev server on port 3000             |
-| `bun run lint`      | Run ESLint                                |
-| `bun run db:push`   | Push Prisma schema → SQLite               |
-| `bun run db:generate`| Regenerate Prisma Client                 |
-| `bun run db:migrate`| Create + apply a migration                |
-| `bun run db:reset`  | Reset DB (destructive)                    |
-
----
-
-## License
-
-Internal university project — not for redistribution.
+Lint retains inherited controlled editor/modal `set-state-in-effect` findings as warnings; this branch does not claim zero lint debt. See [verification details](docs/VERIFICATION.md).

@@ -106,7 +106,7 @@ export function CoordinatorProfile() {
                 <div className="mt-2 flex flex-wrap items-center gap-2">
                   <RoleBadge role={currentUser.role} solid />
                   <span className="text-xs text-muted-foreground">
-                    Practicum Coordinator · Term 2024-2025
+                    Practicum Coordinator · All terms
                   </span>
                 </div>
               </div>
@@ -229,7 +229,7 @@ export function CoordinatorProfile() {
             <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               Active term
             </p>
-            <p className="mt-0.5 font-medium text-foreground">2024-2025</p>
+            <p className="mt-0.5 font-medium text-foreground">See External Tools for cohort dates</p>
           </div>
         </div>
         <div className="mt-4 flex justify-end border-t border-border pt-4">

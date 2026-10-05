@@ -90,10 +90,11 @@ function accountStatusOf(rec: {
 /** The effective login password for the credentials export. */
 function effectivePasswordOf(rec: {
   password?: string;
+  mustChangePassword?: boolean;
   idNumber?: string;
   studentNumber?: string;
 }): string {
-  return rec.password ?? rec.idNumber ?? rec.studentNumber ?? "—";
+  return rec.mustChangePassword ? rec.password ?? "" : "";
 }
 
 interface UnifiedUser {
@@ -319,9 +320,9 @@ export function UserManagement() {
       "Role",
       "User ID",
       "Account Status",
-      "Current Password",
+      "Temporary Password",
     ];
-    const data = allRows.map((r) => [
+    const data = allRows.filter((r) => r.accountStatus === "invited").map((r) => [
       r.name,
       r.email,
       r.role === "student"
@@ -341,7 +342,7 @@ export function UserManagement() {
     exportToCsv(`account-credentials-${stamp}.csv`, headers, data);
     toast.success("Credentials CSV downloaded", {
       description:
-        "Includes passwords — share only through secure channels.",
+        "Includes temporary passwords for invited accounts only.",
     });
   };
 

@@ -88,7 +88,7 @@ export function SchoolIdentityCardInner({
   });
 
   // Reusable background layer with adjusted image focus and smoother gradients
-  const BackgroundLayer = () => (
+  const backgroundLayer = (
     <>
       {displayHero ? (
         <>
@@ -123,14 +123,14 @@ export function SchoolIdentityCardInner({
     if (variant === "full") {
       return (
         <div className={cn("group relative overflow-hidden rounded-xl border border-border/60", className)}>
-          <BackgroundLayer />
+          {backgroundLayer}
           <div className="relative z-10">{inner}</div>
         </div>
       );
     }
     return (
       <div className={cn("group relative overflow-hidden rounded-xl border border-border/60", className)}>
-        <BackgroundLayer />
+        {backgroundLayer}
         <div className="relative z-10 flex w-full items-center p-3.5 sm:p-4">{inner}</div>
       </div>
     );
@@ -150,7 +150,7 @@ export function SchoolIdentityCardInner({
       aria-label={`View ${identity.name || "school"} details`}
       title={`View ${identity.name || "school"} details`}
     >
-      <BackgroundLayer />
+      {backgroundLayer}
 
       {/* Content wrapper ensures full width for flexbox spacing */}
       <div className={cn("relative z-10 w-full", variant === "compact" && "flex items-center p-3.5 sm:p-4")}>

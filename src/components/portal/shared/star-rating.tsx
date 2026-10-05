@@ -68,7 +68,6 @@ export function StarRating({
     return () => {
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [clamped, animate]);
 
   const fullStars = Math.floor(displayValue);

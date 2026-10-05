@@ -40,7 +40,7 @@ export function SchoolIdentityModal({ open, onOpenChange, schoolId }: SchoolIden
   const displayName = school?.name ?? schoolIdentity.name ?? "Your institution";
   const displayTagline = school?.tagline ?? schoolIdentity.tagline ?? "";
   const displayShortName = school?.shortName ?? schoolIdentity.shortName ?? "";
-  const displayAddress = school?.address ?? schoolIdentity.address ?? "";
+  const displayAddress = schoolIdentity.address ?? "";
   const displayLogo = school?.logoDataUrl ?? schoolIdentity.logoDataUrl;
   const displayHero = school?.heroImages?.[0] ?? schoolIdentity.heroImage;
 
@@ -147,7 +147,7 @@ export function SchoolIdentityModal({ open, onOpenChange, schoolId }: SchoolIden
                   type="button"
                   className="flex flex-col items-center gap-1.5 rounded-lg p-1.5 transition-colors hover:bg-muted/50"
                 >
-                  <Avatar name={s.name} size="md" color={s.avatarColor} />
+                  <Avatar name={s.name} size="md" color="#475569" />
                   <p className="max-w-full truncate text-[10px] font-medium text-muted-foreground">
                     {s.name.split(" ")[0]}
                   </p>

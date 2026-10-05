@@ -1,4 +1,5 @@
 "use client";
+import { accountUsers } from "@/lib/prototype";
 
 import * as React from "react";
 import { useAppStore } from "@/store/use-app-store";
@@ -266,6 +267,8 @@ export function BulkCreateUsers() {
       return;
     }
     const validRows = parsedRows.filter((r) => r.valid);
+    const emails = new Set(accountUsers(useAppStore.getState()).map((u) => u.email.trim().toLowerCase()));
+    if (validRows.some((r) => emails.has(r.email.trim().toLowerCase()))) { toast.error("A row uses an existing account email. Update it before creating users."); return; }
     if (validRows.length === 0) {
       toast.error("No valid rows to create.");
       return;
@@ -317,6 +320,8 @@ export function BulkCreateUsers() {
       toast.success(`Created ${results.length} users`, {
         description: "Credentials are shown once — export them now.",
       });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not create the accounts.");
     } finally {
       setCreating(false);
     }
@@ -326,6 +331,7 @@ export function BulkCreateUsers() {
   const validateQuickAdd = () => {
     const next: Record<string, string> = {};
     if (!qaName.trim()) next.name = "Name is required.";
+    if (accountUsers(useAppStore.getState()).some((u) => u.email.toLowerCase() === qaEmail.trim().toLowerCase())) next.email = "Email already belongs to an account.";
     if (!qaEmail.trim()) next.email = "Email is required.";
     else if (!EMAIL_RE.test(qaEmail)) next.email = "Enter a valid email.";
     if (!defaultCompanyId) next.companyId = "Pick a default company above.";

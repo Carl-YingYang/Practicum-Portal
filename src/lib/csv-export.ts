@@ -9,8 +9,9 @@
  * Safe to call only in the browser (relies on Blob, document, URL).
  */
 
-function escapeCell(value: string | number): string {
-  const str = typeof value === "number" ? String(value) : value ?? "";
+export function escapeCell(value: string | number): string {
+  const raw = typeof value === "number" ? String(value) : value ?? "";
+  const str = typeof value === "string" && /^[\s]*[=+@-]/.test(raw) ? `'${raw}` : raw;
   // Escape per RFC 4180: if the value contains a comma, double-quote, or
   // newline (CR/LF), wrap in double quotes and double any internal quotes.
   if (/[",\r\n]/.test(str)) {

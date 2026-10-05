@@ -351,7 +351,7 @@ export function CoordinatorTimeMonitor() {
                 </Button>
               }
               title="Cohort Time Log Report"
-              subtitle={`${students.length} students · Term 2024-2025`}
+              subtitle={`${students.length} students · All terms`}
               summaryStats={[
                 { label: "Students", value: String(students.length) },
                 { label: "Total Sessions", value: String(reportTotalSessions) },

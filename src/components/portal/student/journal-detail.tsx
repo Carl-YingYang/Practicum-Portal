@@ -157,7 +157,7 @@ export function JournalDetail() {
   };
 
   const handleShare = async () => {
-    const shareUrl = `${window.location.origin}/?journal=${journal.id}&week=${encodeURIComponent(weekLabel(journal.date))}`;
+    const shareUrl = "";
     const shareText = `Weekly Practicum Journal — ${formatDate(journal.date)} (${weekLabel(journal.date)}) · ${student.name} · ${journal.hours}h · Status: ${journal.status}`;
     try {
       if (typeof navigator !== "undefined" && navigator.share) {
@@ -169,8 +169,8 @@ export function JournalDetail() {
         toast.success("Shared");
       } else if (typeof navigator !== "undefined" && navigator.clipboard) {
         await navigator.clipboard.writeText(`${shareText}\n${shareUrl}`);
-        toast.success("Link copied to clipboard", {
-          description: "Paste it anywhere to share this journal entry.",
+        toast.success("Journal summary copied", {
+          description: "This shares a text summary. The full record stays in this browser.",
         });
       } else {
         // Last-resort fallback
@@ -180,7 +180,7 @@ export function JournalDetail() {
         ta.select();
         document.execCommand("copy");
         document.body.removeChild(ta);
-        toast.success("Link copied to clipboard");
+        toast.success("Journal summary copied");
       }
     } catch (e) {
       // User cancelled the share sheet — silent
@@ -251,15 +251,15 @@ export function JournalDetail() {
                 {journal.rejectionReason}
               </p>
               <p className="mt-2 text-xs text-red-700/80 dark:text-red-300/80">
-                Please submit a new journal addressing the feedback above.
+                Revise this journal to address your supervisor’s feedback.
               </p>
               <Button
                 size="sm"
                 variant="outline"
                 className="mt-3"
-                onClick={() => navigate("student.journal-new")}
+                onClick={() => navigate("student.journal-new", { journalId: journal.id })}
               >
-                Submit a new journal
+                Revise journal
               </Button>
             </div>
           </div>

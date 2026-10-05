@@ -63,9 +63,9 @@ export function SupervisorReports() {
       const submitted = evaluationsForStudent(evaluations, s.id)
         .filter((e) => e.supervisorId === supervisorId && e.status === "submitted")
         .sort((a, b) => (a.submittedAt ?? "") < (b.submittedAt ?? "") ? 1 : -1)[0];
-      return { student: s, evaluation: submitted as Evaluation | undefined };
+      return { student: s, companyName: getCompany(companies, s.companyId)?.name, evaluation: submitted as Evaluation | undefined };
     });
-  }, [interns, evaluations, supervisorId]);
+  }, [interns, evaluations, supervisorId, companies]);
 
   // For journal report: approved journals per intern.
   const journalReport = useMemo(() => {
@@ -73,9 +73,9 @@ export function SupervisorReports() {
       const all = journalsForStudent(journals, s.id);
       const approved = all.filter((j) => j.status === "approved");
       const totalApprovedHours = approved.reduce((sum, j) => sum + j.hours, 0);
-      return { student: s, approvedJournals: approved as Journal[], totalApprovedHours };
+      return { student: s, companyName: getCompany(companies, s.companyId)?.name, approvedJournals: approved as Journal[], totalApprovedHours };
     });
-  }, [interns, journals]);
+  }, [interns, journals, companies]);
 
   // For time log report: completed sessions per intern.
   const timeLogReport = useMemo(() => {
@@ -102,7 +102,7 @@ export function SupervisorReports() {
         const wk = weekLabel(j.date);
         allWeeks.add(wk);
         const cur = buckets.get(wk) ?? { label: wk };
-        cur[s.id] = (typeof cur[s.id] === "number" ? cur[s.id] : 0) + j.hours;
+        cur[s.id] = (typeof cur[s.id] === "number" ? Number(cur[s.id]) : 0) + j.hours;
         buckets.set(wk, cur);
       });
       weekMap.set(s.id, buckets);
@@ -132,7 +132,7 @@ export function SupervisorReports() {
       label: s.name.split(" ")[0],
     }));
     return { points, series };
-  }, [interns, journals]);
+  }, [interns, journals, companies]);
 
   // Evaluation scores per intern (bar chart).
   const evalScores = useMemo(() => {
@@ -174,14 +174,14 @@ export function SupervisorReports() {
     downloadPdfReport({
       filename: "evaluation-summary-all-interns",
       title: "Evaluation Summary — All Interns",
-      subtitle: `${interns.length} interns · ${evalSummary.filter((r) => r.evaluation).length} evaluated · Term 2024-2025`,
+      subtitle: `${interns.length} interns · ${evalSummary.filter((r) => r.evaluation).length} evaluated · All terms`,
       meta: [
         { label: "Interns", value: String(interns.length) },
         {
           label: "Evaluated",
           value: String(evalSummary.filter((r) => r.evaluation).length),
         },
-        { label: "Term", value: "2024-2025" },
+        { label: "Scope", value: "All terms" },
       ],
       sections: [
         {
@@ -232,7 +232,7 @@ export function SupervisorReports() {
     downloadPdfReport({
       filename: "per-intern-journal-report",
       title: "Per-Intern Journal Report",
-      subtitle: `${interns.length} interns · ${journalReport.reduce((s, r) => s + r.approvedJournals.length, 0)} approved journals · Term 2024-2025`,
+      subtitle: `${interns.length} interns · ${journalReport.reduce((s, r) => s + r.approvedJournals.length, 0)} approved journals · All terms`,
       meta: [
         { label: "Interns", value: String(interns.length) },
         {
@@ -241,7 +241,7 @@ export function SupervisorReports() {
             journalReport.reduce((s, r) => s + r.approvedJournals.length, 0),
           ),
         },
-        { label: "Term", value: "2024-2025" },
+        { label: "Scope", value: "All terms" },
       ],
       sections: journalReport.map(
         ({ student, companyName, approvedJournals, totalApprovedHours }) => ({

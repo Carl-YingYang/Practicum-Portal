@@ -12,7 +12,7 @@ import { DEFAULT_SCHOOL_ID } from "@/lib/types";
  * School defaults so what the coordinator sets in School Settings is what
  * every supervisor/student actually sees.
  */
-export type EffectiveSchool = School & {
+export type EffectiveSchool = Omit<School, "accentColor"> & {
   /**
    * Coordinator-picked accent color. Stored as a string on SchoolIdentity
    * (one of: sage, terracotta, slate, sand, clay, or a custom hex). When
@@ -44,6 +44,7 @@ export function useEffectiveSchool(): { school: EffectiveSchool; isDefault: bool
   const students = useAppStore((s) => s.students);
   const coordinators = useAppStore((s) => s.coordinators);
   const getSchool = useAppStore((s) => s.getSchool);
+  const schools = useAppStore((s) => s.schools);
   const schoolIdentity = useAppStore((s) => s.schoolIdentity);
 
   return useMemo(() => {
@@ -93,7 +94,7 @@ export function useEffectiveSchool(): { school: EffectiveSchool; isDefault: bool
     }
 
     return { school: mergeIdentity(getSchool(DEFAULT_SCHOOL_ID)), isDefault: true };
-  }, [currentUser, students, coordinators, getSchool, schoolIdentity]);
+  }, [currentUser, students, coordinators, getSchool, schoolIdentity, schools]);
 }
 
 /**
@@ -104,6 +105,7 @@ export function useSupervisorEditableSchool(): School | null {
   const currentUser = useAppStore((s) => s.currentUser);
   const students = useAppStore((s) => s.students);
   const getSchool = useAppStore((s) => s.getSchool);
+  const schools = useAppStore((s) => s.schools);
 
   return useMemo(() => {
     if (!currentUser || currentUser.role !== "supervisor" || !currentUser.supervisorId) {
@@ -122,5 +124,5 @@ export function useSupervisorEditableSchool(): School | null {
       return getSchool(sid);
     }
     return null;
-  }, [currentUser, students, getSchool]);
+  }, [currentUser, students, getSchool, schools]);
 }

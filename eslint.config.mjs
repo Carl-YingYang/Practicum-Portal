@@ -44,6 +44,13 @@ const eslintConfig = [...nextCoreWebVitals, ...nextTypescript, {
     "no-useless-escape": "off",
   },
 }, {
+  files: ["src/**/*.tsx", "src/**/*.ts"],
+  // Existing controlled editor/modal effects are tracked in docs/TESTING_PLATFORM.md.
+  rules: { "react-hooks/set-state-in-effect": "warn" },
+}, {
+  files: ["tests/**/*.cjs"],
+  rules: { "@typescript-eslint/no-require-imports": "off", "@next/next/no-assign-module-variable": "off" },
+}, {
   ignores: ["node_modules/**", ".next/**", "out/**", "build/**", "next-env.d.ts", "examples/**", "skills"]
 }];
 

@@ -142,7 +142,7 @@ export function GoogleDocEditor({
           {/* Linked badge — the doc is a manual link, not an API connection */}
           <span className="hidden items-center gap-1.5 rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-medium text-emerald-700 ring-1 ring-inset ring-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:ring-emerald-900/50 sm:inline-flex">
             <Cloud className="h-3 w-3" />
-            Linked Google Doc
+            {docUrl ? "Google Doc link" : "Local journal"}
           </span>
           {docUrl && (
             <a
@@ -160,8 +160,8 @@ export function GoogleDocEditor({
 
       {/* ── Docs-style formatting toolbar ─────────────────────────────── */}
       <div className="flex items-center gap-0.5 overflow-x-auto border-b border-border/70 bg-white px-3 py-1.5 dark:bg-zinc-950">
-        <ToolbarBtn icon={Undo2} label="Undo" disabled={readOnly} />
-        <ToolbarBtn icon={Redo2} label="Redo" disabled={readOnly} />
+        <ToolbarBtn icon={Undo2} label="Undo" disabled={true} />
+        <ToolbarBtn icon={Redo2} label="Redo" disabled={true} />
         <Divider />
         <button
           type="button"
@@ -171,39 +171,39 @@ export function GoogleDocEditor({
         >
           Normal text
         </button>
-        <ToolbarBtn icon={Heading1} label="Heading 1" disabled={readOnly} />
-        <ToolbarBtn icon={Heading2} label="Heading 2" disabled={readOnly} />
+        <ToolbarBtn icon={Heading1} label="Heading 1" disabled={true} />
+        <ToolbarBtn icon={Heading2} label="Heading 2" disabled={true} />
         <Divider />
-        <ToolbarBtn icon={Type} label="Font size" disabled={readOnly} />
+        <ToolbarBtn icon={Type} label="Font size" disabled={true} />
         <Divider />
         <ToolbarBtn
           icon={Bold}
           label="Bold"
           active={activeFmt.bold}
-          disabled={readOnly}
+          disabled={true}
           onClick={() => toggleFmt("bold")}
         />
         <ToolbarBtn
           icon={Italic}
           label="Italic"
           active={activeFmt.italic}
-          disabled={readOnly}
+          disabled={true}
           onClick={() => toggleFmt("italic")}
         />
         <ToolbarBtn
           icon={Underline}
           label="Underline"
           active={activeFmt.underline}
-          disabled={readOnly}
+          disabled={true}
           onClick={() => toggleFmt("underline")}
         />
         <Divider />
-        <ToolbarBtn icon={AlignLeft} label="Align left" disabled={readOnly} />
-        <ToolbarBtn icon={AlignCenter} label="Center" disabled={readOnly} />
-        <ToolbarBtn icon={AlignRight} label="Align right" disabled={readOnly} />
+        <ToolbarBtn icon={AlignLeft} label="Align left" disabled={true} />
+        <ToolbarBtn icon={AlignCenter} label="Center" disabled={true} />
+        <ToolbarBtn icon={AlignRight} label="Align right" disabled={true} />
         <Divider />
-        <ToolbarBtn icon={List} label="Bullet list" disabled={readOnly} />
-        <ToolbarBtn icon={ListOrdered} label="Numbered list" disabled={readOnly} />
+        <ToolbarBtn icon={List} label="Bullet list" disabled={true} />
+        <ToolbarBtn icon={ListOrdered} label="Numbered list" disabled={true} />
         <div className="ml-auto flex shrink-0 items-center gap-0.5">
           <ToolbarBtn
             icon={downloading ? Loader2 : FileDown}
@@ -212,7 +212,7 @@ export function GoogleDocEditor({
             spinning={downloading}
             onClick={onDownloadWord ? handleDownloadWord : undefined}
           />
-          <ToolbarBtn icon={Share2} label="Share" disabled={readOnly} />
+          <ToolbarBtn icon={Share2} label="Share" disabled={true} />
         </div>
       </div>
 
@@ -262,24 +262,24 @@ export function GoogleDocEditor({
             <span className="flex items-center gap-1">
               {saveState === "saving" && (
                 <>
-                  <Cloud className="h-3 w-3 animate-pulse" /> Saving to Drive…
+                  <Cloud className="h-3 w-3 animate-pulse" /> Saving locally…
                 </>
               )}
               {saveState === "saved" && (
                 <>
-                  <Check className="h-3 w-3 text-emerald-500" /> Saved to Drive
+                  <Check className="h-3 w-3 text-emerald-500" /> Saved in this browser
                 </>
               )}
               {saveState === "idle" && (
                 <>
-                  <Cloud className="h-3 w-3" /> Autosync on
+                  <Cloud className="h-3 w-3" /> Local autosave
                 </>
               )}
             </span>
           )}
         </div>
         <span className="hidden font-mono sm:inline">
-          docs.google.com/document
+          {docUrl ? "External document link" : "Practo writing workspace"}
         </span>
       </div>
     </div>
@@ -314,6 +314,7 @@ function DocSection({
         </p>
       ) : (
         <textarea
+          aria-label={heading}
           value={value}
           onChange={(e) => onChange(e.target.value)}
           placeholder={placeholder}

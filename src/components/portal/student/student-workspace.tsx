@@ -35,6 +35,10 @@ export function StudentWorkspace() {
   const view = useAppStore((s) => s.view);
   const viewParams = useAppStore((s) => s.viewParams);
 
+  const currentUser = useAppStore((s) => s.currentUser);
+  const student = useAppStore((s) => s.students.find((st) => st.id === currentUser?.studentId));
+  if (!student?.supervisorId && view !== "student.profile") return <StudentDashboard />;
+
   switch (view) {
     case "student.dashboard":
       return <StudentDashboard />;

@@ -93,9 +93,9 @@ export interface SchoolIdentity {
   themePreset: SchoolThemePreset;
   /** When themePreset === "custom", the coordinator's picked colors. */
   customColors?: {
-    /** Primary brand color (sidebar + buttons), hex. */
+    /** Primary secondary-accent/chart color, hex. */
     primary: string;
-    /** Deep accent for gradients/dark-mode chrome, hex. */
+    /** Deep secondary chart color, hex. */
     deep: string;
     /** Pale accent for highlights, hex. */
     light: string;
@@ -529,6 +529,7 @@ export interface TimeLog {
 }
 
 export type ActivityType =
+  | "coordinator_action"
   | "evaluation_submitted"
   | "evaluation_saved_draft"
   | "journal_submitted"
@@ -573,6 +574,7 @@ export interface FormRatingCriterion {
 }
 
 export interface FormBlock {
+  required?: boolean;
   id: string;
   type: FormBlockType;
   /** heading text / paragraph body / instruction text */
@@ -681,6 +683,8 @@ export type FormFieldValue = string | Record<string, string>;
 export interface FormSubmission {
   id: string;
   formId: string;
+  /** Immutable template used to interpret this response. */
+  formSnapshot?: FormDocument;
   /** the user who fills the form (the submitter) */
   userId: string;
   /**
@@ -794,6 +798,7 @@ export interface ViewParams {
   formId?: string;
   /** preselect student when creating an evaluation */
   preselectStudentId?: string;
+  tab?: "forms" | "submissions" | "assignments";
 }
 
 // ============================================================

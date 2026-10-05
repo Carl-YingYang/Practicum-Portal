@@ -22,6 +22,7 @@ import {
   type FormDocument,
   FORM_CATEGORY_LABELS,
 } from "@/lib/types";
+import { useAccountUsers } from "@/lib/use-account-users";
 import { format } from "date-fns";
 
 const targetOptions: {
@@ -45,7 +46,7 @@ const targetOptions: {
   {
     value: "specific_users",
     label: "Specific people",
-    description: "Choose individual recipients (refine in editor).",
+    description: "Choose the students or supervisors who should respond.",
     icon: UserCheck,
   },
 ];
@@ -64,6 +65,8 @@ export function AssignFormModal({
   form: FormDocument | null;
 }) {
   const { toast } = useToast();
+  const users = useAccountUsers().filter((u) => u.role !== "coordinator" && u.accountStatus !== "disabled");
+  const [recipients, setRecipients] = React.useState<string[]>([]);
   const assignForm = useAppStore((s) => s.assignForm);
   const [target, setTarget] = React.useState<FormAssignmentTarget>("all_supervisors");
   const [dueDate, setDueDate] = React.useState<string>("");
@@ -73,14 +76,16 @@ export function AssignFormModal({
       // pick a sensible default based on category
       setTarget(form?.category === "journal" || form?.category === "program" ? "all_students" : "all_supervisors");
       setDueDate("");
+      setRecipients([]);
     }
   }, [open, form?.category]);
 
   function handleAssign() {
-    if (!form) return;
+    if (!form || (target === "specific_users" && recipients.length === 0)) return;
     assignForm({
       formId: form.id,
       target,
+      targetUserIds: recipients,
       dueDate: dueDate || undefined,
     });
     onOpenChange(false);
@@ -133,6 +138,16 @@ export function AssignFormModal({
             </div>
           </div>
 
+          {target === "specific_users" && (
+            <fieldset className="max-h-52 overflow-auto border border-border p-2">
+              <legend className="px-1 text-xs font-medium">Recipients ({recipients.length})</legend>
+              {users.map((u) => <label key={u.id} className="flex min-h-11 cursor-pointer items-center gap-3 px-2 text-sm hover:bg-muted">
+                <input type="checkbox" checked={recipients.includes(u.id)} onChange={(e) => setRecipients((ids) => e.target.checked ? [...ids, u.id] : ids.filter((id) => id !== u.id))} />
+                <span className="min-w-0"><span className="block truncate">{u.name}</span><span className="text-xs text-muted-foreground">{u.role} · {u.email}</span></span>
+              </label>)}
+              {users.length === 0 && <p className="p-2 text-sm text-muted-foreground">No active recipients.</p>}
+            </fieldset>
+          )}
           <div className="space-y-1.5">
             <Label htmlFor="afm-due">Due date <span className="text-muted-foreground font-normal">(optional)</span></Label>
             <div className="flex items-center gap-2">
@@ -157,7 +172,7 @@ export function AssignFormModal({
           <DialogClose asChild>
             <Button variant="ghost">Cancel</Button>
           </DialogClose>
-          <Button onClick={handleAssign} className="gap-1.5">
+          <Button disabled={target === "specific_users" && recipients.length === 0} onClick={handleAssign} className="gap-1.5">
             <CheckCircle2 className="h-4 w-4" /> Assign form
           </Button>
         </DialogFooter>

@@ -1,3 +1,4 @@
+import { defaultTermDates } from "./academic-term";
 import type {
   ActivityLog,
   Company,
@@ -2191,8 +2192,7 @@ export const defaultToolsConfig: ToolsConfig = {
   formUrl: "",
   formResponsesCsvUrl: "",
   jibbleInviteUrl: "",
-  termStart: "2025-06-02",
-  termEnd: "2025-12-15",
+  ...defaultTermDates(),
   journalDueDay: "friday",
   requiredHours: 300,
 };

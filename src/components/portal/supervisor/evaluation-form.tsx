@@ -11,6 +11,7 @@ import {
   Pencil,
 } from "lucide-react";
 import { useAppStore } from "@/store/use-app-store";
+import { configuredTerm } from "@/lib/prototype";
 import { getStudent, getCompany } from "@/lib/selectors";
 import { PageHeader } from "@/components/portal/layout/page-header";
 import { SectionCard } from "@/components/portal/shared/section-card";
@@ -34,7 +35,7 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { RATING_CRITERIA, RATING_ANCHORS } from "@/lib/types";
 
-const TERM = "2024-2025";
+
 const MAX_COMMENT = 500;
 
 type RatingKey = "qualityOfWork" | "jobKnowledge" | "dependability";
@@ -73,6 +74,7 @@ export function EvaluationForm() {
   const canGoBack = useAppStore((s) => s.history.length > 0);
   const saveEvaluation = useAppStore((s) => s.saveEvaluation);
 
+  const toolsConfig = useAppStore((s) => s.toolsConfig);
   const supervisorId = currentUser?.supervisorId ?? "";
 
   // Resolve the editing draft (if any) and the target student.
@@ -87,6 +89,7 @@ export function EvaluationForm() {
   const student = getStudent(students, targetStudentId);
   const company = student ? getCompany(companies, student.companyId) : undefined;
 
+  const TERM = editingDraft?.term ?? configuredTerm(toolsConfig);
   const isEditing = !!editingDraft;
 
   // ----- Local form state -----
@@ -112,27 +115,26 @@ export function EvaluationForm() {
   const [reviewOpen, setReviewOpen] = useState(false);
   const [cancelOpen, setCancelOpen] = useState(false);
 
-  // ----- Autosave feel (debounced indicator on change) -----
-  // The "saving" state is set synchronously in change handlers; the effect
-  // below only sets up a debounced timeout to transition to "saved".
-  const isFirstRender = useRef(true);
-  useEffect(() => {
-    if (isFirstRender.current) {
-      isFirstRender.current = false;
-      return;
-    }
-    const t = setTimeout(() => setSavedIndicator("saved"), 700);
-    return () => clearTimeout(t);
-  }, [ratings, comments]);
-
-  const updateRating = (key: RatingKey, v: number) => {
-    setRatings((r) => ({ ...r, [key]: v }));
-    setSavedIndicator("saving");
+  const draftIdRef = useRef<string | null>(editingDraft?.id ?? null);
+  const ratingsRef = useRef(ratings);
+  const commentsRef = useRef(comments);
+  function persistChange(nextRatings: Ratings, nextComments: Comments) {
+    if (!student || student.supervisorId !== supervisorId) return;
+    const id = saveEvaluation({ id: draftIdRef.current ?? undefined, studentId: student.id, supervisorId, term: TERM, ...nextRatings, ...nextComments, submit: false });
+    draftIdRef.current = id;
+    setSavedId(id);
+    setLastSavedAt(new Date());
+    setSavedIndicator("saved");
+  }
+  const updateRating = (key: RatingKey, value: number) => {
+    ratingsRef.current = { ...ratingsRef.current, [key]: value };
+    setRatings(ratingsRef.current);
+    persistChange(ratingsRef.current, commentsRef.current);
   };
-
-  const updateComment = (key: keyof Comments, v: string) => {
-    setComments((c) => ({ ...c, [key]: v }));
-    setSavedIndicator("saving");
+  const updateComment = (key: keyof Comments, value: string) => {
+    commentsRef.current = { ...commentsRef.current, [key]: value };
+    setComments(commentsRef.current);
+    persistChange(ratingsRef.current, commentsRef.current);
   };
 
   const allRated =
@@ -165,9 +167,9 @@ export function EvaluationForm() {
 
   // ----- Actions -----
   const handleSaveDraft = () => {
-    if (!student) return;
+    if (!student || student.supervisorId !== supervisorId) return;
     const id = saveEvaluation({
-      id: savedId ?? undefined,
+      id: draftIdRef.current ?? undefined,
       studentId: student.id,
       supervisorId,
       term: TERM,
@@ -179,6 +181,7 @@ export function EvaluationForm() {
       recommendations: comments.recommendations,
       submit: false,
     });
+    draftIdRef.current = id;
     setSavedId(id);
     setLastSavedAt(new Date());
     setSavedIndicator("saved");
@@ -188,9 +191,9 @@ export function EvaluationForm() {
   };
 
   const handleSubmit = () => {
-    if (!student || !allRated) return;
+    if (!student || student.supervisorId !== supervisorId || !allRated) return;
     const id = saveEvaluation({
-      id: savedId ?? undefined,
+      id: draftIdRef.current ?? undefined,
       studentId: student.id,
       supervisorId,
       term: TERM,

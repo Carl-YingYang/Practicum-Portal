@@ -193,14 +193,14 @@ export function StudentReports() {
     downloadPdfReport({
       filename: `accreditation-document-${student.studentNumber}`,
       title: "Practicum Accreditation Document",
-      subtitle: `${student.name} · ${student.studentNumber} · ${student.course} · Term 2024-2025`,
+      subtitle: `${student.name} · ${student.studentNumber} · ${student.course} · All terms`,
       meta: [
         { label: "Student", value: student.name },
         { label: "Student No.", value: student.studentNumber },
         { label: "Company", value: company?.name ?? "—" },
         { label: "Supervisor", value: supervisor?.name ?? "—" },
         { label: "Coordinator", value: coordinatorName },
-        { label: "Term", value: "2024-2025" },
+        { label: "Scope", value: "All terms" },
       ],
       sections: [
         {
@@ -267,8 +267,8 @@ export function StudentReports() {
         {
           heading: "4. Tools & Integration",
           keyValue: [
-            { label: "Jibble", value: toolsConfig?.jibble ? "Linked" : "Not linked" },
-            { label: "Google Workspace", value: toolsConfig?.google ? "Linked" : "Not linked" },
+            { label: "Jibble", value: toolsConfig?.jibbleInviteUrl ? "Linked" : "Not linked" },
+            { label: "Google Workspace", value: (toolsConfig?.driveFolderUrl || toolsConfig?.journalTemplateUrl || toolsConfig?.formUrl) ? "Linked" : "Not linked" },
           ],
         },
         {

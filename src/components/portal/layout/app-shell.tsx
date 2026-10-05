@@ -1,6 +1,8 @@
 "use client";
 
 import * as React from "react";
+import { toast } from "sonner";
+import { ConfirmDialog } from "@/components/portal/shared/confirm-dialog";
 import { Sidebar, MobileSidebar } from "./sidebar";
 import { PageActions } from "./page-actions";
 import { BottomTabBar } from "./bottom-tab-bar";
@@ -30,7 +32,10 @@ export function AppShell({ children }: AppShellProps) {
   const [collapsed, setCollapsed] = React.useState(false);
   const [mobileNavOpen, setMobileNavOpen] = React.useState(false);
   const [paletteOpen, setPaletteOpen] = React.useState(false);
+  const [resetOpen, setResetOpen] = React.useState(false);
+  const resetPrototype = useAppStore((s) => s.resetPrototype);
   const view = useAppStore((s) => s.view);
+  const viewParams = useAppStore((s) => s.viewParams);
 
   // Scroll to top on view change — native-app feel for mobile navigation.
   React.useEffect(() => {
@@ -43,8 +48,10 @@ export function AppShell({ children }: AppShellProps) {
     if (saved === "1") setCollapsed(true);
   }, []);
   React.useEffect(() => {
-    localStorage.setItem("portal-sidebar-collapsed", collapsed ? "1" : "0");
-  }, [collapsed]);
+    const onStorageError = () => toast.error("Browser storage is full. Your latest change may not survive refresh.");
+    window.addEventListener("practo:storage-error", onStorageError);
+    return () => window.removeEventListener("practo:storage-error", onStorageError);
+  }, []);
 
   // Global Cmd/Ctrl+K shortcut → open command palette.
   React.useEffect(() => {
@@ -59,7 +66,7 @@ export function AppShell({ children }: AppShellProps) {
   }, []);
 
   return (
-    <div className="flex min-h-screen bg-background">
+    <div className="editorial-shell flex min-h-screen bg-background">
       {/*
         Desktop sidebar — pinned to the viewport via sticky so it NEVER scrolls
         with the page. self-start prevents the flex row from stretching it to
@@ -67,7 +74,7 @@ export function AppShell({ children }: AppShellProps) {
         ScrollArea handles its own nav overflow.
       */}
       <div className="sticky top-0 hidden h-screen shrink-0 self-start lg:flex lg:flex-col">
-        <Sidebar collapsed={collapsed} onToggleCollapse={() => setCollapsed((c) => !c)} />
+        <Sidebar collapsed={collapsed} onToggleCollapse={() => setCollapsed((c) => { localStorage.setItem("portal-sidebar-collapsed", c ? "0" : "1"); return !c; })} />
       </div>
 
       {/* Mobile drawer — secondary nav only (primary is the bottom tab bar). */}
@@ -80,6 +87,7 @@ export function AppShell({ children }: AppShellProps) {
         <PageActions
           onOpenMobileNav={() => setMobileNavOpen(true)}
           onOpenPalette={() => setPaletteOpen(true)}
+          onResetDemo={() => setResetOpen(true)}
         />
         <ActiveSessionBanner />
         {/*
@@ -89,7 +97,7 @@ export function AppShell({ children }: AppShellProps) {
         */}
         <main className="flex-1 px-5 pb-[calc(56px+env(safe-area-inset-bottom,0px)+1rem)] pt-4 sm:px-6 lg:px-8 lg:pb-12 lg:pt-6">
           <div className="mx-auto w-full max-w-7xl">
-            <div key={view}>
+            <div key={`${view}:${JSON.stringify(viewParams)}`}>
               {children}
             </div>
           </div>
@@ -99,13 +107,7 @@ export function AppShell({ children }: AppShellProps) {
         <footer className="mt-auto hidden border-t border-border/60 bg-background/50 px-4 py-2.5 sm:px-6 lg:block lg:px-8">
           <div className="mx-auto flex w-full max-w-7xl items-center justify-between gap-2 text-xs text-muted-foreground">
             <p className="truncate">Practo</p>
-            <a
-              href="#"
-              onClick={(e) => e.preventDefault()}
-              className="shrink-0 font-medium text-muted-foreground transition-colors hover:text-foreground"
-            >
-              User Agreement
-            </a>
+            <div className="flex items-center gap-4"><span>Local prototype · saved in this browser</span><button type="button" className="underline underline-offset-4" onClick={() => setResetOpen(true)}>Reset demo data</button></div>
           </div>
         </footer>
       </div>
@@ -113,6 +115,7 @@ export function AppShell({ children }: AppShellProps) {
       {/* Mobile primary navigation — sticky bottom tab bar (<lg only). */}
       <BottomTabBar />
 
+      <ConfirmDialog open={resetOpen} onOpenChange={setResetOpen} title="Reset local prototype?" description="This clears your local journals, attendance, forms, accounts, and other demo changes and signs you out. School branding and external tool settings are kept." destructive confirmLabel="Reset demo" onConfirm={resetPrototype} />
       {/* Global Cmd/Ctrl+K command palette */}
       <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} />
     </div>

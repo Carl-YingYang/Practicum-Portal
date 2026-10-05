@@ -943,3 +943,85 @@
   height: 1px;
   background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--primary) 35%, var(--border)), transparent);
 }
+
+/* Practo editorial system: neutral surfaces; school colors are secondary. */
+:root {
+  --font-inter: Arial, Helvetica, sans-serif;
+  --font-jetbrains: ui-monospace, SFMono-Regular, monospace;
+  --radius: .25rem;
+  --background: #ffffff;
+  --foreground: #191919;
+  --card: #ffffff;
+  --card-foreground: #191919;
+  --popover: #ffffff;
+  --popover-foreground: #191919;
+  --primary: #202020;
+  --primary-foreground: #ffffff;
+  --secondary: #f4f4f2;
+  --secondary-foreground: #252525;
+  --muted: #f5f5f3;
+  --muted-foreground: #646461;
+  --accent: #ededeb;
+  --accent-foreground: #202020;
+  --border: #dcdcd7;
+  --input: #d5d5d0;
+  --ring: #72726e;
+  --sidebar: #ffffff;
+  --sidebar-foreground: #202020;
+  --sidebar-primary: #202020;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #efefec;
+  --sidebar-accent-foreground: #202020;
+  --sidebar-border: #dcdcd7;
+  --sidebar-ring: #72726e;
+  --topbar: #ffffff;
+  --topbar-foreground: #202020;
+  --topbar-border: #dcdcd7;
+  --brand-accent: #266ca9;
+}
+.dark {
+  --background: #171717;
+  --foreground: #f2f2ed;
+  --card: #1d1d1d;
+  --card-foreground: #f2f2ed;
+  --popover: #222222;
+  --popover-foreground: #f2f2ed;
+  --primary: #efefea;
+  --primary-foreground: #171717;
+  --secondary: #2a2a29;
+  --secondary-foreground: #efefea;
+  --muted: #272726;
+  --muted-foreground: #b1b1aa;
+  --accent: #30302e;
+  --accent-foreground: #efefea;
+  --border: #41413e;
+  --input: #4c4c47;
+  --ring: #c5c5ba;
+  --sidebar: #171717;
+  --sidebar-foreground: #efefea;
+  --sidebar-primary: #efefea;
+  --sidebar-primary-foreground: #171717;
+  --sidebar-accent: #2b2b29;
+  --sidebar-accent-foreground: #efefea;
+  --sidebar-border: #41413e;
+  --sidebar-ring: #c5c5ba;
+  --topbar: #171717;
+  --topbar-foreground: #efefea;
+  --topbar-border: #41413e;
+}
+.editorial-shell [data-slot="card"] { border-radius: 4px; box-shadow: none; }
+.editorial-eyebrow { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: .16em; color: var(--muted-foreground); }
+.editorial-section-heading { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 12px 16px; background: var(--foreground); color: var(--background); font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: .15em; }
+.editorial-sheet { border: 1px solid var(--border); background: var(--card); }
+.editorial-item { display: flex; align-items: center; justify-content: space-between; gap: 16px; width: 100%; padding: 16px; border-bottom: 1px solid var(--border); text-align: left; }
+.editorial-item:last-child { border-bottom: 0; }
+.editorial-item:hover { background: var(--muted); }
+.editorial-shell button:focus-visible, .editorial-login button:focus-visible { outline: 2px solid var(--ring); outline-offset: 3px; }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; scroll-behavior: auto !important; } }
+@media print {
+  .editorial-shell > div:first-child, .editorial-shell footer, .editorial-shell nav, .editorial-shell [role="navigation"], .editorial-shell button, .editorial-shell .sticky { display: none !important; }
+  body { background: white !important; color: black !important; }
+  main { padding: 0 !important; }
+}
+
+@media print { :root, .dark { --foreground: #191919; --background: #ffffff; --card: #ffffff; --card-foreground: #191919; --muted-foreground: #646461; --border: #dcdcd7; } }

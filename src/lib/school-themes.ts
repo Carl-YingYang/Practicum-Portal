@@ -1,25 +1,12 @@
-import type { SchoolIdentity, SchoolThemePreset } from "./types";
+import { ACCENT_HEX, type SchoolIdentity, type SchoolThemePreset } from "./types";
 
-// ============================================================
-// School theme presets
-// --------------------
-// Each preset defines the three core brand colors used to drive
-// the CSS custom properties that the rest of the app reads:
-//
-//   --primary        : buttons, links, active states (page surface)
-//   --sidebar        : the blue-chrome sidebar / topbar in LIGHT mode
-//   --blue-deep      : gradients, dark-mode chrome base
-//   --blue-lightest  : pale highlight (active item strip, dots)
-//
-// The SchoolThemeProvider reads the active preset (or custom colors)
-// and writes these variables onto <html> — no React re-renders, just
-// a single style mutation per change.
-// ============================================================
+// School palettes color secondary highlights and charts. Main surfaces,
+// controls, sidebar and header remain neutral in light and dark modes.
 
 export interface SchoolThemeColors {
-  /** Primary brand color — sidebar + buttons (light mode chrome). */
+  /** Primary brand color for charts and secondary accents. */
   primary: string;
-  /** Deep accent — gradients, dark-mode chrome. */
+  /** Deep secondary chart color. */
   deep: string;
   /** Pale highlight — active item strip, dots, soft fills. */
   light: string;
@@ -37,7 +24,7 @@ export const SCHOOL_THEME_PRESETS: SchoolThemePresetMeta[] = [
   {
     key: "azure-blue",
     label: "Azure Blue",
-    description: "Default — vibrant sky-blue chrome.",
+    description: "Blue secondary accents.",
     colors: { primary: "#266ca9", deep: "#0f2573", light: "#ade1fb" },
   },
   {
@@ -103,46 +90,13 @@ export function resolveSchoolTheme(identity: SchoolIdentity): SchoolThemeColors 
 export function schoolThemeCssVars(identity: SchoolIdentity): Record<string, string> {
   const { primary, deep, light } = resolveSchoolTheme(identity);
 
-  // Derive a slightly-darkened variant of `primary` for dark-mode chrome
-  // (we keep it simple — no color-mix dependency on the JS side).
-  const darker = deep;
-
+  const key = identity.accentColor as keyof typeof ACCENT_HEX;
+  const accent = ACCENT_HEX[key]?.base ?? (identity.accentColor && /^#[0-9a-f]{6}$/i.test(identity.accentColor) ? identity.accentColor : primary);
   return {
-    // ---- Brand / page surface ----
-    "--primary": primary,
-    "--ring": primary,
-    "--info": primary,
-
-    // ---- Sidebar chrome (light mode) ----
-    "--sidebar": primary,
-    "--sidebar-primary": light,
-    "--sidebar-primary-foreground": darker,
-    "--sidebar-ring": light,
-
-    // ---- Topbar chrome (matches sidebar) ----
-    "--topbar": primary,
-
-    // ---- Accent (pale tint of the brand) ----
-    "--accent": light,
-    "--accent-foreground": primary,
-
-    // ---- Raw blue tokens (used by gradients + login brand panel) ----
-    "--blue-lightest": light,
-    "--blue": primary,
-    "--blue-deep": deep,
-    "--blue-darker": darker,
-
-    // ---- Chart palette (brand-tinted) ----
+    "--brand-accent": accent,
+    "--brand-accent-light": light,
     "--chart-1": primary,
     "--chart-2": light,
     "--chart-3": deep,
-
-    // ---- Backwards-compat aliases ----
-    "--navy": primary,
-    "--navy-deep": deep,
-    "--navy-darker": darker,
-    "--navy-light": light,
-    "--gold": light,
-    "--gold-light": light,
   };
 }

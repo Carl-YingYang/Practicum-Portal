@@ -1,6 +1,6 @@
 {
-  "name": "nextjs_tailwind_shadcn_ts",
-  "version": "0.2.0",
+  "name": "practo-portal",
+  "version": "0.3.0",
   "private": true,
   "scripts": {
     "dev": "next dev -p 3000 --webpack",
@@ -11,7 +11,10 @@
     "db:push": "prisma db push",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
-    "db:reset": "prisma migrate reset"
+    "db:reset": "prisma migrate reset",
+    "typecheck": "tsc --noEmit",
+    "test": "node --test tests/prototype.test.cjs",
+    "test:browser": "node tests/browser-smoke.cjs"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
@@ -94,6 +97,7 @@
     "bun-types": "^1.3.4",
     "eslint": "^9",
     "eslint-config-next": "^16.1.1",
+    "playwright": "1.51.1",
     "tailwindcss": "^4",
     "tw-animate-css": "^1.3.5",
     "typescript": "^5"

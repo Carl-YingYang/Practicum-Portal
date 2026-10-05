@@ -1,5 +1,6 @@
 "use client";
 
+import { downloadFormPdf } from "@/lib/form-export";
 import * as React from "react";
 import {
   Dialog,
@@ -63,10 +64,10 @@ export function FormPreviewModal({
   const publishedDate = form.publishedAt ? format(new Date(form.publishedAt), "MMM d, yyyy 'at' h:mm a") : "";
 
   function handlePrint() {
-    toast({ title: "Print preview", description: "In production this would open a print-friendly view." });
+    window.print();
   }
   function handleDownload() {
-    toast({ title: "Export queued", description: "A PDF export would be generated in production." });
+    if (form) downloadFormPdf(form, {});
   }
 
   return (

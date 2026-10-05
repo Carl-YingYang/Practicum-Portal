@@ -173,7 +173,6 @@ function InfoField({
   // state so it persists on submit.
   React.useEffect(() => {
     if (auto && onAutoFill) onAutoFill(auto);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [auto]);
 
   const effective = value || auto;

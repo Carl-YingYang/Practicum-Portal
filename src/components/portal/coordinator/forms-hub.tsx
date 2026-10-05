@@ -70,7 +70,7 @@ import {
   type FormSubmissionStatus,
   FORM_CATEGORY_LABELS,
 } from "@/lib/types";
-import { portalUsers } from "@/lib/mock-data";
+import { useAccountUsers } from "@/lib/use-account-users";
 import {
   submissionsForForm,
   pendingSubmissionsForCoordinator,
@@ -101,6 +101,7 @@ const submissionStatusFilters: { value: FormSubmissionStatus | "all" | "pending_
 type HubTab = "forms" | "submissions" | "assignments";
 
 export function FormsHub() {
+  const portalUsers = useAccountUsers();
   const { toast } = useToast();
   const navigate = useAppStore((s) => s.navigate);
   const viewParams = useAppStore((s) => s.viewParams);
@@ -239,7 +240,7 @@ export function FormsHub() {
         if (r !== 0) return r;
         return (a.submittedAt ?? a.updatedAt) < (b.submittedAt ?? b.updatedAt) ? 1 : -1;
       });
-  }, [submissions, subFormFilter, subStatusFilter, subSearch, forms, students]);
+  }, [submissions, subFormFilter, subStatusFilter, subSearch, forms, students, portalUsers]);
 
   const pendingCount = stats.pending;
 
@@ -520,7 +521,7 @@ export function FormsHub() {
                 const targetLabel =
                   a.target === "all_supervisors" ? "All supervisors" :
                   a.target === "all_students" ? "All students" :
-                  `Specific users (${a.userIds?.length ?? 0})`;
+                  `Specific users (${a.targetUserIds.length ?? 0})`;
                 const TargetIcon = a.target === "all_supervisors" ? Users : a.target === "all_students" ? GraduationCap : UserCheck;
                 const dueInDays = a.dueDate ? differenceInDays(new Date(a.dueDate), new Date()) : null;
                 const overdue = dueInDays !== null && dueInDays < 0;

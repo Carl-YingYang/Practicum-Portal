@@ -416,7 +416,7 @@ export function ExternalToolsSetup() {
                       value={extraUrl}
                       onChange={(e) =>
                         setToolsConfig({
-                          [tool.extraField]: e.target.value,
+                          [tool.extraField!]: e.target.value,
                         } as Partial<ToolsConfig>)
                       }
                       onBlur={() =>

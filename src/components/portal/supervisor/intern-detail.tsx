@@ -593,7 +593,7 @@ export function InternDetail() {
         <div className="space-y-4 text-slate-900">
           <div className="border-b border-slate-200 pb-3">
             <h1 className="text-xl font-bold">Practicum Intern Report</h1>
-            <p className="text-xs text-slate-500">Acme Corp · Term 2024-2025</p>
+            <p className="text-xs text-slate-500">Acme Corp · All terms</p>
           </div>
           <div className="grid grid-cols-2 gap-2 text-sm">
             <Field label="Name" value={student.name} />

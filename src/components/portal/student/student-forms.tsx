@@ -53,7 +53,6 @@ export function StudentForms() {
     [forms, assignments, currentUser]
   );
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const mySubs = React.useMemo(
     () => submissionsForUser(submissions, currentUser.id),
     [submissions, currentUser.id]
@@ -62,8 +61,8 @@ export function StudentForms() {
   type Row = {
     form: FormDocument;
     status: FormSubmissionStatus;
-    dueDate?: string;
-    reviewNote?: string;
+    dueDate?: string | null;
+    reviewNote?: string | null;
     updatedAt?: string;
   };
 
@@ -158,8 +157,8 @@ function FormGroup({
   rows: Array<{
     form: FormDocument;
     status: FormSubmissionStatus;
-    dueDate?: string;
-    reviewNote?: string;
+    dueDate?: string | null;
+    reviewNote?: string | null;
     updatedAt?: string;
   }>;
   onOpen: (formId: string) => void;
@@ -200,8 +199,8 @@ function StudentFormCard({
 }: {
   form: FormDocument;
   status: FormSubmissionStatus;
-  dueDate?: string;
-  reviewNote?: string;
+  dueDate?: string | null;
+  reviewNote?: string | null;
   updatedAt?: string;
   onOpen: () => void;
 }) {

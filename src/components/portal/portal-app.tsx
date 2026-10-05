@@ -60,6 +60,8 @@ function WorkspaceLoader() {
  * workspace, which itself switches on the current `view`.
  */
 export function PortalApp() {
+  const hasHydrated = useAppStore((s) => s.hasHydrated);
+  const hydratePrototype = useAppStore((s) => s.hydratePrototype);
   const currentUser = useAppStore((s) => s.currentUser);
   const view = useAppStore((s) => s.view);
   const viewParams = useAppStore((s) => s.viewParams);
@@ -71,10 +73,10 @@ export function PortalApp() {
   // manual localStorage convention used elsewhere — no persist middleware).
   // Also hydrate the subscription + schools so branding edits persist.
   React.useEffect(() => {
-    hydrateToolsConfig();
-    hydrateSubscription();
-    hydrateSchools();
-  }, [hydrateToolsConfig, hydrateSubscription, hydrateSchools]);
+    void hydratePrototype().then(() => { hydrateToolsConfig(); hydrateSubscription(); hydrateSchools(); });
+  }, [hydratePrototype, hydrateToolsConfig, hydrateSubscription, hydrateSchools]);
+
+  if (!hasHydrated) return <WorkspaceLoader />;
 
   // Public route.
   if (!currentUser || view === "login") {

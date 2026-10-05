@@ -140,7 +140,7 @@ export function useNotifications(): NotificationItem[] {
           ).toISOString(),
           action: {
             label: "View student",
-            view: "coordinator.student-detail",
+            view: "coordinator.student-view",
             params: { studentId: student.id },
           },
         });
@@ -250,7 +250,7 @@ export function useNotifications(): NotificationItem[] {
             ? `${firstSt.name} submitted a journal.`
             : "Review and approve submitted journals.",
           timestamp: pending[0].submittedAt ?? new Date().toISOString(),
-          action: { label: "Open approval queue", view: "supervisor.journal-approval" },
+          action: { label: "Open approval queue", view: "supervisor.journals" },
         });
       }
 
@@ -299,7 +299,7 @@ export function useNotifications(): NotificationItem[] {
           timestamp: new Date().toISOString(),
           action: {
             label: "View intern",
-            view: "supervisor.intern-detail",
+            view: "supervisor.intern-view",
             params: { studentId: st.id },
           },
         });

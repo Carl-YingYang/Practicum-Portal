@@ -1,4 +1,5 @@
 "use client";
+import { accountUsers } from "@/lib/prototype";
 
 import * as React from "react";
 import { useAppStore } from "@/store/use-app-store";
@@ -287,10 +288,7 @@ function matchSupervisor(
   if (byEmail) return byEmail.id;
   const byName = supervisors.find((s) => s.name.toLowerCase() === lower);
   if (byName) return byName.id;
-  const partial = supervisors.find((s) =>
-    s.name.toLowerCase().includes(lower)
-  );
-  return partial?.id ?? null;
+  return null;
 }
 
 // ============================================================
@@ -302,7 +300,7 @@ function exportResults(records: CreatedRecord[]) {
     "Name",
     "Email",
     "Role",
-    "User ID (Password)",
+    "User ID",
     "Temp Password",
     "Supervisor Assigned",
     "Record ID",
@@ -347,6 +345,7 @@ export function ImportUsersSheet({ open, onOpenChange }: ImportUsersSheetProps) 
   const supervisors = useAppStore((s) => s.supervisors);
   const companies = useAppStore((s) => s.companies);
   const createStudent = useAppStore((s) => s.createStudent);
+  const upsertCompany = useAppStore((s) => s.upsertCompany);
   const createSupervisor = useAppStore((s) => s.createSupervisor);
 
   const [phase, setPhase] = React.useState<"input" | "creating" | "results">(
@@ -389,7 +388,8 @@ export function ImportUsersSheet({ open, onOpenChange }: ImportUsersSheetProps) 
         setRows([]);
         return;
       }
-      const validated = validateRows(parsed, students, supervisors);
+      const existing = new Set(accountUsers(useAppStore.getState()).map((u) => u.email.trim().toLowerCase()));
+      const validated = validateRows(parsed, students, supervisors).map((row) => existing.has(row.email.trim().toLowerCase()) ? { ...row, status: "invalid" as const, errors: [...row.errors, "Email already belongs to an account"] } : row);
       setRows(validated);
       toast.success(`Parsed ${validated.length} row${validated.length === 1 ? "" : "s"}`, {
         description: `${validated.filter((r) => r.status === "valid").length} valid, ${validated.filter((r) => r.status === "invalid").length} need attention`,
@@ -416,6 +416,8 @@ export function ImportUsersSheet({ open, onOpenChange }: ImportUsersSheetProps) 
   };
 
   const handleCreate = () => {
+    const existingEmails = new Set(accountUsers(useAppStore.getState()).map((u) => u.email.trim().toLowerCase()));
+    if (validRows.some((r) => existingEmails.has(r.email.trim().toLowerCase()))) { toast.error("An account was added after the preview. Upload again to revalidate."); return; }
     setPhase("creating");
     // Defer to next tick so the loading state paints before the (synchronous) work.
     setTimeout(() => {
@@ -426,7 +428,7 @@ export function ImportUsersSheet({ open, onOpenChange }: ImportUsersSheetProps) 
       for (const row of validRows) {
         if (row.role !== "supervisor") continue;
         const companyId =
-          matchCompany(row.companyName, companies) ?? companies[0]?.id ?? "";
+          matchCompany(row.companyName, companies) ?? (row.companyName.trim() ? upsertCompany({ name: row.companyName }) : "");
         const result = createSupervisor({
           name: row.name,
           email: row.email,
@@ -454,7 +456,7 @@ export function ImportUsersSheet({ open, onOpenChange }: ImportUsersSheetProps) 
       for (const row of validRows) {
         if (row.role !== "student") continue;
         const companyId =
-          matchCompany(row.companyName, companies) ?? companies[0]?.id ?? "";
+          matchCompany(row.companyName, companies) ?? (row.companyName.trim() ? upsertCompany({ name: row.companyName }) : "");
         const supervisorId = matchSupervisor(row.supervisorRef, updatedSupervisors);
         const result = createStudent({
           studentNumber: row.studentNumber,
@@ -467,8 +469,9 @@ export function ImportUsersSheet({ open, onOpenChange }: ImportUsersSheetProps) 
           position: "Intern",
           department: "Other",
         });
-        const sup = supervisorId
-          ? updatedSupervisors.find((s) => s.id === supervisorId)
+        const assignedId = useAppStore.getState().students.find((s) => s.id === result.studentId)?.supervisorId;
+        const sup = assignedId
+          ? updatedSupervisors.find((s) => s.id === assignedId)
           : null;
         results.push({
           name: row.name,

@@ -38,6 +38,7 @@ export function EvaluationRadar({
     criterion: c.label.split(" ")[0], // short label for axis
     score: evaluation[c.key] ?? 0,
     fullMark: 5,
+    comparison: comparison?.[c.key] ?? 0,
   }));
 
   const avg = averageScore(evaluation);
@@ -47,14 +48,14 @@ export function EvaluationRadar({
       <ResponsiveContainer width="100%" height="100%">
         <RadarChart data={data} cx="50%" cy="50%" outerRadius="78%">
           <PolarGrid
-            stroke="hsl(var(--border))"
+            stroke="var(--border)"
             strokeOpacity={0.5}
             strokeDasharray="2 3"
           />
           <PolarAngleAxis
             dataKey="criterion"
             tick={{
-              fill: "hsl(var(--muted-foreground))",
+              fill: "var(--muted-foreground)",
               fontSize: 11,
               fontWeight: 500,
             }}
@@ -67,16 +68,11 @@ export function EvaluationRadar({
           />
           {comparison && (
             <Radar
-              dataKey="score"
-              data={RATING_CRITERIA.map((c) => ({
-                criterion: c.label.split(" ")[0],
-                score: comparison[c.key] ?? 0,
-                fullMark: 5,
-              }))}
-              stroke="hsl(var(--muted-foreground))"
+              dataKey="comparison"
+              stroke="var(--muted-foreground)"
               strokeWidth={1.5}
               strokeDasharray="4 3"
-              fill="hsl(var(--muted-foreground))"
+              fill="var(--muted-foreground)"
               fillOpacity={0.08}
               isAnimationActive
               animationDuration={800}
@@ -84,17 +80,17 @@ export function EvaluationRadar({
           )}
           <Radar
             dataKey="score"
-            stroke="hsl(var(--primary))"
+            stroke="var(--primary)"
             strokeWidth={2}
-            fill="hsl(var(--primary))"
+            fill="var(--primary)"
             fillOpacity={0.28}
             isAnimationActive
             animationDuration={900}
             animationEasing="ease-out"
             dot={{
               r: 3,
-              fill: "hsl(var(--primary))",
-              stroke: "hsl(var(--background))",
+              fill: "var(--primary)",
+              stroke: "var(--background)",
               strokeWidth: 1.5,
             }}
           />
@@ -104,7 +100,7 @@ export function EvaluationRadar({
         <span className="inline-flex items-center gap-1.5">
           <span
             className="inline-block h-2 w-2 rounded-full"
-            style={{ backgroundColor: "hsl(var(--primary))" }}
+            style={{ backgroundColor: "var(--primary)" }}
           />
           This term ({avg.toFixed(1)})
         </span>
@@ -113,7 +109,7 @@ export function EvaluationRadar({
             <span
               className="inline-block h-2 w-2 rounded-full"
               style={{
-                backgroundColor: "hsl(var(--muted-foreground))",
+                backgroundColor: "var(--muted-foreground)",
                 opacity: 0.5,
               }}
             />

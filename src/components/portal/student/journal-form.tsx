@@ -78,6 +78,7 @@ export function JournalForm() {
   const editingId = viewParams.journalId;
   const existingJournal = getJournal(journals, editingId);
 
+  const draftIdRef = React.useRef<string | undefined>(editingId);
   const [draftId, setDraftId] = React.useState<string | undefined>(editingId);
   const [form, setForm] = React.useState<FormState>({
     date: todayISODate(),
@@ -95,13 +96,15 @@ export function JournalForm() {
   // If editing an existing journal, prefill from it (only drafts are editable).
   React.useEffect(() => {
     if (editingId && existingJournal) {
-      if (existingJournal.status !== "draft") {
+      if (!["draft", "rejected"].includes(existingJournal.status)) {
         if (!redirected) {
           setRedirected(true);
           navigate("student.journal-view", { journalId: editingId });
         }
         return;
       }
+      draftIdRef.current = editingId;
+      setDraftId(editingId);
       setForm({
         date: existingJournal.date,
         hours: String(existingJournal.hours),
@@ -109,7 +112,7 @@ export function JournalForm() {
         learnings: existingJournal.learnings,
       });
     }
-  }, [editingId, existingJournal, navigate, redirected]);
+  }, [editingId, navigate, redirected]);
 
   // Debounced autosave indicator whenever the body changes (draft only).
   const flashSaving = () => {
@@ -132,7 +135,14 @@ export function JournalForm() {
   );
 
   const update = (patch: Partial<FormState>) => {
-    setForm((f) => ({ ...f, ...patch }));
+    const next = { ...form, ...patch };
+    setForm(next);
+    const payload = { date: next.date || todayISODate(), hours: Number(next.hours) || 0, tasks: next.tasks, learnings: next.learnings };
+    if (draftIdRef.current) updateJournalDraft(draftIdRef.current, payload);
+    else {
+      const id = createJournal({ studentId: student.id, ...payload, submit: false });
+      draftIdRef.current = id; setDraftId(id);
+    }
     setErrors((e) => {
       const next = { ...e };
       for (const k of Object.keys(patch) as (keyof FormState)[]) {
@@ -164,14 +174,15 @@ export function JournalForm() {
       tasks: form.tasks,
       learnings: form.learnings,
     };
-    if (draftId) {
-      updateJournalDraft(draftId, payload);
+    if (draftIdRef.current) {
+      updateJournalDraft(draftIdRef.current, payload);
     } else {
       const newId = createJournal({
         studentId: student.id,
         ...payload,
         submit: false,
       });
+      draftIdRef.current = newId;
       setDraftId(newId);
     }
     if (!opts.silent) {
@@ -182,7 +193,7 @@ export function JournalForm() {
   const handleSaveDraft = () => {
     persistDraft();
     toast.success("Draft saved", {
-      description: "Synced to Google Drive.",
+      description: "Saved in this browser.",
     });
   };
 
@@ -204,9 +215,9 @@ export function JournalForm() {
       tasks: form.tasks.trim(),
       learnings: form.learnings.trim(),
     };
-    if (draftId) {
-      updateJournalDraft(draftId, payload);
-      submitJournal(draftId);
+    if (draftIdRef.current) {
+      updateJournalDraft(draftIdRef.current, payload);
+      submitJournal(draftIdRef.current!);
     } else {
       createJournal({
         studentId: student.id,
@@ -226,7 +237,7 @@ export function JournalForm() {
   };
 
   const handleSelectJournal = (j: Journal) => {
-    if (j.status === "draft") {
+    if (["draft", "rejected"].includes(j.status)) {
       navigate("student.journal-new", { journalId: j.id });
     } else {
       navigate("student.journal-view", { journalId: j.id });
@@ -235,6 +246,10 @@ export function JournalForm() {
   };
 
   const handleNewJournal = () => {
+    draftIdRef.current = undefined;
+    setDraftId(undefined);
+    setForm({ date: todayISODate(), hours: "", tasks: "", learnings: "" });
+    setErrors({});
     navigate("student.journal-new");
     setRailOpen(false);
   };
@@ -270,7 +285,7 @@ export function JournalForm() {
       <PageHeader
         breadcrumb="Journals"
         title={editingId ? "Edit Journal" : "Drafting Room"}
-        description="Write your weekly journal in the embedded editor. Changes sync to Google Drive."
+        description="Write your weekly journal. Drafts save in this browser."
         showBack
         actions={
           <Button

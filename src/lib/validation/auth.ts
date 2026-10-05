@@ -147,7 +147,7 @@ export const studentObjectSchema = z.object({
   password: passwordField,
   confirmPassword: z.string().min(1, "Please confirm your password."),
   termsAgreed: z.literal(true, {
-    errorMap: () => ({ message: "You must agree to the Terms and Privacy Policy." }),
+    error: "You must agree to the Terms and Privacy Policy.",
   }),
 });
 
@@ -163,7 +163,7 @@ export const supervisorObjectSchema = z.object({
   password: passwordField,
   confirmPassword: z.string().min(1, "Please confirm your password."),
   termsAgreed: z.literal(true, {
-    errorMap: () => ({ message: "You must agree to the Terms and Privacy Policy." }),
+    error: "You must agree to the Terms and Privacy Policy.",
   }),
 });
 
@@ -177,7 +177,7 @@ export const coordinatorObjectSchema = z.object({
   password: passwordField,
   confirmPassword: z.string().min(1, "Please confirm your password."),
   termsAgreed: z.literal(true, {
-    errorMap: () => ({ message: "You must agree to the Terms and Privacy Policy." }),
+    error: "You must agree to the Terms and Privacy Policy.",
   }),
 });
 

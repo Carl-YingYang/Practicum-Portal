@@ -5,7 +5,7 @@ import { SlideOver } from "@/components/portal/shared/slide-over";
 import { Avatar } from "@/components/portal/shared/avatar";
 import { Button } from "@/components/ui/button";
 import { useAppStore } from "@/store/use-app-store";
-import { portalUsers } from "@/lib/mock-data";
+import { useAccountUsers } from "@/lib/use-account-users";
 import {
   getStudent,
   getSupervisor,
@@ -43,6 +43,7 @@ export function PersonDetailsSlideOver({
   studentId?: string;
   supervisorId?: string;
 }) {
+  const portalUsers = useAccountUsers();
   const navigate = useAppStore((s) => s.navigate);
   const students = useAppStore((s) => s.students);
   const supervisors = useAppStore((s) => s.supervisors);
@@ -66,7 +67,7 @@ export function PersonDetailsSlideOver({
       return portalUsers.find((u) => u.supervisorId === supervisor.id);
     }
     return undefined;
-  }, [student, supervisor]);
+  }, [student, supervisor, portalUsers]);
 
   // for a student, find their supervisor and vice versa
   const studentSupervisor = student?.supervisorId ? getSupervisor(supervisors, student.supervisorId) : undefined;

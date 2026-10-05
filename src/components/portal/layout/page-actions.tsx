@@ -21,6 +21,7 @@ import {
   UserCircle,
   ChevronDown,
   Search,
+  RotateCcw,
 } from "lucide-react";
 import { useTheme } from "next-themes";
 import { ROLE_LABELS } from "@/lib/types";
@@ -30,21 +31,11 @@ import { NotificationsDropdown } from "./notifications-dropdown";
 interface PageActionsProps {
   onOpenMobileNav: () => void;
   onOpenPalette?: () => void;
+  onResetDemo?: () => void;
 }
 
-/**
- * PageActions — floating action cluster merged into the page.
- *
- * Replaces the old full-width Topbar. Instead of a header bar, the action
- * buttons (mobile nav, notifications, theme, account) live in a compact
- * floating pill pinned to the top-right of the content area. This makes the
- * actions feel "part of the page" rather than separate chrome.
- *
- *   - Sticky top + right so the controls stay reachable while scrolling.
- *   - Subtle backdrop-blur container keeps buttons legible over any content.
- *   - No page title/breadcrumb here — each page renders its own PageHeader.
- */
-export function PageActions({ onOpenMobileNav, onOpenPalette }: PageActionsProps) {
+/** Ruled workspace header: search, notifications, theme, account and demo reset. */
+export function PageActions({ onOpenMobileNav, onOpenPalette, onResetDemo }: PageActionsProps) {
   const currentUser = useAppStore((s) => s.currentUser);
   const navigate = useAppStore((s) => s.navigate);
   const logout = useAppStore((s) => s.logout);
@@ -56,8 +47,9 @@ export function PageActions({ onOpenMobileNav, onOpenPalette }: PageActionsProps
   const role = currentUser?.role;
 
   return (
-    <div className="pointer-events-none sticky top-0 z-30 flex justify-end px-4 pt-3 sm:px-6 lg:px-8">
-      <div className="pointer-events-auto flex items-center gap-0.5 rounded-full border border-border/60 bg-background/75 p-1 shadow-sm backdrop-blur-md supports-[backdrop-filter]:bg-background/65">
+    <div className="sticky top-0 z-30 flex min-h-16 items-center justify-between gap-2 border-b border-border bg-background px-4 sm:px-6 lg:px-8">
+      <p className="text-[10px] font-semibold uppercase tracking-[.2em] text-muted-foreground">Practo <span className="hidden sm:inline">/ Workspace</span></p>
+      <div className="flex items-center gap-0.5 py-2">
         {/* Mobile: hamburger — opens the drawer */}
         <Button
           variant="ghost"
@@ -159,10 +151,10 @@ export function PageActions({ onOpenMobileNav, onOpenPalette }: PageActionsProps
                 My profile
               </DropdownMenuItem>
 
-              {/* Demo: switch role */}
+              {/* Prototype: switch demo role */}
               <DropdownMenuSeparator />
               <DropdownMenuLabel className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                Demo: switch role
+                Prototype: switch demo role
               </DropdownMenuLabel>
               {mockUsers
                 .filter((u) => u.role !== role)
@@ -183,6 +175,7 @@ export function PageActions({ onOpenMobileNav, onOpenPalette }: PageActionsProps
                 ))}
 
               <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={onResetDemo} className="gap-2"><RotateCcw className="h-4 w-4" />Reset demo data</DropdownMenuItem>
               <DropdownMenuItem
                 onClick={logout}
                 className="gap-2 rounded-md text-destructive focus:text-destructive"

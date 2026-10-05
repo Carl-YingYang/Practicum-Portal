@@ -653,7 +653,7 @@ function StudentSummaryDoc({
       <div className="flex items-center justify-between border-b border-slate-300 pb-3">
         <div>
           <h1 className="text-lg font-bold">Practicum Summary</h1>
-          <p className="text-xs text-slate-600">Term 2024-2025</p>
+          <p className="text-xs text-slate-600">All terms</p>
         </div>
         <div className="text-right text-xs text-slate-600">
           <p>Generated {formatDate(new Date().toISOString())}</p>

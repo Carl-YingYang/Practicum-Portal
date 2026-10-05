@@ -14,6 +14,7 @@ import type {
   ToolsConfig,
   User,
 } from "./types";
+import { currentAcademicTerm, PORTAL_TIME_ZONE } from "./prototype";
 import { SUBSCRIPTION_PLANS } from "./mock-data";
 
 // ============================================================
@@ -111,12 +112,12 @@ export function pendingJournalsForSupervisor(
     .sort((a, b) => (a.submittedAt ?? a.createdAt) < (b.submittedAt ?? b.createdAt) ? 1 : -1);
 }
 
-/** Interns of a supervisor that have no submitted evaluation for the current term. */
+/** Interns without a submitted evaluation; optionally scope to an explicit term. */
 export function unevaluatedInterns(
   students: Student[],
   evals: Evaluation[],
   supervisorId: string,
-  term = "2024-2025"
+  term?: string
 ): Student[] {
   const interns = studentsForSupervisor(students, supervisorId);
   return interns.filter(
@@ -126,7 +127,7 @@ export function unevaluatedInterns(
           e.studentId === s.id &&
           e.supervisorId === supervisorId &&
           e.status === "submitted" &&
-          e.term === term
+          (!term || e.term === term)
       )
   );
 }
@@ -168,7 +169,7 @@ export function averageScore(e: Evaluation): number {
   return (e.qualityOfWork + e.jobKnowledge + e.dependability) / 3;
 }
 
-export function hoursPercent(s: Student): number {
+export function hoursPercent(s: Pick<Student, "loggedHours" | "requiredHours">): number {
   if (s.requiredHours === 0) return 0;
   return Math.min(100, Math.round((s.loggedHours / s.requiredHours) * 100));
 }
@@ -252,6 +253,7 @@ export function formatDate(iso: string | null | undefined): string {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return "—";
   return d.toLocaleDateString("en-US", {
+    timeZone: PORTAL_TIME_ZONE,
     year: "numeric",
     month: "short",
     day: "numeric",
@@ -263,6 +265,7 @@ export function formatDateTime(iso: string | null | undefined): string {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return "—";
   return d.toLocaleString("en-US", {
+    timeZone: PORTAL_TIME_ZONE,
     month: "short",
     day: "numeric",
     year: "numeric",
@@ -300,13 +303,11 @@ export function weekLabel(iso: string): string {
 }
 
 export function todayISODate(): string {
-  const d = new Date();
-  const tz = d.getTimezoneOffset() * 60000;
-  return new Date(d.getTime() - tz).toISOString().slice(0, 10);
+  return new Intl.DateTimeFormat("en-CA", { timeZone: PORTAL_TIME_ZONE, year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
 }
 
 export function greeting(): string {
-  const h = new Date().getHours();
+  const h = Number(new Intl.DateTimeFormat("en-US", { timeZone: PORTAL_TIME_ZONE, hour: "numeric", hourCycle: "h23" }).format(new Date()));
   if (h < 12) return "Good morning";
   if (h < 18) return "Good afternoon";
   return "Good evening";
@@ -361,9 +362,9 @@ export function activeTimeLogsForRole(timeLogs: TimeLog[], role: Role): TimeLog[
 export function cohortWeeklyTimeMs(timeLogs: TimeLog[], now = Date.now()): number {
   const weekAgo = now - 7 * 24 * 60 * 60 * 1000;
   return timeLogs
-    .filter((t) => t.role === "student" && new Date(t.clockInAt).getTime() >= weekAgo)
+    .filter((t) => t.role === "student" && new Date(t.clockInAt).getTime() >= weekAgo && new Date(t.clockInAt).getTime() <= now)
     .reduce((sum, t) => {
-      if (t.clockOutAt && t.durationMs) return sum + t.durationMs;
+      if (t.clockOutAt !== null && t.durationMs !== null) return sum + t.durationMs;
       return sum + Math.max(0, now - new Date(t.clockInAt).getTime());
     }, 0);
 }
@@ -398,11 +399,8 @@ export const timeLogsForStudent = timeLogsForUser;
 export const completedTimeLogsForStudent = completedTimeLogsForUser;
 
 function isSameDay(a: Date, b: Date): boolean {
-  return (
-    a.getFullYear() === b.getFullYear() &&
-    a.getMonth() === b.getMonth() &&
-    a.getDate() === b.getDate()
-  );
+  const dateKey = (date: Date) => new Intl.DateTimeFormat("en-CA", { timeZone: PORTAL_TIME_ZONE, year: "numeric", month: "2-digit", day: "2-digit" }).format(date);
+  return dateKey(a) === dateKey(b);
 }
 
 /** Sessions that started today (includes an active one if present). */
@@ -417,9 +415,9 @@ export function todaysTimeLogs(timeLogs: TimeLog[], userId: string): TimeLog[] {
 export function weeklyTimeMs(timeLogs: TimeLog[], userId: string, now = Date.now()): number {
   const weekAgo = now - 7 * 24 * 60 * 60 * 1000;
   return timeLogsForUser(timeLogs, userId)
-    .filter((t) => new Date(t.clockInAt).getTime() >= weekAgo)
+    .filter((t) => new Date(t.clockInAt).getTime() >= weekAgo && new Date(t.clockInAt).getTime() <= now)
     .reduce((sum, t) => {
-      if (t.clockOutAt && t.durationMs) return sum + t.durationMs;
+      if (t.clockOutAt !== null && t.durationMs !== null) return sum + t.durationMs;
       // include the active session up to "now"
       return sum + Math.max(0, now - new Date(t.clockInAt).getTime());
     }, 0);
@@ -435,7 +433,7 @@ export function totalCompletedTimeMs(timeLogs: TimeLog[], userId: string): numbe
 
 /** Elapsed ms for a single time log (finalised duration, or live elapsed if active). */
 export function elapsedMs(t: TimeLog, now = Date.now()): number {
-  if (t.clockOutAt && t.durationMs) return t.durationMs;
+  if (t.clockOutAt !== null && t.durationMs !== null) return t.durationMs;
   return Math.max(0, now - new Date(t.clockInAt).getTime());
 }
 
@@ -459,6 +457,7 @@ export function formatTime(iso: string | null | undefined): string {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return "—";
   return d.toLocaleTimeString("en-US", {
+    timeZone: PORTAL_TIME_ZONE,
     hour: "numeric",
     minute: "2-digit",
   });
@@ -510,21 +509,22 @@ export function validateToolUrl(
   try {
     const u = new URL(v);
     const host = u.hostname.toLowerCase();
+    if (u.protocol !== "https:" || u.username || u.password) return "Use an HTTPS URL without embedded credentials.";
     switch (field) {
       case "drive":
-        return host.includes("drive.google.com") ? "" : "Use a Google Drive folder URL (drive.google.com).";
+        return host === "drive.google.com" ? "" : "Use a Google Drive folder URL (drive.google.com).";
       case "journalTemplate":
-        return host.includes("docs.google.com") ? "" : "Use a Google Docs URL (docs.google.com).";
+        return host === "docs.google.com" ? "" : "Use a Google Docs URL (docs.google.com).";
       case "form":
-        return host.includes("forms.gle") || host.includes("docs.google.com")
+        return host === "forms.gle" || host === "docs.google.com"
           ? ""
           : "Use a Google Forms URL (forms.gle or docs.google.com/forms).";
       case "formCsv":
-        return host.includes("docs.google.com") || v.toLowerCase().endsWith("csv")
+        return host === "docs.google.com"
           ? ""
           : "Use a published Google Sheets CSV URL.";
       case "jibble":
-        return host.includes("jibble.io") ? "" : "Use a Jibble URL (jibble.io).";
+        return (host === "jibble.io" || host.endsWith(".jibble.io")) ? "" : "Use a Jibble URL (jibble.io).";
       default:
         return "";
     }

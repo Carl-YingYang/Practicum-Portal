@@ -26,8 +26,8 @@ const CONTENT_W = PAGE_W - MARGIN * 2;
 
 // Brand palette (kept consistent with the app's teal accent).
 const BRAND = {
-  primary: "#0f766e" as const, // teal-700
-  primaryLight: "#ccfbf1" as const, // teal-100
+  primary: "#202020" as const, // teal-700
+  primaryLight: "#efefec" as const, // teal-100
   ink: "#0f172a" as const, // slate-900
   inkSoft: "#475569" as const, // slate-600
   inkMuted: "#94a3b8" as const, // slate-400
@@ -39,9 +39,9 @@ export interface PdfTableSpec {
   head: string[];
   body: (string | number)[][];
   /** Optional totals / summary row rendered at the bottom of the table. */
-  foot?: (string | number)[][];
+  foot?: (string | number)[];
   /** Column alignment: "left" | "center" | "right" (per column). Defaults to left. */
-  align?: ("left" | "center" | "right")[];
+  align?: readonly ("left" | "center" | "right")[];
 }
 
 export interface PdfSectionSpec {
@@ -201,14 +201,7 @@ export function downloadPdfReport(spec: PdfReportSpec): string {
           fontStyle: "bold",
         },
         alternateRowStyles: { fillColor: BRAND.zebra },
-        columnStyles: section.table.head.map((_, i) => ({
-          halign:
-            align[i] === "right"
-              ? "right"
-              : align[i] === "center"
-                ? "center"
-                : "left",
-        })),
+        columnStyles: Object.fromEntries(section.table.head.map((_, i) => [i, { halign: align[i] ?? "left" }])),
         didDrawPage: drawHeader,
       });
       // @ts-expect-error lastAutoTableFinalY is added by the plugin at runtime.

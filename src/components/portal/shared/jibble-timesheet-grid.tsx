@@ -621,8 +621,8 @@ function AddEntryDialog({
       setError("Please fill in date, clock-in, and clock-out times.");
       return;
     }
-    const inD = new Date(`${date}T${clockIn}:00`);
-    const outD = new Date(`${date}T${clockOut}:00`);
+    const inD = new Date(`${date}T${clockIn}:00+08:00`);
+    const outD = new Date(`${date}T${clockOut}:00+08:00`);
     if (isNaN(inD.getTime()) || isNaN(outD.getTime())) {
       setError("Invalid date or time format.");
       return;
@@ -631,13 +631,14 @@ function AddEntryDialog({
       setError("Clock-out must be after clock-in.");
       return;
     }
-    addManualTimeLog({
+    try { addManualTimeLog({
       userId: ownerUserId,
       role: ownerRole,
       clockInAt: inD.toISOString(),
       clockOutAt: outD.toISOString(),
       note: note.trim() || undefined,
     });
+    } catch (error) { setError(error instanceof Error ? error.message : "Could not add this entry."); return; }
     toast.success("Manual entry added", {
       description: `${formatHours(outD.getTime() - inD.getTime())} on ${date}`,
     });

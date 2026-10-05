@@ -1,5 +1,6 @@
 "use client";
 
+import { accountUsers } from "@/lib/prototype";
 import * as React from "react";
 import { useAppStore } from "@/store/use-app-store";
 import {
@@ -182,6 +183,9 @@ export function StudentForm({ studentId }: { studentId?: ViewParams["studentId"]
   };
 
   const handleSave = () => {
+    const duplicate = accountUsers(useAppStore.getState()).some((u) => u.email.toLowerCase() === email.trim().toLowerCase() && (u.studentId ?? u.supervisorId ?? u.coordinatorId) !== existing?.id);
+    if (duplicate) { toast.error("This email is already used by another account."); return; }
+
     if (!validate()) {
       toast.error("Please fix the highlighted fields.");
       return;
