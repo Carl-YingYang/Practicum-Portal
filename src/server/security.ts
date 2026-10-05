@@ -8,6 +8,7 @@ import { promisify } from "node:util";
 import { cookies } from "next/headers";
 import { db } from "./database";
 import type { PortalAccount } from "@prisma/client";
+import { isDemoLoginEnabled } from "./runtime-mode";
 const scrypt = promisify(nodeScrypt);
 export class HttpError extends Error {
   constructor(
@@ -19,7 +20,11 @@ export class HttpError extends Error {
 }
 export const testMode = () => process.env.APP_ENV === "testing";
 export const demoEnabled = () =>
-  testMode() && process.env.ENABLE_DEMO_LOGIN === "true";
+  isDemoLoginEnabled({
+    appEnv: process.env.APP_ENV,
+    nodeEnv: process.env.NODE_ENV,
+    enabled: process.env.ENABLE_DEMO_LOGIN,
+  });
 export const digest = (value: string) =>
   createHash("sha256").update(value).digest("hex");
 export async function hashPassword(password: string) {

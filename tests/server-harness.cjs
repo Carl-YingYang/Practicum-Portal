@@ -2,7 +2,7 @@ const { spawn, spawnSync } = require("node:child_process");
 const { mkdtempSync, rmSync, writeFileSync } = require("node:fs");
 const { tmpdir } = require("node:os");
 const { join } = require("node:path");
-async function startServer(port = 3102, extraEnv = {}) {
+async function startServer(port = 3102, extraEnv = {}, command = "start") {
   const folder = mkdtempSync(join(tmpdir(), "practo-test-"));
   const env = {
     ...process.env,
@@ -28,7 +28,8 @@ async function startServer(port = 3102, extraEnv = {}) {
     "node",
     [
       "node_modules/next/dist/bin/next",
-      "start",
+      command,
+      ...(command === "dev" ? ["--webpack"] : []),
       "--hostname",
       "127.0.0.1",
       "--port",
@@ -46,7 +47,13 @@ async function startServer(port = 3102, extraEnv = {}) {
   const baseURL = `http://127.0.0.1:${port}`;
   for (let i = 0; i < 80; i++) {
     try {
-      if ((await fetch(baseURL + "/api/health")).ok) break;
+      // Wait for this child, rather than accidentally using an older server
+      // already occupying the requested port.
+      if (
+        output.includes("Ready in") &&
+        (await fetch(baseURL + "/api/health")).ok
+      )
+        break;
     } catch {
       /* starting */
     }

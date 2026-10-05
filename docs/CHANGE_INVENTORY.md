@@ -215,3 +215,19 @@ Status: A = added; M = changed; D = removed.
 | `tests/server-harness.cjs` | A |
 
 | `tests/server-integration.cjs` | A |
+
+## Login follow-up — October 5, 2026
+
+Starting from `0ecc986`, this follow-up restores direct testing-role access for existing local development environments, replaces manual hero selection with a subtle automatic crossfade, and removes the second stacked mobile hero section. Other role workspaces are unchanged.
+
+| File                                                                                   | Improvement                                                                                                                                       |
+| -------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/components/portal/auth/login-screen.tsx`                                          | Visible testing-role buttons; automatic 6-second hero cycle/1-second fade; reduced-motion support; compact mobile/tablet layout and 44px controls |
+| `src/server/runtime-mode.ts`                                                           | Development-only demo default with explicit environment/disable guards                                                                            |
+| `src/server/security.ts`                                                               | Uses centralized demo eligibility; reset mode stays explicit                                                                                      |
+| `tests/prototype.test.cjs`                                                             | Environment regression cases, including production fail-closed and explicit opt-out                                                               |
+| `tests/server-harness.cjs`, `tests/login-development.cjs`, `package.json`              | Actual development-mode login/opt-out checks; server readiness isolation; `npm run test:login`                                                    |
+| `tests/browser-smoke.cjs`                                                              | Automatic heroes, reduced motion, direct test login, single-screen 320/360/390/768px layout checks in both themes                                 |
+| `AGENTS.md`, `CLAUDE.md`                                                               | Next.js-generated repository guidance produced by the development verification run                                                                |
+| `README.md`, `docs/CONNECTED_PLATFORM.md`, `docs/VERIFICATION.md`, this inventory      | Current behavior, setup and verification documentation                                                                                            |
+| `docs/screenshots/login-heroes.png`, `login-mobile-light.png`, `login-mobile-dark.png` | Desktop and compact mobile evidence                                                                                                               |

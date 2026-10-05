@@ -1,11 +1,10 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useTheme } from "next-themes";
 import { ArrowUpRight, Eye, EyeOff, Moon, Sun } from "lucide-react";
 import { useAppStore } from "@/store/use-app-store";
 import Image from "next/image";
 import { signIn, demoSignIn, initializePortal } from "@/client/portal-client";
-import { ROLE_LABELS } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -14,12 +13,31 @@ export function LoginScreen() {
   const [password, setPassword] = useState("");
   const [visible, setVisible] = useState(false);
   const [error, setError] = useState("");
-  const [showDemo, setShowDemo] = useState(false);
   const [busy, setBusy] = useState(false);
   const [hero, setHero] = useState(1);
   const users = useAppStore((s) => s.demoAccounts);
   const serverError = useAppStore((s) => s.syncError);
   const { setTheme } = useTheme();
+  useEffect(() => {
+    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+    let timer: ReturnType<typeof setInterval> | undefined;
+    function updatePlayback() {
+      if (timer) clearInterval(timer);
+      timer = undefined;
+      if (!reducedMotion.matches) {
+        timer = setInterval(() => {
+          if (document.visibilityState === "visible")
+            setHero((current) => (current % 3) + 1);
+        }, 6000);
+      }
+    }
+    updatePlayback();
+    reducedMotion.addEventListener("change", updatePlayback);
+    return () => {
+      if (timer) clearInterval(timer);
+      reducedMotion.removeEventListener("change", updatePlayback);
+    };
+  }, []);
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setBusy(true);
@@ -44,8 +62,8 @@ export function LoginScreen() {
     }
   }
   return (
-    <main className="editorial-login min-h-screen bg-background text-foreground">
-      <header className="flex items-center justify-between border-b border-border px-6 py-5 md:px-10">
+    <main className="editorial-login min-h-svh bg-background text-foreground">
+      <header className="flex items-center justify-between border-b border-border h-16 px-5 md:px-8">
         <span className="text-2xl font-black tracking-[-.07em]">
           PRACTO<span className="text-[var(--brand-accent)]">.</span>
         </span>
@@ -56,6 +74,7 @@ export function LoginScreen() {
           <Button
             variant="ghost"
             size="icon"
+            className="size-11"
             aria-label="Use light theme"
             onClick={() => setTheme("light")}
           >
@@ -64,6 +83,7 @@ export function LoginScreen() {
           <Button
             variant="ghost"
             size="icon"
+            className="size-11"
             aria-label="Use dark theme"
             onClick={() => setTheme("dark")}
           >
@@ -71,48 +91,35 @@ export function LoginScreen() {
           </Button>
         </div>
       </header>
-      <div className="mx-auto grid max-w-[1400px] lg:min-h-[calc(100vh-85px)] lg:grid-cols-[1.2fr_1fr]">
-        <section className="relative order-2 flex flex-col justify-between overflow-hidden border-t border-border p-6 md:p-10 lg:order-1 lg:border-r lg:border-t-0 lg:p-14">
-          <div
-            className="pointer-events-none absolute inset-0"
-            aria-hidden="true"
-          >
-            {[1, 2, 3].map((number) => (
-              <Image
-                key={number}
-                src={`/login-hero-${number}.png`}
-                alt=""
-                fill
-                sizes="(max-width: 1023px) 100vw, 60vw"
-                priority={number === 1}
-                className={`object-cover opacity-[.14] dark:opacity-[.10] ${hero === number ? "block" : "hidden"}`}
-              />
-            ))}
-            <div className="absolute inset-0 bg-gradient-to-t from-background/95 via-background/40 to-background/20" />
-          </div>
-          <div
-            className="relative mb-5 flex gap-2"
-            role="group"
-            aria-label="Login background"
-          >
-            {[1, 2, 3].map((number) => (
-              <button
-                key={number}
-                type="button"
-                aria-label={`Show login hero ${number}`}
-                aria-pressed={hero === number}
-                onClick={() => setHero(number)}
-                className="min-h-10 min-w-10 rounded-full border border-border bg-background/80 text-xs aria-pressed:border-primary aria-pressed:text-primary"
-              >
-                0{number}
-              </button>
-            ))}
-          </div>
+      <div className="relative mx-auto grid min-h-[calc(100svh-64px)] max-w-[1400px] lg:grid-cols-[1.2fr_1fr]">
+        <div
+          className="pointer-events-none absolute inset-0 overflow-hidden lg:right-[45.4545%]"
+          aria-hidden="true"
+        >
+          {[1, 2, 3].map((number) => (
+            <Image
+              key={number}
+              src={`/login-hero-${number}.png`}
+              alt=""
+              fill
+              sizes="(max-width: 1023px) 100vw, 55vw"
+              preload={number === 1}
+              data-login-hero={number}
+              data-active={hero === number}
+              className={`object-cover transition-opacity duration-1000 ease-in-out motion-reduce:transition-none ${hero === number ? "opacity-[.14] dark:opacity-[.10]" : "opacity-0"}`}
+            />
+          ))}
+          <div className="absolute inset-0 bg-gradient-to-t from-background/95 via-background/60 to-background/30" />
+        </div>
+        <section
+          aria-label="About Practo"
+          className="relative hidden flex-col justify-center border-r border-border p-10 lg:flex xl:p-14"
+        >
           <div className="relative">
             <p className="editorial-eyebrow">
               A clearer path from campus to career
             </p>
-            <h1 className="mt-6 max-w-xl text-4xl font-semibold leading-[.98] tracking-[-.06em] md:text-7xl">
+            <h1 className="mt-5 max-w-xl text-4xl font-semibold leading-[.98] tracking-[-.06em] lg:text-6xl xl:text-7xl">
               Good work.
               <br />
               Real progress.
@@ -126,7 +133,7 @@ export function LoginScreen() {
               Keep attendance, journals, evaluations, and forms moving together.
             </p>
           </div>
-          <div className="relative mt-8 grid grid-cols-3 border-y border-border py-5 text-xs">
+          <div className="relative mt-10 grid grid-cols-3 border-y border-border py-5 text-xs">
             <div>
               <span className="editorial-eyebrow">01 / Students</span>
               <p className="mt-2">Track your work.</p>
@@ -141,20 +148,21 @@ export function LoginScreen() {
             </div>
           </div>
         </section>
-        <section className="order-1 flex items-center justify-center p-5 py-8 md:p-12 lg:order-2">
+        <section className="relative flex items-center justify-center px-5 py-6 lg:bg-background lg:p-10">
           <div className="w-full max-w-sm">
             <p className="editorial-eyebrow">Your workspace awaits</p>
-            <h2 className="mt-3 text-3xl font-semibold tracking-tight">
+            <h2 className="mt-2 text-3xl font-semibold tracking-tight">
               Welcome back.
             </h2>
-            <p className="mb-8 mt-3 text-sm leading-6 text-muted-foreground">
-              Sign in with the account provided by your coordinator.
+            <p className="mb-5 mt-2 text-sm leading-6 text-muted-foreground">
+              Sign in to your practicum workspace.
             </p>
-            <form aria-busy={busy} onSubmit={submit} className="space-y-5">
+            <form aria-busy={busy} onSubmit={submit} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="email">Email address</Label>
                 <Input
                   id="email"
+                  className="h-11 bg-background/80"
                   type="email"
                   autoComplete="username"
                   required
@@ -179,13 +187,13 @@ export function LoginScreen() {
                       setPassword(e.target.value);
                       setError("");
                     }}
-                    className="pr-11"
+                    className="h-11 bg-background/80 pr-11"
                   />
                   <Button
                     type="button"
                     variant="ghost"
                     size="icon"
-                    className="absolute right-0 top-0"
+                    className="absolute right-0 top-0 size-11"
                     aria-label={visible ? "Hide password" : "Show password"}
                     onClick={() => setVisible(!visible)}
                   >
@@ -211,8 +219,8 @@ export function LoginScreen() {
                 <ArrowUpRight className="size-4" />
               </Button>
             </form>
-            <p className="mt-5 text-xs leading-5 text-muted-foreground">
-              Need access or a password reset? Ask your coordinator.
+            <p className="mt-3 text-xs leading-5 text-muted-foreground">
+              Need access? Ask your coordinator.
             </p>
             {serverError && (
               <div role="alert" className="mt-5 text-sm text-destructive">
@@ -227,47 +235,36 @@ export function LoginScreen() {
               </div>
             )}
             {users.length > 0 && (
-              <div className="mt-7 border-t border-border pt-5">
-                <button
-                  type="button"
-                  aria-expanded={showDemo}
-                  onClick={() => setShowDemo(!showDemo)}
-                  className="flex w-full justify-between text-xs font-medium"
-                >
-                  Explore the prototype <span>{showDemo ? "−" : "+"}</span>
-                </button>
-                {showDemo && (
-                  <div className="mt-4 space-y-2">
-                    {users
-                      .filter(
-                        (u, index) =>
-                          users.findIndex((other) => other.role === u.role) ===
-                          index,
-                      )
-                      .map((u) => (
-                        <button
-                          key={u.id}
-                          type="button"
-                          disabled={busy}
-                          onClick={() => void preview(u.id)}
-                          className="flex w-full items-center justify-between border border-border px-3 py-3 text-left text-xs hover:bg-muted"
-                        >
-                          <span>
-                            {ROLE_LABELS[u.role]}
-                            <span className="mt-1 block text-muted-foreground">
-                              {u.name}
-                            </span>
-                          </span>
-                          <ArrowUpRight className="size-4" />
-                        </button>
-                      ))}
-                    <p className="pt-2 text-[11px] leading-5 text-muted-foreground">
-                      Sample accounts use the shared test database. Changes are
-                      visible to other test sessions.
-                    </p>
-                  </div>
-                )}
-              </div>
+              <section
+                aria-label="Testing accounts"
+                className="mt-5 border-t border-border pt-4"
+              >
+                <p className="text-xs font-semibold">Testing accounts</p>
+                <div className="mt-2 grid grid-cols-3 gap-2">
+                  {users
+                    .filter(
+                      (u, index) =>
+                        users.findIndex((other) => other.role === u.role) ===
+                        index,
+                    )
+                    .map((u) => (
+                      <Button
+                        key={u.id}
+                        type="button"
+                        variant="outline"
+                        disabled={busy}
+                        onClick={() => void preview(u.id)}
+                        className="h-11 min-w-0 bg-background/80 px-1 text-xs capitalize"
+                        aria-label={`Try ${u.role} account`}
+                      >
+                        {u.role}
+                      </Button>
+                    ))}
+                </div>
+                <p className="mt-2 text-[11px] leading-4 text-muted-foreground">
+                  Sample data is shared across test sessions.
+                </p>
+              </section>
             )}
           </div>
         </section>

@@ -33,7 +33,7 @@ The browser saves only presentation preferences such as theme/sidebar collapse. 
 - Coordinators manage their own school's records. Students write their own journals, attendance and assigned form responses. Supervisors evaluate assigned interns and review their journals; attendance changes are scoped to their own clock.
 - Students see their own student/journal/attendance records and submitted evaluations. Supervisors see their assigned roster. Coordinator-only billing invoice details are omitted from non-coordinator snapshots.
 - Invited accounts must replace their temporary password before using workspace APIs. Password replacement revokes old sessions and rotates the current session. Disabling or resetting an account invalidates its sessions.
-- Demo sign-in requires both `APP_ENV=testing` and `ENABLE_DEMO_LOGIN=true`, and only permits eligible sample accounts in the main test school. New accounts and the isolated school cannot use that bypass.
+- Deployed demo sign-in requires both `APP_ENV=testing` and `ENABLE_DEMO_LOGIN=true`. Local development (`NODE_ENV=development`) defaults to demo sign-in only when `APP_ENV` is unset, so an older local `.env` does not silently hide testing accounts. `ENABLE_DEMO_LOGIN=false` disables it; an explicit non-testing `APP_ENV` always blocks it. Demo login still permits only eligible seeded accounts in the main test school. New accounts and the isolated school cannot use that bypass. Database reset remains explicitly testing-only.
 - Shared reset requires testing mode and a coordinator. It resets accounts, records and settings and signs out all sessions. Normal seed setup preserves existing records.
 
 These controls were tested; they are not a claim of a production security audit.
@@ -64,9 +64,9 @@ Attendance and journal dates are generated relative to the Philippine date at se
 
 ## Login, accounts and mobile UI
 
-All `public/login-hero-1.png` through `login-hero-3.png` are available through explicit numbered controls. Background opacity is 14% in light mode and 10% in dark mode, with a gradient preserving text contrast. The first image has priority; the others load as needed. There is no automatic carousel animation.
+All `public/login-hero-1.png` through `login-hero-3.png` cycle automatically every six seconds with a one-second opacity crossfade. Numbered controls are removed. Background opacity is 14% in light mode and 10% in dark mode, with a gradient preserving text contrast. The first image has priority. Reduced-motion preferences stop automatic playback and transitions; hidden tabs do not advance the image.
 
-The sign-in form precedes the hero on mobile. Real network state disables duplicate sign-in and surfaces errors. Supervisor creation is a visible button in both User Management and Supervisors. Single account provisioning waits for server confirmation before showing the temporary password. Shared account fields associate labels with inputs and select triggers. Account status filtering now uses the account lifecycle status rather than placement/employment status.
+Mobile and tablet login use one compact form over a subdued background; the desktop marketing panel is hidden below 1024px instead of appearing as a second section. Testing accounts appear immediately as three compact role buttons, with no collapsed menu. Fields and actions have 44px touch targets. Short devices and zoom can scroll naturally without hiding access controls. Real network state disables duplicate sign-in and surfaces errors. Supervisor creation is a visible button in both User Management and Supervisors. Single account provisioning waits for server confirmation before showing the temporary password. Shared account fields associate labels with inputs and select triggers. Account status filtering now uses the account lifecycle status rather than placement/employment status.
 
 The form action bar wraps controls, keeps touch targets at least 44px and matches mobile page gutters. The journal list uses a focus-managed Sheet with Escape support. Account, journal and navigation screens are verified at 360px viewport width.
 

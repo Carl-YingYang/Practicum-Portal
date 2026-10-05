@@ -397,3 +397,30 @@ test("journal cadence changes skip overlapping submitted periods and include ove
     2,
   );
 });
+
+test("demo sign-in defaults only to local development and respects explicit environment controls", () => {
+  const { isDemoLoginEnabled } = load("src/server/runtime-mode.ts");
+  assert.equal(isDemoLoginEnabled({ nodeEnv: "development" }), true);
+  assert.equal(
+    isDemoLoginEnabled({ nodeEnv: "development", enabled: "false" }),
+    false,
+  );
+  assert.equal(
+    isDemoLoginEnabled({
+      appEnv: "production",
+      nodeEnv: "development",
+      enabled: "true",
+    }),
+    false,
+  );
+  assert.equal(
+    isDemoLoginEnabled({ nodeEnv: "production", enabled: "true" }),
+    false,
+  );
+  assert.equal(isDemoLoginEnabled({}), false);
+  assert.equal(
+    isDemoLoginEnabled({ appEnv: "testing", enabled: "true" }),
+    true,
+  );
+  assert.equal(isDemoLoginEnabled({ appEnv: "testing" }), false);
+});

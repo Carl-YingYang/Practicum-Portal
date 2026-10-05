@@ -3,7 +3,7 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const { startServer } = require("./server-harness.cjs");
 (async () => {
-  const app = await startServer(3101),
+  const app = await startServer(3111),
     browser = await chromium.launch({ headless: true, args: ["--no-sandbox"] });
   const page = await browser.newPage({
     viewport: { width: 1440, height: 1000 },
@@ -39,27 +39,98 @@ const { startServer } = require("./server-harness.cjs");
     const overflow = await page.evaluate(
       () => document.documentElement.scrollWidth > innerWidth + 1,
     );
-    if (overflow) console.log(await page.evaluate(() => [...document.querySelectorAll("main *")].map(element => ({ tag: element.tagName, cls: element.className, right: element.getBoundingClientRect().right, left: element.getBoundingClientRect().left })).filter(element => element.right > innerWidth + 1 || element.left < -1).slice(0, 12)));
+    if (overflow)
+      console.log(
+        await page.evaluate(() =>
+          [...document.querySelectorAll("main *")]
+            .map((element) => ({
+              tag: element.tagName,
+              cls: element.className,
+              right: element.getBoundingClientRect().right,
+              left: element.getBoundingClientRect().left,
+            }))
+            .filter(
+              (element) => element.right > innerWidth + 1 || element.left < -1,
+            )
+            .slice(0, 12),
+        ),
+      );
     assert.equal(overflow, false, `${label} has horizontal overflow`);
   }
   try {
+    await page.clock.install();
     await page.goto(app.baseURL);
     await page.getByRole("heading", { name: "Welcome back." }).waitFor();
-    for (const number of [1, 2, 3]) {
-      await page
-        .getByRole("button", { name: `Show login hero ${number}` })
-        .click();
+    await page
+      .getByRole("button", { name: "Try student account", exact: true })
+      .waitFor();
+    assert.equal(
+      await page.getByRole("button", { name: /Show login hero/ }).count(),
+      0,
+    );
+    for (const number of [2, 3, 1]) {
+      await page.clock.runFor(6000);
       assert.equal(
         await page
-          .getByRole("button", { name: `Show login hero ${number}` })
-          .getAttribute("aria-pressed"),
-        "true",
+          .locator('img[data-login-hero][data-active="true"]')
+          .getAttribute("data-login-hero"),
+        String(number),
       );
     }
+    await page.clock.runFor(1100);
     await screenshot("login-heroes");
-    await page.getByRole("button", { name: "Explore the prototype" }).click();
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    const pausedHero = await page
+      .locator('img[data-active="true"]')
+      .getAttribute("data-login-hero");
+    await page.clock.runFor(12000);
+    assert.equal(
+      await page
+        .locator('img[data-active="true"]')
+        .getAttribute("data-login-hero"),
+      pausedHero,
+    );
+    for (const theme of ["light", "dark"]) {
+      await page.getByRole("button", { name: `Use ${theme} theme` }).click();
+      for (const width of [320, 360, 390, 768]) {
+        await page.setViewportSize({ width, height: 640 });
+        await noOverflow(`Login ${theme} at ${width}px`);
+        assert.equal(
+          await page.getByRole("region", { name: "About Practo" }).isVisible(),
+          false,
+        );
+        assert.equal(
+          await page.getByRole("button", { name: /Try .* account/ }).count(),
+          3,
+        );
+        assert.ok(
+          await page.evaluate(
+            () => document.documentElement.scrollHeight <= innerHeight + 1,
+          ),
+          `Login ${theme} at ${width}px should fit one 640px screen`,
+        );
+      }
+      await page.setViewportSize({ width: 360, height: 640 });
+      await screenshot(`login-mobile-${theme}`);
+    }
+    // Zoom and shorter devices may scroll naturally, but there is no second hero section.
+    await page.setViewportSize({ width: 320, height: 568 });
+    await noOverflow("Short mobile login");
     await page
-      .getByRole("button", { name: /Student Sample Student 1/ })
+      .getByRole("button", { name: "Try coordinator account" })
+      .scrollIntoViewIfNeeded();
+    assert.equal(
+      await page.getByRole("region", { name: "About Practo" }).isVisible(),
+      false,
+    );
+    await page.setViewportSize({ width: 1440, height: 1000 });
+    await page.getByRole("button", { name: "Use light theme" }).click();
+    await page.emulateMedia({ reducedMotion: "no-preference" });
+    console.log(
+      "PASS direct testing accounts, automatic heroes, reduced motion and single-screen mobile login in both themes",
+    );
+    await page
+      .getByRole("button", { name: "Try student account", exact: true })
       .click();
     await page.getByRole("heading", { name: /Hello,/ }).waitFor();
     await screenshot("student-light");
@@ -169,7 +240,9 @@ const { startServer } = require("./server-harness.cjs");
     await page.getByLabel("Company", { exact: false }).fill("Sample Partner 1");
     await page.getByLabel("Job Title", { exact: false }).fill("Testing Lead");
     await page.getByRole("combobox").last().click();
-    await page.getByRole("option", { name: "Engineering", exact: true }).click();
+    await page
+      .getByRole("option", { name: "Engineering", exact: true })
+      .click();
     await page.getByRole("button", { name: /Create Supervisor/i }).click();
     await page.getByRole("dialog").waitFor();
     assert.ok(

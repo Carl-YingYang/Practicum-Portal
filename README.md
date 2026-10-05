@@ -17,7 +17,7 @@ npm run db:setup
 npm run dev
 ```
 
-Open http://localhost:3000. Expand **Explore the prototype** to try one sample account per role. Seed setup creates a private `.seed-credentials.json` file for regular password sign-in; it is git ignored and must never be committed or uploaded. Seeding preserves existing data. `npm run db:reset:test` explicitly resets shared sample data when `APP_ENV=testing`.
+Open http://localhost:3000. Use the visible **Testing accounts** buttons to try Student, Supervisor or Coordinator. Local `npm run dev` also shows these seeded accounts when an older `.env` has no `APP_ENV`; `ENABLE_DEMO_LOGIN=false` disables them. Production builds require the explicit testing flags below. Seed setup creates a private `.seed-credentials.json` file for regular password sign-in; it is git ignored and must never be committed or uploaded. Seeding preserves existing data. `npm run db:reset:test` explicitly resets shared sample data when `APP_ENV=testing`.
 
 No separate Kimai, HR, forms server, API key, or browser extension is needed for attendance, journals, evaluations, and built-in forms. Optional external tool links remain ordinary links.
 
@@ -40,6 +40,7 @@ npm run typecheck
 npm test
 npm run lint
 npm run build
+npm run test:login
 npm run test:integration
 npm run test:browser
 ```
