@@ -1,13 +1,13 @@
 # Verification — connected platform, October 5, 2026
 
-The connected-platform pass starts from `d8d6a7e`; the login follow-up starts from `0ecc986` on `practo/testing-platform`. Commands run against Node 24, the installed Next.js 16.3.8/React 19 application, Prisma 6 with SQLite, and Chromium through Playwright. Only the testing branch is published.
+The writing/workflow follow-up starts from `b31510c`. The connected-platform pass starts from `d8d6a7e`; the login follow-up starts from `0ecc986` on `practo/testing-platform`. Commands run against Node 24, the installed Next.js 16.3.8/React 19 application, Prisma 6 with SQLite, and Chromium through Playwright. Only the testing branch is published.
 
 ## Automated checks
 
 | Check                      | Result / coverage                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
 | -------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `npm run typecheck`        | TypeScript passes                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
-| `npm test`                 | 16 tests: demo environment guards, attendance totals, clock idempotency, invalid manual times, account lifecycle, provisioning, journal revisions, form ownership/required answers/snapshots, evaluation locks, CSV escaping, color contrast and cadence/overnight carryover                                                                                                                                                                                                       |
+| `npm test`                 | 19 tests: writing sample bounds/prompts, nonduplicated attendance coverage, saved cadence/overnight clipping, demo environment guards, attendance totals, clock idempotency, invalid manual times, account lifecycle, provisioning, journal revisions, form ownership/required answers/snapshots, evaluation locks, CSV escaping, color contrast and cadence/overnight carryover                                                                                                   |
 | `npm run lint`             | Zero errors; 21 inherited `set-state-in-effect` warnings remain in controlled editor/modal initialization and existing hooks                                                                                                                                                                                                                                                                                                                                                       |
 | `npm run build`            | Production build passes, with Node API routes and dynamically loaded workspace screens                                                                                                                                                                                                                                                                                                                                                                                             |
 | `npm run test:integration` | Real HTTP credential sign-in, HTTP-only cookies, CSRF, role ownership, scoped reads, concurrent clock-in, saved data across sessions, retry receipts, server-derived journal hours, student submission/supervisor review, required form submission/coordinator review, immutable submitted records, shared preferences, supervisor provisioning/password change, isolated-school checks reset restrictions, production-mode demo/reset restrictions and failed-login rate limiting |
@@ -41,3 +41,26 @@ The other school-settings/coordinator screenshots in this folder belong to the e
 ## Scope of evidence
 
 This confirms a local production build with real server/database behavior and desktop Chromium/mobile viewport emulation. It does not certify Safari/iOS, Android devices, concurrent rich-text collaboration, cloud volume durability, email delivery, external service APIs, real billing, backup recovery or production security. Read [remaining work](CONNECTED_PLATFORM.md#remaining-work) before deployment with real student information.
+
+## Writing/workflow follow-up
+
+- `npm run test:workflow` runs a separate Chromium browser against a disposable migrated SQLite database on port 3120. It verifies manual preview/apply and guarded undo, native keyboard-selected passage replacement, bracketed reflection prompts, demo error/retry, and unchanged attendance hours.
+- A held real POST verifies that edits made during a slow save reach the server. Failed POSTs verify that sidebar navigation stays in the editor, text is retained, explicit retry succeeds, and a saved draft reopens after navigation/reload.
+- The same saved journal travels Student submission → Supervisor revision → Student editing/resubmission → Supervisor approval → Coordinator visibility. Attendance totals remain unchanged after approval.
+- Desktop full-contained half-width hero images, form-wizard step/44px close spacing, viewport-height modal scrolling, and the assistant at 320/360/390/768 × 640 in light/dark are checked. Scrollable preview actions remain reachable. The scenario picker switches to an actual zero-hours account; persisted language/detail preferences survive reload and stay isolated between accounts.
+- HTTP integration additionally verifies unauthenticated preference rejection, valid persisted writes, another account's defaults, strict field/enum validation and CSRF rejection. Existing account/security tests still pass.
+- Baseline browser and development-login checks pass again: direct three-role access, older local environment defaults, explicit demo opt-out, fade/reduced motion, compact login, exports, attendance, provisioning and shared school settings.
+- TypeScript and production build pass. ESLint reports zero errors and the same 21 inherited initialization warnings. Unit tests: 19 passed, zero failed. Browser flows report no page errors.
+
+The browser tests now poll asynchronous server snapshots explicitly rather than returning an unresolved Promise from Playwright's synchronous `waitForFunction` predicate. Entrance animations are allowed to finish before measuring drawer bounds. Dialog sizing disables layout transitions so viewport changes fit immediately; only its short fade remains.
+
+New visual evidence (viewport captures):
+
+- [Full contained login hero](screenshots/login-contained-hero.png)
+- [Desktop Writing Assistant](screenshots/writing-assistant-desktop.png)
+- [Mobile assistant light](screenshots/writing-assistant-mobile-light.png) and [dark](screenshots/writing-assistant-mobile-dark.png)
+- [Mobile preview actions light](screenshots/writing-assistant-preview-mobile-light.png) and [dark](screenshots/writing-assistant-preview-mobile-dark.png)
+- [320px form wizard close spacing](screenshots/form-wizard-mobile.png)
+- [360px testing scenarios](screenshots/testing-scenarios-mobile.png)
+
+This is deterministic demo UI and real local server workflow verification. No OmniRoute/provider request, account linking, live AI accuracy, usage billing, Safari/iOS or physical-device keyboard test is claimed. See [upgrade instructions and exact limitations](WRITING_ASSISTANT.md).

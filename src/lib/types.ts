@@ -112,6 +112,8 @@ export interface SchoolIdentity {
   };
 }
 export interface User {
+  /** Testing-only label, derived from the actual seeded records. */
+  demoScenario?: string;
   id: string;
   name: string;
   email: string;
@@ -176,12 +178,7 @@ export interface CredentialCsvRow {
 }
 /** Department enum — shared between Student and Supervisor for matching. */
 export type Department =
-  | "Engineering"
-  | "QA"
-  | "Design"
-  | "Marketing"
-  | "Operations"
-  | "Other";
+  "Engineering" | "QA" | "Design" | "Marketing" | "Operations" | "Other";
 export const DEPARTMENTS: Department[] = [
   "Engineering",
   "QA",
@@ -409,10 +406,7 @@ export type ToolKey = "drive" | "journalTemplate" | "form" | "jibble";
 export type PlanTier = "starter" | "growth" | "enterprise";
 export type BillingCycle = "monthly" | "per-term" | "annual";
 export type SubscriptionStatus =
-  | "trialing"
-  | "active"
-  | "past_due"
-  | "canceled";
+  "trialing" | "active" | "past_due" | "canceled";
 export type PaymentMethod = "card" | "bank" | "invoice";
 export interface SubscriptionPlan {
   tier: PlanTier;
@@ -562,11 +556,7 @@ export interface FormBlock {
 }
 export type FormStatus = "draft" | "published" | "archived";
 export type FormCategory =
-  | "evaluation"
-  | "journal"
-  | "ojt"
-  | "program"
-  | "other";
+  "evaluation" | "journal" | "ojt" | "program" | "other";
 export interface FormDocument {
   id: string;
   title: string;
@@ -602,9 +592,7 @@ export const FORM_STATUS_LABELS: Record<FormStatus, string> = {
 // revision).
 // ============================================================
 export type FormAssignmentTarget =
-  | "all_supervisors"
-  | "all_students"
-  | "specific_users";
+  "all_supervisors" | "all_students" | "specific_users";
 export interface FormAssignment {
   id: string;
   formId: string;

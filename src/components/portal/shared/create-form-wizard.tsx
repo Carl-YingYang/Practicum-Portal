@@ -44,13 +44,30 @@ import {
 } from "@/lib/types";
 import { format } from "date-fns";
 
-const categoryOptions: { value: FormCategory; label: string; hint: string }[] = [
-  { value: "evaluation", label: FORM_CATEGORY_LABELS.evaluation, hint: "Supervisor rates intern performance" },
-  { value: "journal", label: FORM_CATEGORY_LABELS.journal, hint: "Student weekly reflection" },
-  { value: "ojt", label: FORM_CATEGORY_LABELS.ojt, hint: "On-the-job training sheet" },
-  { value: "program", label: FORM_CATEGORY_LABELS.program, hint: "End-of-program feedback" },
-  { value: "other", label: FORM_CATEGORY_LABELS.other, hint: "Custom form" },
-];
+const categoryOptions: { value: FormCategory; label: string; hint: string }[] =
+  [
+    {
+      value: "evaluation",
+      label: FORM_CATEGORY_LABELS.evaluation,
+      hint: "Supervisor rates intern performance",
+    },
+    {
+      value: "journal",
+      label: FORM_CATEGORY_LABELS.journal,
+      hint: "Student weekly reflection",
+    },
+    {
+      value: "ojt",
+      label: FORM_CATEGORY_LABELS.ojt,
+      hint: "On-the-job training sheet",
+    },
+    {
+      value: "program",
+      label: FORM_CATEGORY_LABELS.program,
+      hint: "End-of-program feedback",
+    },
+    { value: "other", label: FORM_CATEGORY_LABELS.other, hint: "Custom form" },
+  ];
 
 const targetOptions: {
   value: FormAssignmentTarget;
@@ -104,7 +121,8 @@ export function CreateFormWizard({
   const [title, setTitle] = React.useState("");
   const [description, setDescription] = React.useState("");
   const [category, setCategory] = React.useState<FormCategory>("evaluation");
-  const [target, setTarget] = React.useState<FormAssignmentTarget>("all_supervisors");
+  const [target, setTarget] =
+    React.useState<FormAssignmentTarget>("all_supervisors");
   const [dueDate, setDueDate] = React.useState<Date | undefined>(undefined);
   const [publishNow, setPublishNow] = React.useState(true);
 
@@ -126,7 +144,11 @@ export function CreateFormWizard({
 
   function handleNext() {
     if (step === 1 && !title.trim()) {
-      toast({ title: "Title required", description: "Give your form a title to continue.", variant: "destructive" });
+      toast({
+        title: "Title required",
+        description: "Give your form a title to continue.",
+        variant: "destructive",
+      });
       return;
     }
     if (step === 1) setStep(2);
@@ -180,9 +202,9 @@ export function CreateFormWizard({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[560px] p-0 gap-0 overflow-hidden">
+      <DialogContent className="sm:max-w-[560px] p-0 gap-0 overflow-y-auto">
         {/* Progress header */}
-        <div className="border-b border-border/60 bg-muted/30 px-5 py-3">
+        <div className="border-b border-border/60 bg-muted/30 pl-5 pr-16 py-4">
           <div className="flex items-center gap-2">
             {([1, 2, 3] as const).map((n) => (
               <React.Fragment key={n}>
@@ -191,7 +213,7 @@ export function CreateFormWizard({
                     "flex h-6 w-6 items-center justify-center rounded-full text-[11px] font-semibold transition-colors",
                     step >= n
                       ? "bg-primary text-primary-foreground"
-                      : "bg-muted text-muted-foreground ring-1 ring-inset ring-border"
+                      : "bg-muted text-muted-foreground ring-1 ring-inset ring-border",
                   )}
                 >
                   {step > n ? <CheckCircle2 className="h-3.5 w-3.5" /> : n}
@@ -200,13 +222,13 @@ export function CreateFormWizard({
                   <div
                     className={cn(
                       "h-px flex-1 transition-colors",
-                      step > n ? "bg-primary/60" : "bg-border"
+                      step > n ? "bg-primary/60" : "bg-border",
                     )}
                   />
                 )}
               </React.Fragment>
             ))}
-            <div className="ml-auto text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+            <div className="ml-auto shrink-0 whitespace-nowrap text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
               Step {step} of 3
             </div>
           </div>
@@ -219,9 +241,12 @@ export function CreateFormWizard({
             {step === 3 && "Assign & publish"}
           </DialogTitle>
           <DialogDescription className="text-xs">
-            {step === 1 && "Set the basics. You'll add questions in the editor next."}
-            {step === 2 && "Choose how to proceed — refine in the editor now, or skip to assign and refine later."}
-            {step === 3 && "Pick who should fill this form and when it's due. Then publish to send it out."}
+            {step === 1 &&
+              "Set the basics. You'll add questions in the editor next."}
+            {step === 2 &&
+              "Choose how to proceed — refine in the editor now, or skip to assign and refine later."}
+            {step === 3 &&
+              "Pick who should fill this form and when it's due. Then publish to send it out."}
           </DialogDescription>
         </DialogHeader>
 
@@ -240,7 +265,12 @@ export function CreateFormWizard({
                 />
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="cfw-desc">Description <span className="text-muted-foreground font-normal">(optional)</span></Label>
+                <Label htmlFor="cfw-desc">
+                  Description{" "}
+                  <span className="text-muted-foreground font-normal">
+                    (optional)
+                  </span>
+                </Label>
                 <Textarea
                   id="cfw-desc"
                   value={description}
@@ -261,14 +291,20 @@ export function CreateFormWizard({
                         "flex items-center gap-2.5 rounded-md border px-3 py-2 text-left transition-colors",
                         category === opt.value
                           ? "border-primary bg-primary/5 ring-1 ring-inset ring-primary/30"
-                          : "border-border/60 hover:bg-muted/40"
+                          : "border-border/60 hover:bg-muted/40",
                       )}
                     >
                       <div className="min-w-0 flex-1">
-                        <div className="text-[13px] font-medium text-foreground">{opt.label}</div>
-                        <div className="text-[11px] text-muted-foreground">{opt.hint}</div>
+                        <div className="text-[13px] font-medium text-foreground">
+                          {opt.label}
+                        </div>
+                        <div className="text-[11px] text-muted-foreground">
+                          {opt.hint}
+                        </div>
                       </div>
-                      {category === opt.value && <CheckCircle2 className="h-4 w-4 text-primary shrink-0" />}
+                      {category === opt.value && (
+                        <CheckCircle2 className="h-4 w-4 text-primary shrink-0" />
+                      )}
                     </button>
                   ))}
                 </div>
@@ -285,7 +321,9 @@ export function CreateFormWizard({
                     <FileText className="h-4.5 w-4.5" />
                   </div>
                   <div className="min-w-0 flex-1">
-                    <div className="text-[13px] font-semibold text-foreground">{title || "Untitled form"}</div>
+                    <div className="text-[13px] font-semibold text-foreground">
+                      {title || "Untitled form"}
+                    </div>
                     <div className="text-[11px] text-muted-foreground">
                       {FORM_CATEGORY_LABELS[category]}
                       {description && <> · {description}</>}
@@ -295,7 +333,8 @@ export function CreateFormWizard({
               </div>
 
               <p className="text-xs text-muted-foreground leading-relaxed">
-                Your form starts with a single heading block. You have two options:
+                Your form starts with a single heading block. You have two
+                options:
               </p>
 
               <div className="grid grid-cols-1 gap-2">
@@ -306,9 +345,13 @@ export function CreateFormWizard({
                 >
                   <Sparkles className="mt-0.5 h-4 w-4 text-amber-500 shrink-0" />
                   <div className="min-w-0 flex-1">
-                    <div className="text-[13px] font-medium text-foreground">Assign & publish now, refine later</div>
+                    <div className="text-[13px] font-medium text-foreground">
+                      Assign & publish now, refine later
+                    </div>
                     <div className="text-[11px] text-muted-foreground mt-0.5">
-                      Publish with a starter template, assign to your audience, then open the editor to add questions. Recommended — gets the workflow moving.
+                      Publish with a starter template, assign to your audience,
+                      then open the editor to add questions. Recommended — gets
+                      the workflow moving.
                     </div>
                   </div>
                 </button>
@@ -319,9 +362,13 @@ export function CreateFormWizard({
                 >
                   <Layers className="mt-0.5 h-4 w-4 text-teal-600 shrink-0" />
                   <div className="min-w-0 flex-1">
-                    <div className="text-[13px] font-medium text-foreground">Build in the editor first</div>
+                    <div className="text-[13px] font-medium text-foreground">
+                      Build in the editor first
+                    </div>
                     <div className="text-[11px] text-muted-foreground mt-0.5">
-                      Open the full block editor, add all your questions and rating tables, then come back to publish. Best for complex forms.
+                      Open the full block editor, add all your questions and
+                      rating tables, then come back to publish. Best for complex
+                      forms.
                     </div>
                   </div>
                 </button>
@@ -346,39 +393,69 @@ export function CreateFormWizard({
                           "flex items-start gap-2.5 rounded-md border px-3 py-2 text-left transition-colors",
                           target === opt.value
                             ? "border-primary bg-primary/5 ring-1 ring-inset ring-primary/30"
-                            : "border-border/60 hover:bg-muted/40"
+                            : "border-border/60 hover:bg-muted/40",
                         )}
                       >
-                        <Icon className={cn("mt-0.5 h-4 w-4 shrink-0", target === opt.value ? "text-primary" : "text-muted-foreground")} />
+                        <Icon
+                          className={cn(
+                            "mt-0.5 h-4 w-4 shrink-0",
+                            target === opt.value
+                              ? "text-primary"
+                              : "text-muted-foreground",
+                          )}
+                        />
                         <div className="min-w-0 flex-1">
-                          <div className="text-[13px] font-medium text-foreground">{opt.label}</div>
-                          <div className="text-[11px] text-muted-foreground">{opt.description}</div>
+                          <div className="text-[13px] font-medium text-foreground">
+                            {opt.label}
+                          </div>
+                          <div className="text-[11px] text-muted-foreground">
+                            {opt.description}
+                          </div>
                         </div>
-                        {target === opt.value && <CheckCircle2 className="h-4 w-4 text-primary shrink-0" />}
+                        {target === opt.value && (
+                          <CheckCircle2 className="h-4 w-4 text-primary shrink-0" />
+                        )}
                       </button>
                     );
                   })}
                 </div>
                 {target === "specific_users" && (
                   <p className="rounded-md bg-amber-50 px-2.5 py-1.5 text-[11px] text-amber-800 ring-1 ring-inset ring-amber-200/70 dark:bg-amber-950/40 dark:text-amber-300 dark:ring-amber-900/50">
-                    Specific-user assignment opens a picker in the editor. For this demo we'll create the assignment record and you can refine recipients there.
+                    Specific-user assignment opens a picker in the editor. For
+                    this demo we'll create the assignment record and you can
+                    refine recipients there.
                   </p>
                 )}
               </div>
 
               <div className="space-y-1.5">
-                <Label htmlFor="cfw-due">Due date <span className="text-muted-foreground font-normal">(optional)</span></Label>
+                <Label htmlFor="cfw-due">
+                  Due date{" "}
+                  <span className="text-muted-foreground font-normal">
+                    (optional)
+                  </span>
+                </Label>
                 <div className="flex items-center gap-2">
                   <CalendarClock className="h-4 w-4 text-muted-foreground" />
                   <Input
                     id="cfw-due"
                     type="date"
                     value={dueDate ? format(dueDate, "yyyy-MM-dd") : ""}
-                    onChange={(e) => setDueDate(e.target.value ? new Date(e.target.value) : undefined)}
+                    onChange={(e) =>
+                      setDueDate(
+                        e.target.value ? new Date(e.target.value) : undefined,
+                      )
+                    }
                     className="h-9 max-w-[180px]"
                   />
                   {dueDate && (
-                    <Button type="button" variant="ghost" size="sm" className="h-7 text-[11px] text-muted-foreground" onClick={() => setDueDate(undefined)}>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 text-[11px] text-muted-foreground"
+                      onClick={() => setDueDate(undefined)}
+                    >
                       Clear
                     </Button>
                   )}
@@ -416,12 +493,21 @@ export function CreateFormWizard({
           <div className="text-[11px] text-muted-foreground">
             {step === 1 && "You can edit all of this later."}
             {step === 2 && "Skipping to assign creates a starter template."}
-            {step === 3 && publishNow && "Publishing sends the form to assigned users."}
-            {step === 3 && !publishNow && "Saves as draft — publish later from the editor."}
+            {step === 3 &&
+              publishNow &&
+              "Publishing sends the form to assigned users."}
+            {step === 3 &&
+              !publishNow &&
+              "Saves as draft — publish later from the editor."}
           </div>
           <div className="flex items-center gap-2">
             {step > 1 && (
-              <Button variant="ghost" size="sm" onClick={handleBack} className="gap-1.5">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleBack}
+                className="gap-1.5"
+              >
                 <ArrowLeft className="h-3.5 w-3.5" /> Back
               </Button>
             )}
@@ -431,10 +517,19 @@ export function CreateFormWizard({
               </Button>
             ) : (
               <>
-                <Button variant="outline" size="sm" onClick={() => handleFinish(true)} className="gap-1.5">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleFinish(true)}
+                  className="gap-1.5"
+                >
                   <Layers className="h-3.5 w-3.5" /> Create &amp; edit
                 </Button>
-                <Button size="sm" onClick={() => handleFinish(false)} className="gap-1.5">
+                <Button
+                  size="sm"
+                  onClick={() => handleFinish(false)}
+                  className="gap-1.5"
+                >
                   <CheckCircle2 className="h-3.5 w-3.5" />
                   {publishNow ? "Publish & assign" : "Create draft"}
                 </Button>

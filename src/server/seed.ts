@@ -22,15 +22,13 @@ export async function seedPortal(reset = false) {
   data.schools = data.schools
     .filter((s) => s.id === "practo")
     .map((s) => ({ ...s, name: data.schoolIdentity.name, shortName: "PTA" }));
-  data.companies = data.companies
-    .slice(0, 6)
-    .map((c, i) => ({
-      id: c.id,
-      name: `Sample Partner ${i + 1}`,
-      address: "Sample City, Philippines",
-      industry: "Technology",
-      contactEmail: `partner${i + 1}@example.test`,
-    }));
+  data.companies = data.companies.slice(0, 6).map((c, i) => ({
+    id: c.id,
+    name: `Sample Partner ${i + 1}`,
+    address: "Sample City, Philippines",
+    industry: "Technology",
+    contactEmail: `partner${i + 1}@example.test`,
+  }));
   for (const [role, profiles] of [
     ["student", data.students],
     ["supervisor", data.supervisors],
@@ -52,8 +50,10 @@ export async function seedPortal(reset = false) {
   data.coordinators.forEach((c) => {
     c.schoolId = "practo";
   });
-  data.timeLogs = data.students.flatMap((s) =>
-    Array.from({ length: 10 }, (_, i) => {
+  // Student 5 starts empty; Student 6 has a completed 80-hour sample requirement.
+  if (data.students[5]) data.students[5].requiredHours = 80;
+  data.timeLogs = data.students.flatMap((s, index) =>
+    Array.from({ length: index === 4 ? 0 : 10 }, (_, i) => {
       const date = calendarDay(today, -14 + i);
       return {
         id: `seed-time-${s.id}-${i}`,
@@ -69,32 +69,30 @@ export async function seedPortal(reset = false) {
   );
   data.students = recalculateHours(data.students, data.timeLogs);
   const oldDate = calendarDay(today, -10);
-  data.journals = data.students
-    .slice(0, 4)
-    .map((s, i) => ({
-      id: `seed-journal-${i}`,
-      studentId: s.id,
-      date: oldDate,
-      cadence: "weekly" as const,
-      hours: journalHours(data.timeLogs, s.id, oldDate).hours,
-      tasks: "Tested the sample portal workflow and documented results.",
-      learnings: "Clear feedback helps improve the next submission.",
-      status: ["approved", "pending", "rejected", "draft"][i] as
-        | "approved"
-        | "pending"
-        | "rejected"
-        | "draft",
-      submittedAt: i < 3 ? `${oldDate}T17:00:00+08:00` : null,
-      reviewedAt: i === 0 || i === 2 ? `${oldDate}T18:00:00+08:00` : null,
-      rejectionReason:
-        i === 2 ? "Please include your testing outcomes." : undefined,
-      createdAt: `${oldDate}T16:00:00+08:00`,
-    }));
-  data.evaluations = data.evaluations.map((e) => ({
-    ...e,
-    term: `${Number(today.slice(0, 4))}-${Number(today.slice(0, 4)) + 1}`,
+  data.journals = data.students.slice(0, 4).map((s, i) => ({
+    id: `seed-journal-${i}`,
+    studentId: s.id,
+    date: oldDate,
+    cadence: "weekly" as const,
+    hours: journalHours(data.timeLogs, s.id, oldDate).hours,
+    tasks: "Tested the sample portal workflow and documented results.",
+    learnings: "Clear feedback helps improve the next submission.",
+    status: ["approved", "pending", "rejected", "draft"][i] as
+      "approved" | "pending" | "rejected" | "draft",
+    submittedAt: i < 3 ? `${oldDate}T17:00:00+08:00` : null,
+    reviewedAt: i === 0 || i === 2 ? `${oldDate}T18:00:00+08:00` : null,
+    rejectionReason:
+      i === 2 ? "Please include your testing outcomes." : undefined,
+    reviewedBy: i === 0 || i === 2 ? (s.supervisorId ?? undefined) : undefined,
     createdAt: `${oldDate}T16:00:00+08:00`,
   }));
+  data.evaluations = data.evaluations
+    .filter((e) => e.studentId !== data.students[4]?.id)
+    .map((e) => ({
+      ...e,
+      term: `${Number(today.slice(0, 4))}-${Number(today.slice(0, 4)) + 1}`,
+      createdAt: `${oldDate}T16:00:00+08:00`,
+    }));
   data.formAssignments = data.formAssignments.map((a) => ({
     ...a,
     dueDate: calendarDay(today, 7),

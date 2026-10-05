@@ -4,7 +4,7 @@ import { PageHeader } from "@/components/portal/layout/page-header";
 import { ActionBar } from "@/components/portal/shared/action-bar";
 import { ConfirmDialog } from "@/components/portal/shared/confirm-dialog";
 import { JournalEditor } from "@/components/portal/shared/journal-editor";
-import { JournalStatusBadge } from "@/components/portal/shared/badges";
+import { JournalListRail } from "./journal-list-rail";
 import {
   Sheet,
   SheetContent,
@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/sheet";
 import { useAppStore } from "@/store/use-app-store";
 import { flushChanges } from "@/client/portal-client";
+import { useJournalDraft } from "@/hooks/use-journal-draft";
 import {
   cadenceLabels,
   journalHours,
@@ -23,7 +24,6 @@ import {
   getStudent,
   journalsForStudent,
   todayISODate,
-  weekLabel,
   formatDate,
   getCompany,
   getSupervisor,
@@ -32,20 +32,18 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { AlertCircle, FilePlus2, List, Save, Send } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { List, Save, Send } from "lucide-react";
 import type { Journal } from "@/lib/types";
 /** Attendance-derived periods, real server saves, and a compact writing surface. */
 export function JournalForm() {
   const state = useAppStore();
   const student = getStudent(state.students, state.currentUser?.studentId);
   const existing = getJournal(state.journals, state.viewParams.journalId);
-  const cadence =
-    existing?.cadence ?? state.schoolIdentity.journalCadence ?? "weekly";
+  const [cadence, setCadence] = React.useState(
+    existing?.cadence ?? state.schoolIdentity.journalCadence ?? "weekly",
+  );
   const today = todayISODate();
-  const draftId = React.useRef(existing?.id);
-  const [activeId, setActiveId] = React.useState(existing?.id);
-  const [form, setForm] = React.useState(() => ({
+  const initial = {
     date:
       existing?.date ??
       nextJournalDate(
@@ -57,12 +55,22 @@ export function JournalForm() {
       ),
     tasks: existing?.tasks ?? "",
     learnings: existing?.learnings ?? "",
-  }));
+  };
+  const {
+    form,
+    update,
+    save,
+    reset,
+    activeId,
+    draftId,
+    edited,
+    saving,
+    error,
+    setError,
+  } = useJournalDraft(student?.id ?? "", cadence, initial, existing);
   const [confirm, setConfirm] = React.useState(false),
     [railOpen, setRailOpen] = React.useState(false),
     [busy, setBusy] = React.useState(false);
-  const [edited, setEdited] = React.useState(false),
-    [error, setError] = React.useState("");
   const context = journalHours(
     state.timeLogs,
     student?.id ?? "",
@@ -70,75 +78,16 @@ export function JournalForm() {
     cadence,
   );
   const payload = { ...form, hours: context.hours };
-  const save = React.useCallback(async () => {
-    if (!student || !form.date) return;
-    if (draftId.current)
-      state.updateJournalDraft(draftId.current, {
-        ...form,
-        hours: context.hours,
-      });
-    else {
-      const id = state.createJournal({
-        studentId: student.id,
-        ...form,
-        hours: context.hours,
-        submit: false,
-      });
-      draftId.current = id;
-      setActiveId(id);
-    }
-    await flushChanges();
-  }, [
-    student,
-    form,
-    context.hours,
-    state.updateJournalDraft,
-    state.createJournal,
-  ]);
-  React.useEffect(() => {
-    if (!edited) return;
-    const timer = setTimeout(() => {
-      void save()
-        .then(() => {
-          setEdited(false);
-          setError("");
-        })
-        .catch((error) =>
-          setError(
-            error instanceof Error
-              ? error.message
-              : "Draft could not be saved.",
-          ),
-        );
-    }, 750);
-    return () => clearTimeout(timer);
-  }, [edited, save]);
-  React.useEffect(() => {
-    const warn = (event: BeforeUnloadEvent) => {
-      if (edited) {
-        event.preventDefault();
-        event.returnValue = "";
-      }
-    };
-    window.addEventListener("beforeunload", warn);
-    return () => window.removeEventListener("beforeunload", warn);
-  }, [edited]);
   if (!student) return null;
   const myJournals = journalsForStudent(state.journals, student.id).sort(
     (a, b) => b.date.localeCompare(a.date),
   );
   const company = getCompany(state.companies, student.companyId),
     supervisor = getSupervisor(state.supervisors, student.supervisorId);
-  function update(patch: Partial<typeof form>) {
-    setForm((value) => ({ ...value, ...patch }));
-    setEdited(true);
-    setError("");
-  }
   async function saveAndNotify() {
     setBusy(true);
     try {
       await save();
-      setEdited(false);
       setError("");
       toast.success("Draft saved to server");
     } catch (error) {
@@ -156,7 +105,6 @@ export function JournalForm() {
       await save();
       state.submitJournal(draftId.current!);
       await flushChanges();
-      setEdited(false);
       toast.success("Journal submitted for review");
       state.navigate("student.journals");
     } catch (error) {
@@ -166,7 +114,7 @@ export function JournalForm() {
     }
   }
   async function select(journal: Journal) {
-    if (edited) {
+    if (edited || saving) {
       try {
         await save();
       } catch {
@@ -181,27 +129,26 @@ export function JournalForm() {
     );
   }
   async function startNew() {
-    if (edited) {
+    if (edited || saving) {
       try {
         await save();
       } catch {
         return;
       }
     }
-    draftId.current = undefined;
-    setActiveId(undefined);
-    setForm({
+    const nextCadence = state.schoolIdentity.journalCadence ?? "weekly";
+    setCadence(nextCadence);
+    reset({
       date: nextJournalDate(
         state.timeLogs,
         state.journals,
         student!.id,
         today,
-        cadence,
+        nextCadence,
       ),
       tasks: "",
       learnings: "",
     });
-    setEdited(false);
     setRailOpen(false);
     if (state.viewParams.journalId) state.navigate("student.journal-new");
   }
@@ -225,11 +172,19 @@ export function JournalForm() {
   const saveState =
     error || state.syncStatus === "error"
       ? "error"
-      : edited || state.syncStatus === "saving"
+      : edited || saving || state.syncStatus === "saving"
         ? "saving"
         : activeId
           ? "saved"
           : "idle";
+  const locked = existing && !["draft", "rejected"].includes(existing.status);
+  const ordered = [...myJournals].sort(
+    (a, b) =>
+      a.createdAt.localeCompare(b.createdAt) || a.id.localeCompare(b.id),
+  );
+  const entryNumber = activeId
+    ? ordered.findIndex((j) => j.id === activeId) + 1
+    : myJournals.length + 1;
   return (
     <>
       <PageHeader
@@ -262,6 +217,9 @@ export function JournalForm() {
             <div className="flex flex-wrap justify-between gap-2 text-sm">
               <div>
                 <strong>{student.name}</strong>
+                <span className="ml-2 text-xs text-muted-foreground">
+                  Journal #{entryNumber || myJournals.length + 1}
+                </span>
                 <p className="mt-1 text-xs text-muted-foreground">
                   {student.studentNumber} · {student.course}
                 </p>
@@ -313,7 +271,14 @@ export function JournalForm() {
                   </span>
                 </p>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  Running clocks count after clock-out.
+                  Previous periods:{" "}
+                  {Math.max(
+                    0,
+                    Math.round(
+                      (context.cumulativeHours - context.hours) * 100,
+                    ) / 100,
+                  )}
+                  h. Running clocks count after clock-out.
                 </p>
               </div>
             </div>
@@ -334,7 +299,15 @@ export function JournalForm() {
               role="alert"
               className="rounded-lg border border-destructive p-3 text-sm text-destructive"
             >
-              {error}
+              {error}{" "}
+              <button
+                type="button"
+                className="ml-2 min-h-11 underline"
+                disabled={busy || saving}
+                onClick={() => void saveAndNotify()}
+              >
+                Retry saving
+              </button>
             </p>
           )}
           <JournalEditor
@@ -350,6 +323,8 @@ export function JournalForm() {
             onChangeTasks={(tasks) => update({ tasks })}
             onChangeLearnings={(learnings) => update({ learnings })}
             saveState={saveState}
+            readOnly={Boolean(locked)}
+            disabled={busy}
             onDownloadWord={download}
           />
         </div>
@@ -357,7 +332,7 @@ export function JournalForm() {
       <ActionBar className="static lg:sticky">
         <Button
           variant="ghost"
-          disabled={busy}
+          disabled={busy || Boolean(locked)}
           onClick={async () => {
             if (edited) {
               try {
@@ -373,14 +348,14 @@ export function JournalForm() {
         </Button>
         <Button
           variant="outline"
-          disabled={busy}
+          disabled={busy || Boolean(locked)}
           onClick={() => void saveAndNotify()}
         >
           <Save className="size-4" />
           Save Draft
         </Button>
         <Button
-          disabled={busy || !form.date || context.hours <= 0}
+          disabled={busy || Boolean(locked) || !form.date || context.hours <= 0}
           onClick={() => {
             if (!form.tasks.trim() || !form.learnings.trim()) {
               setError(
@@ -417,62 +392,6 @@ export function JournalForm() {
         onConfirm={() => void submit()}
       />
     </>
-  );
-}
-function JournalListRail({
-  journals,
-  activeId,
-  onSelect,
-  onNew,
-}: {
-  journals: Journal[];
-  activeId?: string;
-  onSelect: (j: Journal) => void;
-  onNew: () => void;
-}) {
-  return (
-    <div className="flex h-full flex-col gap-2">
-      <Button onClick={onNew} className="h-10 w-full justify-start">
-        <FilePlus2 className="h-4 w-4" /> New Journal
-      </Button>
-      <div className="mb-1 px-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-        My Journals · {journals.length}
-      </div>
-      <div className="max-h-[65vh] flex-1 space-y-1.5 overflow-y-auto pr-1 scroll-area-custom">
-        {journals.length === 0 ? (
-          <p className="rounded-lg border border-dashed border-border p-4 text-center text-xs text-muted-foreground">
-            No journals yet. Click “New Journal” to start.
-          </p>
-        ) : (
-          journals.map((j) => (
-            <button
-              key={j.id}
-              type="button"
-              onClick={() => onSelect(j)}
-              className={cn(
-                "w-full rounded-lg border p-2.5 text-left transition-colors",
-                activeId === j.id
-                  ? "border-primary bg-primary/5"
-                  : "border-border bg-card hover:border-border/80 hover:bg-muted/40",
-              )}
-            >
-              <div className="flex items-center justify-between gap-2">
-                <span className="text-sm font-medium text-foreground">
-                  {weekLabel(j.date)}
-                </span>
-                <JournalStatusBadge status={j.status} />
-              </div>
-              <p className="mt-0.5 text-[11px] text-muted-foreground">
-                {formatDate(j.date)} · {j.hours}h
-              </p>
-              <p className="mt-1 line-clamp-2 text-[11px] text-muted-foreground/80">
-                {j.tasks || "Empty draft"}
-              </p>
-            </button>
-          ))
-        )}
-      </div>
-    </div>
   );
 }
 export default JournalForm;

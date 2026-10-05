@@ -47,10 +47,30 @@ export async function GET(
         },
         select: { id: true },
       });
+      const data = JSON.parse(school.stateJson) as PortalData;
       demoAccounts.push(
-        ...accountUsers(JSON.parse(school.stateJson) as PortalData).filter(
-          (u) => eligible.some((a) => a.id === u.id),
-        ),
+        ...accountUsers(data)
+          .filter((u) => eligible.some((a) => a.id === u.id))
+          .map((user) => {
+            if (!user.studentId) return user;
+            const student = data.students.find((s) => s.id === user.studentId);
+            const journals = data.journals.filter(
+              (j) => j.studentId === user.studentId,
+            );
+            const demoScenario =
+              student && student.loggedHours >= student.requiredHours
+                ? "Completed hours"
+                : journals.some((j) => j.status === "rejected")
+                  ? "Needs revision"
+                  : journals.some((j) => j.status === "pending")
+                    ? "Pending review"
+                    : journals.some((j) => j.status === "draft")
+                      ? "Saved draft"
+                      : student?.loggedHours === 0
+                        ? "New student"
+                        : "Active workspace";
+            return { ...user, demoScenario };
+          }),
       );
     }
     return Response.json(

@@ -14,9 +14,7 @@ import { PageHeader } from "@/components/portal/layout/page-header";
 import { SectionCard } from "@/components/portal/shared/section-card";
 import { EmptyState } from "@/components/portal/shared/empty-state";
 import { ConfirmDialog } from "@/components/portal/shared/confirm-dialog";
-import {
-  JournalStatusBadge,
-} from "@/components/portal/shared/badges";
+import { JournalStatusBadge } from "@/components/portal/shared/badges";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
@@ -47,6 +45,8 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { flushChanges } from "@/client/portal-client";
+import { journalPeriodLabel } from "@/domain/journal-period";
 import { downloadCsv } from "@/lib/client-pdf";
 import {
   usePagination,
@@ -94,7 +94,7 @@ export function AllJournalsList() {
           studentNumber: st?.studentNumber ?? "",
           supervisorName: sup?.name ?? "—",
           companyName: company?.name ?? "—",
-          week: weekLabel(j.date),
+          week: journalPeriodLabel(j),
           date: j.date,
           hours: j.hours,
           status: j.status,
@@ -141,14 +141,11 @@ export function AllJournalsList() {
 
   // Only pending journals can be bulk-approved/rejected.
   const selectedRows = rows.filter((r) => selected.has(r.id));
-  const actionableSelected = selectedRows.filter(
-    (r) => r.status === "pending"
-  );
+  const actionableSelected = selectedRows.filter((r) => r.status === "pending");
   const actionableCount = actionableSelected.length;
   const allActionablePendingSelected =
     actionableCount > 0 &&
-    actionableCount ===
-      rows.filter((r) => r.status === "pending").length;
+    actionableCount === rows.filter((r) => r.status === "pending").length;
 
   const toggleRow = (id: string) => {
     setSelected((prev) => {
@@ -160,7 +157,9 @@ export function AllJournalsList() {
   };
 
   const toggleAllPending = () => {
-    const pendingIds = rows.filter((r) => r.status === "pending").map((r) => r.id);
+    const pendingIds = rows
+      .filter((r) => r.status === "pending")
+      .map((r) => r.id);
     setSelected((prev) => {
       const next = new Set(prev);
       // If all pending already selected, deselect them; otherwise select all pending.
@@ -177,24 +176,32 @@ export function AllJournalsList() {
 
   const clearSelection = () => setSelected(new Set());
 
-  const handleBulkApprove = () => {
+  const handleBulkApprove = async () => {
     actionableSelected.forEach((r) => approveJournal(r.id));
+    try {
+      await flushChanges();
+    } catch {
+      return;
+    }
     toast.success(
-      `Approved ${actionableCount} journal${actionableCount === 1 ? "" : "s"}`
+      `Approved ${actionableCount} journal${actionableCount === 1 ? "" : "s"}`,
     );
     clearSelection();
   };
 
-  const handleBulkReject = () => {
+  const handleBulkReject = async () => {
     if (!rejectReason.trim()) {
       toast.error("Please provide a rejection reason.");
       return;
     }
-    actionableSelected.forEach((r) =>
-      rejectJournal(r.id, rejectReason.trim())
-    );
+    actionableSelected.forEach((r) => rejectJournal(r.id, rejectReason.trim()));
+    try {
+      await flushChanges();
+    } catch {
+      return;
+    }
     toast.success(
-      `Rejected ${actionableCount} journal${actionableCount === 1 ? "" : "s"}`
+      `Rejected ${actionableCount} journal${actionableCount === 1 ? "" : "s"}`,
     );
     setRejectReason("");
     setRejectOpen(false);
@@ -226,11 +233,19 @@ export function AllJournalsList() {
         breadcrumb="Journals"
         actions={
           <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
-            <Button variant="outline" onClick={handleExportCsv} className="w-full sm:w-auto">
+            <Button
+              variant="outline"
+              onClick={handleExportCsv}
+              className="w-full sm:w-auto"
+            >
               <FileSpreadsheet className="h-4 w-4" />
               Export CSV
             </Button>
-            <Button variant="outline" onClick={() => navigate("coordinator.reports")} className="w-full sm:w-auto">
+            <Button
+              variant="outline"
+              onClick={() => navigate("coordinator.reports")}
+              className="w-full sm:w-auto"
+            >
               <FileText className="h-4 w-4" />
               Compliance Report
             </Button>
@@ -354,7 +369,9 @@ export function AllJournalsList() {
                     onKeyDown={(e) => {
                       if (e.key === "Enter" || e.key === " ") {
                         e.preventDefault();
-                        navigate("coordinator.journal-view", { journalId: r.id });
+                        navigate("coordinator.journal-view", {
+                          journalId: r.id,
+                        });
                       }
                     }}
                     className={cn(
@@ -362,8 +379,8 @@ export function AllJournalsList() {
                       r.status === "rejected"
                         ? "border-amber-200/70 dark:border-amber-900/40"
                         : isSelected
-                        ? "border-teal-300 dark:border-teal-800"
-                        : "border-border/70"
+                          ? "border-teal-300 dark:border-teal-800"
+                          : "border-border/70",
                     )}
                   >
                     <div className="flex items-start gap-2.5">
@@ -373,7 +390,10 @@ export function AllJournalsList() {
                         disabled={!isPending}
                         onClick={(e) => e.stopPropagation()}
                         aria-label={`Select journal for ${r.studentName}`}
-                        className={cn("mt-0.5", !isPending && "opacity-40 cursor-not-allowed")}
+                        className={cn(
+                          "mt-0.5",
+                          !isPending && "opacity-40 cursor-not-allowed",
+                        )}
                       />
                       <div className="min-w-0 flex-1 space-y-1.5">
                         <div className="flex items-start justify-between gap-2">
@@ -391,7 +411,9 @@ export function AllJournalsList() {
                         </div>
                         <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
                           <span className="inline-flex min-w-0 items-center gap-1">
-                            <span className="shrink-0 font-medium text-foreground/70">Sup:</span>
+                            <span className="shrink-0 font-medium text-foreground/70">
+                              Sup:
+                            </span>
                             <span className="truncate">{r.supervisorName}</span>
                           </span>
                           <span className="shrink-0 text-border">·</span>
@@ -414,105 +436,105 @@ export function AllJournalsList() {
 
             {/* Desktop / tablet table */}
             <div className="hidden overflow-x-auto scroll-area-custom md:block">
-            <Table>
-              <TableHeader>
-                <TableRow className="border-border/60 hover:bg-transparent">
-                  <TableHead className="w-10 pl-4 sm:pl-6">
-                    <Checkbox
-                      checked={
-                        pendingCount > 0 && allActionablePendingSelected
-                      }
-                      onCheckedChange={toggleAllPending}
-                      aria-label="Select all pending journals"
-                      disabled={pendingCount === 0}
-                    />
-                  </TableHead>
-                  <TableHead className="h-10 text-xs font-semibold uppercase tracking-[0.07em] text-muted-foreground/90">
-                    Student
-                  </TableHead>
-                  <TableHead className="hidden h-10 text-xs font-semibold uppercase tracking-[0.07em] text-muted-foreground/90 md:table-cell">
-                    Supervisor
-                  </TableHead>
-                  <TableHead className="hidden h-10 text-xs font-semibold uppercase tracking-[0.07em] text-muted-foreground/90 md:table-cell">
-                    Company
-                  </TableHead>
-                  <TableHead className="h-10 text-xs font-semibold uppercase tracking-[0.07em] text-muted-foreground/90">
-                    Week
-                  </TableHead>
-                  <TableHead className="h-10 text-right text-xs font-semibold uppercase tracking-[0.07em] text-muted-foreground/90">
-                    Hours
-                  </TableHead>
-                  <TableHead className="h-10 text-xs font-semibold uppercase tracking-[0.07em] text-muted-foreground/90">
-                    Status
-                  </TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {pageRows.map((r) => {
-                  const isSelected = selected.has(r.id);
-                  const isPending = r.status === "pending";
-                  return (
-                    <TableRow
-                      key={r.id}
-                      onClick={() =>
-                        navigate("coordinator.journal-view", {
-                          journalId: r.id,
-                        })
-                      }
-                      className={cn(
-                        "h-[52px] cursor-pointer border-border/70 transition-colors hover:bg-muted/50",
-                        r.status === "rejected" &&
-                          "bg-amber-50/40 dark:bg-amber-950/15",
-                        isSelected && "bg-teal-50/60 dark:bg-teal-950/20"
-                      )}
-                    >
-                      <TableCell
-                        className="pl-4 sm:pl-6"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <Checkbox
-                          checked={isSelected}
-                          onCheckedChange={() => toggleRow(r.id)}
-                          disabled={!isPending}
-                          aria-label={`Select journal for ${r.studentName}`}
-                          className={cn(
-                            !isPending && "opacity-40 cursor-not-allowed"
-                          )}
-                        />
-                      </TableCell>
-                      <TableCell className="relative pl-2">
-                        {r.status === "rejected" && (
-                          <span className="absolute left-0 top-1/2 h-7 w-[3px] -translate-y-1/2 rounded-r-full bg-amber-400" />
+              <Table>
+                <TableHeader>
+                  <TableRow className="border-border/60 hover:bg-transparent">
+                    <TableHead className="w-10 pl-4 sm:pl-6">
+                      <Checkbox
+                        checked={
+                          pendingCount > 0 && allActionablePendingSelected
+                        }
+                        onCheckedChange={toggleAllPending}
+                        aria-label="Select all pending journals"
+                        disabled={pendingCount === 0}
+                      />
+                    </TableHead>
+                    <TableHead className="h-10 text-xs font-semibold uppercase tracking-[0.07em] text-muted-foreground/90">
+                      Student
+                    </TableHead>
+                    <TableHead className="hidden h-10 text-xs font-semibold uppercase tracking-[0.07em] text-muted-foreground/90 md:table-cell">
+                      Supervisor
+                    </TableHead>
+                    <TableHead className="hidden h-10 text-xs font-semibold uppercase tracking-[0.07em] text-muted-foreground/90 md:table-cell">
+                      Company
+                    </TableHead>
+                    <TableHead className="h-10 text-xs font-semibold uppercase tracking-[0.07em] text-muted-foreground/90">
+                      Week
+                    </TableHead>
+                    <TableHead className="h-10 text-right text-xs font-semibold uppercase tracking-[0.07em] text-muted-foreground/90">
+                      Hours
+                    </TableHead>
+                    <TableHead className="h-10 text-xs font-semibold uppercase tracking-[0.07em] text-muted-foreground/90">
+                      Status
+                    </TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {pageRows.map((r) => {
+                    const isSelected = selected.has(r.id);
+                    const isPending = r.status === "pending";
+                    return (
+                      <TableRow
+                        key={r.id}
+                        onClick={() =>
+                          navigate("coordinator.journal-view", {
+                            journalId: r.id,
+                          })
+                        }
+                        className={cn(
+                          "h-[52px] cursor-pointer border-border/70 transition-colors hover:bg-muted/50",
+                          r.status === "rejected" &&
+                            "bg-amber-50/40 dark:bg-amber-950/15",
+                          isSelected && "bg-teal-50/60 dark:bg-teal-950/20",
                         )}
-                        <div className="min-w-0">
-                          <div className="truncate text-sm font-medium text-foreground">
-                            {r.studentName}
+                      >
+                        <TableCell
+                          className="pl-4 sm:pl-6"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <Checkbox
+                            checked={isSelected}
+                            onCheckedChange={() => toggleRow(r.id)}
+                            disabled={!isPending}
+                            aria-label={`Select journal for ${r.studentName}`}
+                            className={cn(
+                              !isPending && "opacity-40 cursor-not-allowed",
+                            )}
+                          />
+                        </TableCell>
+                        <TableCell className="relative pl-2">
+                          {r.status === "rejected" && (
+                            <span className="absolute left-0 top-1/2 h-7 w-[3px] -translate-y-1/2 rounded-r-full bg-amber-400" />
+                          )}
+                          <div className="min-w-0">
+                            <div className="truncate text-sm font-medium text-foreground">
+                              {r.studentName}
+                            </div>
+                            <div className="truncate font-mono text-xs text-muted-foreground">
+                              {r.studentNumber}
+                            </div>
                           </div>
-                          <div className="truncate font-mono text-xs text-muted-foreground">
-                            {r.studentNumber}
-                          </div>
-                        </div>
-                      </TableCell>
-                      <TableCell className="hidden text-sm text-muted-foreground md:table-cell">
-                        {r.supervisorName}
-                      </TableCell>
-                      <TableCell className="hidden text-sm text-muted-foreground md:table-cell">
-                        {r.companyName}
-                      </TableCell>
-                      <TableCell className="text-sm text-foreground">
-                        {r.week}
-                      </TableCell>
-                      <TableCell className="text-right text-sm tabular-nums">
-                        {r.hours}h
-                      </TableCell>
-                      <TableCell>
-                        <JournalStatusBadge status={r.status} />
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
+                        </TableCell>
+                        <TableCell className="hidden text-sm text-muted-foreground md:table-cell">
+                          {r.supervisorName}
+                        </TableCell>
+                        <TableCell className="hidden text-sm text-muted-foreground md:table-cell">
+                          {r.companyName}
+                        </TableCell>
+                        <TableCell className="text-sm text-foreground">
+                          {r.week}
+                        </TableCell>
+                        <TableCell className="text-right text-sm tabular-nums">
+                          {r.hours}h
+                        </TableCell>
+                        <TableCell>
+                          <JournalStatusBadge status={r.status} />
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
             </div>
 
             {/* Pagination footer */}

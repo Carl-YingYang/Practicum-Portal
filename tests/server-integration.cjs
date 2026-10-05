@@ -55,6 +55,75 @@ const { startServer } = require("./server-harness.cjs");
     const actor = await login(student, "student"),
       sup = await login(supervisor, "supervisor");
     await login(coordinator, "coordinator");
+    assert.equal(
+      (await anonymous.get("/api/preferences/writing")).status(),
+      401,
+    );
+    const preferences = { language: "taglish", detail: "detailed" };
+    assert.equal(
+      (
+        await student.post("/api/preferences/writing", { data: preferences })
+      ).status(),
+      200,
+    );
+    assert.deepEqual(
+      (await (await student.get("/api/preferences/writing")).json())
+        .preferences,
+      preferences,
+    );
+    assert.deepEqual(
+      (await (await supervisor.get("/api/preferences/writing")).json())
+        .preferences,
+      { language: "english", detail: "concise" },
+    );
+    assert.equal(
+      (
+        await student.post("/api/preferences/writing", {
+          data: { ...preferences, accountId: sup.id },
+        })
+      ).status(),
+      400,
+    );
+    assert.equal(
+      (
+        await student.post("/api/preferences/writing", {
+          data: { language: "invalid", detail: "concise" },
+        })
+      ).status(),
+      400,
+    );
+    assert.equal(
+      (
+        await student.post("/api/preferences/writing", {
+          headers: { Origin: "https://attacker.example.test" },
+          data: preferences,
+        })
+      ).status(),
+      403,
+    );
+    const repeatLogin = await context();
+    await login(repeatLogin, "student");
+    assert.deepEqual(
+      (await (await repeatLogin.get("/api/preferences/writing")).json())
+        .preferences,
+      preferences,
+    );
+    const scenarios = (await (await anonymous.get("/api/auth/session")).json())
+      .demoAccounts;
+    for (const label of [
+      "New student",
+      "Saved draft",
+      "Pending review",
+      "Needs revision",
+      "Completed hours",
+    ])
+      assert.ok(
+        scenarios.some((account) => account.demoScenario === label),
+        label,
+      );
+    console.log(
+      "PASS durable account-owned writing preferences, validation/CSRF and seeded testing scenarios",
+    );
     const cookies = (await student.storageState()).cookies;
     assert.ok(
       cookies.some(

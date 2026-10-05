@@ -27,11 +27,13 @@ No separate Kimai, HR, forms server, API key, or browser extension is needed for
 - Fictional test accounts, recent attendance, journals in different states, forms, and an isolated school for permission tests.
 - All three login hero PNGs, subdued backgrounds, mobile-first sign-in and clear supervisor account creation.
 - Compact Drafting Room with account/placement details, attendance-derived period hours and cumulative progress.
+- Optional Writing Assistant demo with preview/manual apply/undo, own-account writing preferences, safe draft navigation/retry, hours coverage and testing scenarios.
+- Full contained login heroes in equal desktop halves; compact mobile login and accessible modal/drawer close controls.
 - Daily, weekly or twice-weekly journal preferences under **School Settings → Journal schedule**. Old entries retain their cadence.
 - Lazy workspace screens, PDF libraries and journal Word exports, static loading placeholders and real save/error feedback.
 - Separate domain actions, client transport, server services, route handlers and shared form fields.
 
-See [the implementation details](docs/CONNECTED_PLATFORM.md), [file inventory](docs/CHANGE_INVENTORY.md), and [verification](docs/VERIFICATION.md). Earlier UI improvements remain recorded in [the historical changelog](docs/TESTING_PLATFORM.md).
+See [the writing/workflow guide and upgrade steps](docs/WRITING_ASSISTANT.md), [implementation plan](docs/WRITING_AND_WORKFLOW_PLAN.md), [implementation details](docs/CONNECTED_PLATFORM.md), [file inventory](docs/CHANGE_INVENTORY.md), and [verification](docs/VERIFICATION.md). Earlier UI improvements remain recorded in [the historical changelog](docs/TESTING_PLATFORM.md).
 
 ## Verify
 
@@ -39,11 +41,14 @@ See [the implementation details](docs/CONNECTED_PLATFORM.md), [file inventory](d
 npm run typecheck
 npm test
 npm run lint
-npm run build
 npm run test:login
+npm run build
 npm run test:integration
 npm run test:browser
+npm run test:workflow
 ```
+
+The login check uses a development build; run it before the production build used by the integration/browser checks. Install Chromium once with `npx playwright install chromium`.
 
 HTTP and browser tests create temporary databases and private in-memory credentials, run their own production servers, and clean up afterward. They do not reset your development database. Browser checks update `docs/screenshots/`.
 

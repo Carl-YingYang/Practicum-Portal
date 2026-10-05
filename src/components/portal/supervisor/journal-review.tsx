@@ -41,6 +41,8 @@ import {
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { JournalReviewTimeline } from "@/components/portal/shared/journal-review-timeline";
+import { journalPeriodLabel } from "@/domain/journal-period";
 export function JournalReview() {
   const viewParams = useAppStore((s) => s.viewParams);
   const journals = useAppStore((s) => s.journals);
@@ -55,6 +57,8 @@ export function JournalReview() {
   const [rejectOpen, setRejectOpen] = useState(false);
   const [reason, setReason] = useState("");
   const [approveOpen, setApproveOpen] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
   if (!journal) {
     return (
       <div>
@@ -82,10 +86,19 @@ export function JournalReview() {
   const isRejected = journal.status === "rejected";
   const isApproved = journal.status === "approved";
   const handleApprove = async () => {
+    if (busy) return;
+    setBusy(true);
+    setError("");
     approveJournal(journal.id);
     try {
       await flushChanges();
-    } catch {
+    } catch (error) {
+      setError(
+        error instanceof Error
+          ? error.message
+          : "Could not approve. Please retry.",
+      );
+      setBusy(false);
       return;
     }
     setApproveOpen(false);
@@ -95,15 +108,23 @@ export function JournalReview() {
     navigate("supervisor.journals");
   };
   const handleReject = async () => {
-    if (!reason.trim()) return;
+    if (!reason.trim() || busy) return;
+    setBusy(true);
+    setError("");
     rejectJournal(journal.id, reason.trim());
     try {
       await flushChanges();
-    } catch {
+    } catch (error) {
+      setError(
+        error instanceof Error
+          ? error.message
+          : "Could not request a revision. Please retry.",
+      );
+      setBusy(false);
       return;
     }
     setRejectOpen(false);
-    toast.success("Journal rejected", {
+    toast.success("Revision requested", {
       description: "The intern can see your reason and revise this entry.",
     });
     navigate("supervisor.journals");
@@ -114,10 +135,18 @@ export function JournalReview() {
         showBack
         breadcrumb="Journal Approvals"
         title="Review Journal"
-        description={weekLabel(journal.date)}
+        description={journalPeriodLabel(journal)}
         actions={<JournalStatusBadge status={journal.status} />}
       />
 
+      <div className="mb-4">
+        <JournalReviewTimeline journal={journal} />
+      </div>
+      {error && (
+        <p role="alert" className="mb-3 text-sm text-destructive">
+          {error}
+        </p>
+      )}
       {/* Reviewed banner (if previously reviewed) */}
       {(isApproved || isRejected) && (
         <div
@@ -135,7 +164,7 @@ export function JournalReview() {
           )}
           <div>
             <p>
-              {isApproved ? "Approved" : "Rejected"} on{" "}
+              {isApproved ? "Approved" : "Revision requested"} on{" "}
               <strong>{formatDateTime(journal.reviewedAt)}</strong>
               {reviewer && <> by {reviewer.name}</>}.
             </p>
@@ -216,7 +245,7 @@ export function JournalReview() {
             className="border-amber-300 text-amber-700 hover:bg-amber-50 hover:text-amber-800 dark:border-amber-900 dark:text-amber-300 dark:hover:bg-amber-950/40"
           >
             <X className="h-4 w-4" />
-            Reject…
+            Request revision…
           </Button>
           <Button
             onClick={() => setApproveOpen(true)}
@@ -234,20 +263,27 @@ export function JournalReview() {
           <DialogHeader>
             <DialogTitle>Approve this journal?</DialogTitle>
             <DialogDescription>
-              Approving will log{" "}
+              Approving reviews the journal covering{" "}
               <strong>
                 {journal.hours} hour{journal.hours === 1 ? "" : "s"}
               </strong>{" "}
-              toward {student?.name ?? "the intern"}'s required hours. This
-              action cannot be undone.
+              of completed attendance for {student?.name ?? "the intern"}.
+              Attendance totals remain unchanged. The approved journal becomes
+              read only.
             </DialogDescription>
           </DialogHeader>
+          {error && (
+            <p role="alert" className="text-sm text-destructive">
+              {error}
+            </p>
+          )}
           <DialogFooter>
             <Button variant="outline" onClick={() => setApproveOpen(false)}>
               Cancel
             </Button>
             <Button
               onClick={handleApprove}
+              disabled={busy}
               className="bg-emerald-600 text-white hover:bg-emerald-700"
             >
               <Check className="h-4 w-4" />
@@ -261,7 +297,7 @@ export function JournalReview() {
       <Dialog open={rejectOpen} onOpenChange={setRejectOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Reject this journal?</DialogTitle>
+            <DialogTitle>Request a journal revision?</DialogTitle>
             <DialogDescription>
               Please provide a reason. The intern will see this feedback and can
               revise and resubmit.
@@ -290,10 +326,15 @@ export function JournalReview() {
               )}
             >
               {reason.trim() === ""
-                ? "A reason is required to reject a journal."
+                ? "A reason is required to request a revision."
                 : "Looks good — ready to submit."}
             </p>
           </div>
+          {error && (
+            <p role="alert" className="text-sm text-destructive">
+              {error}
+            </p>
+          )}
           <DialogFooter>
             <Button variant="outline" onClick={() => setRejectOpen(false)}>
               Cancel
@@ -301,10 +342,10 @@ export function JournalReview() {
             <Button
               variant="destructive"
               onClick={handleReject}
-              disabled={reason.trim() === ""}
+              disabled={busy || reason.trim() === ""}
             >
               <X className="h-4 w-4" />
-              Reject Journal
+              Request revision
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -131,6 +131,15 @@ export function EditorialDashboard({ role }: { role: Role }) {
             view: "student.journal-new" as ViewKey,
             params: { journalId: j.id },
           })),
+          ...myJournals
+            .filter((j) => j.status === "draft")
+            .slice(0, 2)
+            .map((j) => ({
+              label: "Continue saved draft",
+              detail: j.tasks || j.date,
+              view: "student.journal-new" as ViewKey,
+              params: { journalId: j.id },
+            })),
           ...outstandingForms.map(({ form, assignment }) => ({
             label: form.title,
             detail: assignment.dueDate
@@ -219,7 +228,7 @@ export function EditorialDashboard({ role }: { role: Role }) {
         ))}
       </div>
       <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_280px]">
-        <div className="space-y-6">
+        <div className="min-w-0 space-y-6">
           {(role !== "student" || visible?.draftingRoom !== false) && (
             <section className="editorial-sheet">
               <div className="editorial-section-heading">
@@ -328,7 +337,7 @@ export function EditorialDashboard({ role }: { role: Role }) {
             </section>
           )}
           {(role !== "student" || visible?.evaluations !== false) && (
-            <section className="flex items-center justify-between gap-4 border-y border-border py-5">
+            <section className="flex flex-col items-start justify-between gap-4 border-y border-border py-5 sm:flex-row sm:items-center">
               <div>
                 <p className="editorial-eyebrow">Performance / Feedback</p>
                 <p className="mt-2 text-sm">
@@ -345,7 +354,7 @@ export function EditorialDashboard({ role }: { role: Role }) {
             </section>
           )}
         </div>
-        <aside className="space-y-6">
+        <aside className="min-w-0 space-y-6">
           <section className="editorial-sheet">
             {schoolIdentity.heroImage && (
               <img

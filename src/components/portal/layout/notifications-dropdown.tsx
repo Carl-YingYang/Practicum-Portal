@@ -40,7 +40,7 @@ export function NotificationsDropdown() {
   const [readIds, setReadIds] = React.useState<Set<string>>(new Set());
   const unreadCount = notifications.filter((n) => !readIds.has(n.id)).length;
   const hasUrgent = notifications.some(
-    (n) => n.category === "urgent" && !readIds.has(n.id)
+    (n) => n.category === "urgent" && !readIds.has(n.id),
   );
 
   const markAllRead = React.useCallback(() => {
@@ -76,17 +76,19 @@ export function NotificationsDropdown() {
   const trigger = (
     <button
       className={cn(
-        "relative flex h-8 w-8 items-center justify-center rounded-full text-foreground transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40",
-        hasUrgent && !open && "text-red-500 hover:text-red-600"
+        "relative flex size-11 items-center justify-center rounded-full text-foreground transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40",
+        hasUrgent && !open && "text-red-500 hover:text-red-600",
       )}
-      aria-label={"Notifications" + (unreadCount > 0 ? `, ${unreadCount} unread` : "")}
+      aria-label={
+        "Notifications" + (unreadCount > 0 ? `, ${unreadCount} unread` : "")
+      }
     >
       <Bell className="h-[16px] w-[16px]" />
       {unreadCount > 0 && (
         <span
           className={cn(
             "absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] font-bold leading-none text-white shadow-sm ring-2 ring-background",
-            hasUrgent ? "animate-pulse bg-red-500" : "bg-teal-500"
+            hasUrgent ? "animate-pulse bg-red-500" : "bg-teal-500",
           )}
           aria-hidden="true"
         >
@@ -105,10 +107,12 @@ export function NotificationsDropdown() {
         <button
           type="button"
           onClick={() => setOpen(true)}
-          aria-label={"Notifications" + (unreadCount > 0 ? `, ${unreadCount} unread` : "")}
+          aria-label={
+            "Notifications" + (unreadCount > 0 ? `, ${unreadCount} unread` : "")
+          }
           className={cn(
             "relative flex h-9 w-9 items-center justify-center rounded-full text-foreground transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40",
-            hasUrgent && !open && "text-red-500 hover:text-red-600"
+            hasUrgent && !open && "text-red-500 hover:text-red-600",
           )}
         >
           <Bell className="h-[18px] w-[18px]" />
@@ -116,7 +120,7 @@ export function NotificationsDropdown() {
             <span
               className={cn(
                 "absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] font-bold leading-none text-white shadow-sm ring-2 ring-background",
-                hasUrgent ? "animate-pulse bg-red-500" : "bg-teal-500"
+                hasUrgent ? "animate-pulse bg-red-500" : "bg-teal-500",
               )}
               aria-hidden="true"
             >
@@ -201,7 +205,7 @@ function NotificationsListHeader({
               "rounded-full px-1.5 py-0.5 text-[10px] font-bold",
               hasUrgent
                 ? "bg-red-50 text-red-600 dark:bg-red-950/50 dark:text-red-400"
-                : "bg-teal-50 text-teal-600 dark:bg-teal-950/50 dark:text-teal-400"
+                : "bg-teal-50 text-teal-600 dark:bg-teal-950/50 dark:text-teal-400",
             )}
           >
             {unreadCount} new
@@ -250,7 +254,7 @@ function NotificationsList({
   notifications: ReturnType<typeof useNotifications>;
   grouped: [NotificationCategory, typeof notifications][];
   readIds: Set<string>;
-  onAction: (n: typeof notifications[number]) => void;
+  onAction: (n: (typeof notifications)[number]) => void;
 }) {
   if (notifications.length === 0) {
     return (
@@ -258,7 +262,9 @@ function NotificationsList({
         <span className="mb-2 flex h-11 w-11 items-center justify-center rounded-full bg-muted text-muted-foreground">
           <Bell className="h-5 w-5" />
         </span>
-        <p className="text-sm font-medium text-foreground">You&apos;re all caught up</p>
+        <p className="text-sm font-medium text-foreground">
+          You&apos;re all caught up
+        </p>
         <p className="mt-1 text-xs text-muted-foreground">
           New activity and pending approvals will show here.
         </p>
@@ -300,9 +306,9 @@ function NotificationsList({
                         ? category === "urgent"
                           ? "border-red-400 bg-red-50/30 dark:bg-red-950/10"
                           : category === "approval"
-                          ? "border-amber-400 bg-amber-50/30 dark:bg-amber-950/10"
-                          : "border-teal-400 bg-teal-50/20 dark:bg-teal-950/10"
-                        : "border-transparent"
+                            ? "border-amber-400 bg-amber-50/30 dark:bg-amber-950/10"
+                            : "border-teal-400 bg-teal-50/20 dark:bg-teal-950/10"
+                        : "border-transparent",
                     )}
                     role="listitem"
                   >
@@ -310,7 +316,7 @@ function NotificationsList({
                       className={cn(
                         "mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg sm:h-7 sm:w-7",
                         meta.iconBg,
-                        meta.iconFg
+                        meta.iconFg,
                       )}
                       aria-hidden="true"
                     >
@@ -320,7 +326,7 @@ function NotificationsList({
                       <p
                         className={cn(
                           "text-[13px] leading-snug text-foreground",
-                          isUnread && "font-semibold"
+                          isUnread && "font-semibold",
                         )}
                       >
                         {n.title}

@@ -26,6 +26,7 @@ import { useTheme } from "next-themes";
 import { ROLE_LABELS } from "@/lib/types";
 import { NotificationsDropdown } from "./notifications-dropdown";
 interface PageActionsProps {
+  onOpenTestingScenarios?: () => void;
   onOpenMobileNav: () => void;
   onOpenPalette?: () => void;
   onResetDemo?: () => void;
@@ -35,6 +36,7 @@ export function PageActions({
   onOpenMobileNav,
   onOpenPalette,
   onResetDemo,
+  onOpenTestingScenarios,
 }: PageActionsProps) {
   const currentUser = useAppStore((s) => s.currentUser);
   const navigate = useAppStore((s) => s.navigate);
@@ -55,7 +57,7 @@ export function PageActions({
         <Button
           variant="ghost"
           size="icon"
-          className="h-8 w-8 shrink-0 text-foreground hover:bg-muted lg:hidden"
+          className="size-11 shrink-0 text-foreground hover:bg-muted lg:hidden"
           onClick={onOpenMobileNav}
           aria-label="Open navigation"
         >
@@ -93,7 +95,7 @@ export function PageActions({
           size="icon"
           onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
           aria-label="Toggle theme"
-          className="h-8 w-8 text-foreground hover:bg-muted"
+          className="size-11 text-foreground hover:bg-muted"
         >
           {mounted && theme === "dark" ? (
             <Sun className="h-[16px] w-[16px]" strokeWidth={2.1} />
@@ -110,7 +112,7 @@ export function PageActions({
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button
-                className="flex h-8 min-w-0 items-center gap-1.5 rounded-full py-0.5 pl-0.5 pr-2 transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+                className="flex h-11 min-w-11 items-center gap-1.5 rounded-full py-0.5 pl-0.5 pr-2 transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
                 aria-label="Open profile menu"
               >
                 <Avatar
@@ -157,6 +159,11 @@ export function PageActions({
               </DropdownMenuItem>
 
               {/* Prototype: switch demo role */}
+              {onOpenTestingScenarios && (
+                <DropdownMenuItem onClick={onOpenTestingScenarios}>
+                  Testing scenarios
+                </DropdownMenuItem>
+              )}
               <DropdownMenuSeparator />
               <DropdownMenuLabel className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
                 Prototype: switch demo role

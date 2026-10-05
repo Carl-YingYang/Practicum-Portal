@@ -1,6 +1,8 @@
 "use client";
 import * as React from "react";
 import { PageHeader } from "@/components/portal/layout/page-header";
+import { JournalHoursSummary } from "./journal-hours-summary";
+import { journalPeriodLabel } from "@/domain/journal-period";
 import { SectionCard } from "@/components/portal/shared/section-card";
 import { DataTable, type Column } from "@/components/portal/shared/data-table";
 import { EmptyState } from "@/components/portal/shared/empty-state";
@@ -23,9 +25,9 @@ const filterChips: {
 }[] = [
   { key: "all", label: "All" },
   { key: "draft", label: "Draft" },
-  { key: "pending", label: "Pending" },
+  { key: "pending", label: "Submitted" },
   { key: "approved", label: "Approved" },
-  { key: "rejected", label: "Rejected" },
+  { key: "rejected", label: "Needs revision" },
 ];
 export function JournalsList() {
   const currentUser = useAppStore((s) => s.currentUser);
@@ -44,6 +46,13 @@ export function JournalsList() {
     );
   }
   const allJournals = journalsForStudent(journals, student.id);
+  const openJournal = (journal: Journal) =>
+    navigate(
+      ["draft", "rejected"].includes(journal.status)
+        ? "student.journal-new"
+        : "student.journal-view",
+      { journalId: journal.id },
+    );
   const filtered =
     filter === "all"
       ? allJournals
@@ -64,9 +73,9 @@ export function JournalsList() {
     },
     {
       key: "week",
-      header: "Week",
+      header: "Period",
       cell: (j) => (
-        <span className="text-muted-foreground">{weekLabel(j.date)}</span>
+        <span className="text-muted-foreground">{journalPeriodLabel(j)}</span>
       ),
       sortValue: (j) => j.date,
       hideOnMobile: true,
@@ -93,10 +102,13 @@ export function JournalsList() {
           size="sm"
           onClick={(e) => {
             e.stopPropagation();
-            navigate("student.journal-view", { journalId: j.id });
+            openJournal(j);
           }}
         >
-          View <ChevronRight className="h-4 w-4" />
+          {["draft", "rejected"].includes(j.status)
+            ? "Continue editing"
+            : "View"}{" "}
+          <ChevronRight className="h-4 w-4" />
         </Button>
       ),
     },
@@ -113,6 +125,7 @@ export function JournalsList() {
         }
       />
 
+      <JournalHoursSummary />
       <SectionCard noPadding>
         {/* Filter chips */}
         <div className="flex flex-wrap items-center gap-2 border-b border-border px-5 py-3">
@@ -154,9 +167,7 @@ export function JournalsList() {
           defaultSortKey="date"
           defaultSortDir="desc"
           rowAccent={(j) => (j.status === "rejected" ? "amber" : undefined)}
-          onRowClick={(j) =>
-            navigate("student.journal-view", { journalId: j.id })
-          }
+          onRowClick={openJournal}
           mobileCard={(j) => (
             <div className="space-y-2.5">
               <div className="flex items-start justify-between gap-2">
@@ -165,7 +176,7 @@ export function JournalsList() {
                     {formatDate(j.date)}
                   </p>
                   <p className="text-[11px] text-muted-foreground">
-                    {weekLabel(j.date)}
+                    {journalPeriodLabel(j)}
                   </p>
                 </div>
                 <JournalStatusBadge status={j.status} />
@@ -179,7 +190,9 @@ export function JournalsList() {
                 </span>
               </div>
               <div className="flex items-center justify-end pt-1 text-xs font-medium text-primary">
-                View
+                {["draft", "rejected"].includes(j.status)
+                  ? "Continue editing"
+                  : "View"}
                 <ChevronRight className="h-3.5 w-3.5" />
               </div>
             </div>

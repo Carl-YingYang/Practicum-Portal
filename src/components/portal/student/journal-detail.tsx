@@ -27,8 +27,13 @@ import {
   Share2,
 } from "lucide-react";
 import { flushChanges } from "@/client/portal-client";
-import { cadenceLabels, journalPeriod } from "@/domain/journal-period";
+import {
+  cadenceLabels,
+  journalPeriod,
+  journalPeriodLabel,
+} from "@/domain/journal-period";
 import { downloadPdfReport } from "@/lib/client-pdf";
+import { JournalReviewTimeline } from "@/components/portal/shared/journal-review-timeline";
 export function JournalDetail() {
   const currentUser = useAppStore((s) => s.currentUser);
   const students = useAppStore((s) => s.students);
@@ -203,7 +208,7 @@ export function JournalDetail() {
       <PageHeader
         breadcrumb="Journals"
         title={`Journal · ${formatDate(journal.date)}`}
-        description={weekLabel(journal.date)}
+        description={journalPeriodLabel(journal)}
         showBack
         actions={
           isDraft ? (
@@ -244,13 +249,14 @@ export function JournalDetail() {
       />
 
       <div className="space-y-6">
+        <JournalReviewTimeline journal={journal} />
         {/* Rejection reason callout */}
         {isRejected && journal.rejectionReason && (
           <div className="flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 p-4 dark:border-red-900 dark:bg-red-950/30">
             <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-red-600 dark:text-red-400" />
             <div className="min-w-0">
               <p className="text-sm font-semibold text-red-800 dark:text-red-300">
-                This journal was rejected
+                Your supervisor requested a revision
               </p>
               <p className="mt-1 text-sm text-red-700 dark:text-red-200/90">
                 {journal.rejectionReason}

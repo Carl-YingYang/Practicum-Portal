@@ -1,9 +1,26 @@
 "use client";
 import { useId, useState } from "react";
-import { ExternalLink, FileDown } from "lucide-react";
+import dynamic from "next/dynamic";
+import { ExternalLink, FileDown, Sparkles, Undo2 } from "lucide-react";
+import type { WritingSelection } from "@/components/portal/student/writing-assistant-panel";
+import type { JournalField } from "@/domain/writing-assistant";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+const WritingAssistantPanel = dynamic(
+  () =>
+    import("@/components/portal/student/writing-assistant-panel").then(
+      (module) => module.WritingAssistantPanel,
+    ),
+  {
+    ssr: false,
+    loading: () => (
+      <p role="status" className="p-3 text-sm">
+        Loading Writing Assistant…
+      </p>
+    ),
+  },
+);
 export interface JournalEditorProps {
   title: string;
   subtitle?: string;
@@ -13,6 +30,7 @@ export interface JournalEditorProps {
   onChangeTasks: (value: string) => void;
   onChangeLearnings: (value: string) => void;
   readOnly?: boolean;
+  disabled?: boolean;
   saveState?: "idle" | "saving" | "saved" | "error";
   className?: string;
   onDownloadWord?: () => void | Promise<void>;
@@ -27,12 +45,36 @@ export function JournalEditor({
   onChangeTasks,
   onChangeLearnings,
   readOnly = false,
+  disabled = false,
   saveState = "idle",
   className,
   onDownloadWord,
 }: JournalEditorProps) {
   const id = useId(),
     [downloading, setDownloading] = useState(false);
+  const [assistantOpen, setAssistantOpen] = useState(false);
+  const [selection, setSelection] = useState<WritingSelection>();
+  const [undo, setUndo] = useState<{
+    field: JournalField;
+    before: string;
+    after: string;
+  }>();
+  function applySuggestion(field: JournalField, before: string, after: string) {
+    (field === "tasks" ? onChangeTasks : onChangeLearnings)(after);
+    setUndo({ field, before, after });
+    setSelection(undefined);
+  }
+  function undoSuggestion() {
+    if (!undo) return;
+    if ((undo.field === "tasks" ? tasks : learnings) !== undo.after) {
+      toast.error(
+        "Your text changed after applying the suggestion. Undo would overwrite those edits.",
+      );
+      return;
+    }
+    (undo.field === "tasks" ? onChangeTasks : onChangeLearnings)(undo.before);
+    setUndo(undefined);
+  }
   const words = `${tasks} ${learnings}`
     .trim()
     .split(/\s+/)
@@ -63,6 +105,29 @@ export function JournalEditor({
           )}
         </div>
         <div className="flex flex-wrap gap-2">
+          {!readOnly && (
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={disabled}
+              className="min-h-11 border-[var(--brand-accent)]"
+              onClick={() => setAssistantOpen(true)}
+            >
+              <Sparkles className="size-4" />
+              Writing Assistant
+            </Button>
+          )}
+          {!readOnly && undo && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="min-h-11"
+              onClick={undoSuggestion}
+            >
+              <Undo2 className="size-4" />
+              Undo suggestion
+            </Button>
+          )}
           {docUrl && /^https?:\/\//.test(docUrl) && (
             <a
               className="inline-flex min-h-10 items-center gap-1 text-xs underline"
@@ -120,7 +185,17 @@ export function JournalEditor({
                 id={`${id}-${section.key}`}
                 aria-label={section.label}
                 value={section.value}
+                disabled={disabled}
                 onChange={(event) => section.change(event.target.value)}
+                onSelect={(event) => {
+                  const target = event.currentTarget;
+                  setSelection({
+                    field: section.key as JournalField,
+                    source: target.value,
+                    start: target.selectionStart,
+                    end: target.selectionEnd,
+                  });
+                }}
                 placeholder={section.placeholder}
                 rows={4}
                 maxLength={30000}
@@ -149,6 +224,15 @@ export function JournalEditor({
           </span>
         )}
       </footer>
+      {!readOnly && assistantOpen && (
+        <WritingAssistantPanel
+          tasks={tasks}
+          learnings={learnings}
+          selection={selection}
+          onApply={applySuggestion}
+          onClose={() => setAssistantOpen(false)}
+        />
+      )}
     </div>
   );
 }

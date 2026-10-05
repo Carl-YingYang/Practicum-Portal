@@ -5,6 +5,11 @@ export const cadenceLabels: Record<JournalCadence, string> = {
   weekly: "Weekly",
   "twice-weekly": "Twice a week",
 };
+export function journalPeriodLabel(journal: Pick<Journal, "date" | "cadence">) {
+  const cadence = journal.cadence ?? "weekly";
+  const period = journalPeriod(journal.date, cadence);
+  return `${cadenceLabels[cadence]} · ${period.start} – ${period.end}`;
+}
 export function calendarDay(date: string, offset: number) {
   const day = new Date(date + "T12:00:00Z");
   day.setUTCDate(day.getUTCDate() + offset);

@@ -91,9 +91,9 @@ export function LoginScreen() {
           </Button>
         </div>
       </header>
-      <div className="relative mx-auto grid min-h-[calc(100svh-64px)] max-w-[1400px] lg:grid-cols-[1.2fr_1fr]">
+      <div className="relative mx-auto grid min-h-[calc(100svh-64px)] max-w-[1400px] lg:grid-cols-2">
         <div
-          className="pointer-events-none absolute inset-0 overflow-hidden lg:right-[45.4545%]"
+          className="pointer-events-none absolute inset-0 overflow-hidden lg:right-1/2"
           aria-hidden="true"
         >
           {[1, 2, 3].map((number) => (
@@ -102,11 +102,11 @@ export function LoginScreen() {
               src={`/login-hero-${number}.png`}
               alt=""
               fill
-              sizes="(max-width: 1023px) 100vw, 55vw"
+              sizes="(max-width: 1023px) 100vw, 50vw"
               preload={number === 1}
               data-login-hero={number}
               data-active={hero === number}
-              className={`object-cover transition-opacity duration-1000 ease-in-out motion-reduce:transition-none ${hero === number ? "opacity-[.14] dark:opacity-[.10]" : "opacity-0"}`}
+              className={`object-contain transition-opacity duration-1000 ease-in-out motion-reduce:transition-none ${hero === number ? "opacity-[.14] dark:opacity-[.10]" : "opacity-0"}`}
             />
           ))}
           <div className="absolute inset-0 bg-gradient-to-t from-background/95 via-background/60 to-background/30" />

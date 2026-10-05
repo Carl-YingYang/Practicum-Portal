@@ -8,6 +8,7 @@ import {
 import { roleHomeView } from "@/lib/nav";
 import type { User, FirstLoginPasswordResult } from "@/lib/types";
 import { toast } from "sonner";
+import { guardedNavigation, prepareToLeave } from "./navigation-guard";
 let generated: string[] | null = null;
 export const portalStore = createPortalStore(() => {
   const id = crypto.randomUUID();
@@ -29,6 +30,7 @@ const emptyCollections = {
 };
 portalStore.setState(emptyCollections);
 interface ServerState {
+  revision?: number;
   data?: PortalData;
   currentUser: User | null;
   testMode?: boolean;
@@ -43,6 +45,7 @@ interface PendingCommand {
 const queue: PendingCommand[] = [];
 let processing: Promise<void> | null = null,
   initialization: Promise<void> | null = null;
+let appliedRevision = -1;
 async function request(path: string, body?: unknown): Promise<ServerState> {
   const response = await fetch(path, {
     method: body === undefined ? "GET" : "POST",
@@ -56,6 +59,21 @@ async function request(path: string, body?: unknown): Promise<ServerState> {
   return result;
 }
 function apply(result: ServerState, navigate = false) {
+  // A delayed poll must not replace a newer saved snapshot or a switched account.
+  if (
+    !navigate &&
+    result.currentUser &&
+    result.currentUser.id !== portalStore.getState().currentUser?.id
+  )
+    return;
+  if (
+    !navigate &&
+    result.revision !== undefined &&
+    result.revision < appliedRevision
+  )
+    return;
+  if (navigate) appliedRevision = -1;
+  if (result.revision !== undefined) appliedRevision = result.revision;
   const currentUser = result.currentUser;
   const data = result.data;
   if (data)
@@ -132,7 +150,11 @@ export async function flushChanges() {
 }
 export async function refreshPortal() {
   if (processing) return;
-  apply(await request("/api/auth/session"));
+  const accountId = portalStore.getState().currentUser?.id;
+  const result = await request("/api/auth/session");
+  if (processing || accountId !== portalStore.getState().currentUser?.id)
+    return;
+  apply(result);
   portalStore.setState({ syncStatus: "idle", syncError: "" });
 }
 export async function initializePortal() {
@@ -153,9 +175,12 @@ export async function signIn(email: string, password: string) {
   apply(await request("/api/auth/login", { email, password }), true);
 }
 export async function demoSignIn(userId: string) {
+  await prepareToLeave();
+  await flushChanges();
   apply(await request("/api/auth/demo", { userId }), true);
 }
 export async function signOut() {
+  await prepareToLeave();
   await flushChanges();
   await request("/api/auth/logout", {});
   apply({ currentUser: null }, true);
@@ -178,6 +203,7 @@ export async function changePassword(
   }
 }
 export async function resetTestData() {
+  await prepareToLeave();
   await flushChanges();
   await request("/api/test/reset", {});
   apply(await request("/api/auth/session"), true);
@@ -216,6 +242,13 @@ for (const action of mutationNames) {
     },
   });
 }
+const originalNavigate = portalStore.getState().navigate;
+const originalBack = portalStore.getState().back;
+portalStore.setState({
+  navigate: (view, params) =>
+    guardedNavigation(() => originalNavigate(view, params)),
+  back: () => guardedNavigation(originalBack),
+});
 portalStore.setState({
   loginAs: (userId) => {
     void flushChanges()

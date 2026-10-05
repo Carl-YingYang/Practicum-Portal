@@ -28,6 +28,7 @@ import {
   CalendarDays,
 } from "lucide-react";
 import { toast } from "sonner";
+import { flushChanges } from "@/client/portal-client";
 import { useAppStore } from "@/store/use-app-store";
 import { ExternalLink as ExternalLinkBtn } from "@/components/portal/shared/external-link";
 import type { Journal, Role } from "@/lib/types";
@@ -69,29 +70,48 @@ export function JournalStatusCard({
   const status = journal?.status ?? "none";
   const docUrl = journal?.docUrl;
 
-  const handleMarkSubmitted = () => {
+  const handleMarkSubmitted = async () => {
     if (!journal) return;
     submitJournal(journal.id);
+    try {
+      await flushChanges();
+    } catch {
+      return;
+    }
     toast.success("Journal submitted", {
       description: "Your supervisor will be notified to review it.",
     });
   };
 
-  const handleApprove = () => {
+  const handleApprove = async () => {
     if (!journal) return;
     approveJournal(journal.id);
+    try {
+      await flushChanges();
+    } catch {
+      return;
+    }
     toast.success("Journal approved", {
-      description: studentName ? `${studentName}'s journal is now approved.` : "Journal approved.",
+      description: studentName
+        ? `${studentName}'s journal is now approved.`
+        : "Journal approved.",
     });
   };
 
-  const handleReturn = () => {
+  const handleReturn = async () => {
     if (!journal) return;
     if (!reason.trim()) {
-      toast.error("Add a comment", { description: "Tell the student what to fix." });
+      toast.error("Add a comment", {
+        description: "Tell the student what to fix.",
+      });
       return;
     }
     rejectJournal(journal.id, reason.trim());
+    try {
+      await flushChanges();
+    } catch {
+      return;
+    }
     toast.success("Journal returned", {
       description: "The student has been asked to revise and resubmit.",
     });
@@ -110,9 +130,7 @@ export function JournalStatusCard({
   // → "Read journal" full-width → Approve/Return row) which felt cramped and
   // made the list look cluttered.
   const isCompactSupervisorPending =
-    compact &&
-    role === "supervisor" &&
-    journal?.status === "pending";
+    compact && role === "supervisor" && journal?.status === "pending";
 
   return (
     <div
@@ -314,7 +332,9 @@ export function JournalStatusCard({
             ) : docUrl ? (
               <ExternalLinkBtn
                 href={docUrl}
-                label={role === "student" ? "Open your journal" : "Open journal"}
+                label={
+                  role === "student" ? "Open your journal" : "Open journal"
+                }
                 icon={FileText}
                 variant="button"
               />
@@ -338,89 +358,97 @@ export function JournalStatusCard({
               </Button>
             )}
 
-            {role === "supervisor" && journal?.status === "pending" && !returning && (
-              <div className="space-y-2">
-                {/* Read journal first — opens a preview modal with the content. */}
-                <Button
-                  onClick={() => setReading(true)}
-                  variant="secondary"
-                  size="sm"
-                  className="h-9 w-full"
-                  type="button"
-                >
-                  <Eye className="h-3.5 w-3.5" />
-                  Read journal
-                </Button>
-                <div className="flex gap-2">
+            {role === "supervisor" &&
+              journal?.status === "pending" &&
+              !returning && (
+                <div className="space-y-2">
+                  {/* Read journal first — opens a preview modal with the content. */}
                   <Button
-                    onClick={handleApprove}
+                    onClick={() => setReading(true)}
+                    variant="secondary"
                     size="sm"
-                    className="h-9 flex-1"
+                    className="h-9 w-full"
                     type="button"
                   >
-                    <Check className="h-3.5 w-3.5" />
-                    Approve
+                    <Eye className="h-3.5 w-3.5" />
+                    Read journal
                   </Button>
-                  <Button
-                    onClick={() => setReturning(true)}
-                    variant="outline"
-                    size="sm"
-                    className="h-9 flex-1"
-                    type="button"
-                  >
-                    <RotateCcw className="h-3.5 w-3.5" />
-                    Return
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button
+                      onClick={handleApprove}
+                      size="sm"
+                      className="h-9 flex-1"
+                      type="button"
+                    >
+                      <Check className="h-3.5 w-3.5" />
+                      Approve
+                    </Button>
+                    <Button
+                      onClick={() => setReturning(true)}
+                      variant="outline"
+                      size="sm"
+                      className="h-9 flex-1"
+                      type="button"
+                    >
+                      <RotateCcw className="h-3.5 w-3.5" />
+                      Return
+                    </Button>
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
 
             {/* Return-with-comments inline form */}
-            {role === "supervisor" && journal?.status === "pending" && returning && (
-              <div className="space-y-2 rounded-lg border border-border bg-muted/30 p-2.5">
-                <Textarea
-                  value={reason}
-                  onChange={(e) => setReason(e.target.value)}
-                  placeholder="Tell the student what to revise…"
-                  className="min-h-[64px] text-xs"
-                  autoFocus
-                />
-                <div className="flex gap-2">
-                  <Button
-                    onClick={handleReturn}
-                    size="sm"
-                    variant="destructive"
-                    className="h-8 flex-1"
-                    type="button"
-                  >
-                    <RotateCcw className="h-3 w-3" />
-                    Return with comments
-                  </Button>
-                  <Button
-                    onClick={() => {
-                      setReturning(false);
-                      setReason("");
-                    }}
-                    variant="ghost"
-                    size="sm"
-                    className="h-8"
-                    type="button"
-                  >
-                    Cancel
-                  </Button>
+            {role === "supervisor" &&
+              journal?.status === "pending" &&
+              returning && (
+                <div className="space-y-2 rounded-lg border border-border bg-muted/30 p-2.5">
+                  <Textarea
+                    value={reason}
+                    onChange={(e) => setReason(e.target.value)}
+                    placeholder="Tell the student what to revise…"
+                    className="min-h-[64px] text-xs"
+                    autoFocus
+                  />
+                  <div className="flex gap-2">
+                    <Button
+                      onClick={handleReturn}
+                      size="sm"
+                      variant="destructive"
+                      className="h-8 flex-1"
+                      type="button"
+                    >
+                      <RotateCcw className="h-3 w-3" />
+                      Return with comments
+                    </Button>
+                    <Button
+                      onClick={() => {
+                        setReturning(false);
+                        setReason("");
+                      }}
+                      variant="ghost"
+                      size="sm"
+                      className="h-8"
+                      type="button"
+                    >
+                      Cancel
+                    </Button>
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
 
             {/* Rejection reason (student view) */}
-            {role === "student" && journal?.status === "rejected" && journal.rejectionReason && (
-              <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-2.5">
-                <p className="flex items-start gap-1.5 text-xs text-destructive">
-                  <AlertCircle className="mt-0.5 h-3 w-3 shrink-0" />
-                  <span className="leading-snug">{journal.rejectionReason}</span>
-                </p>
-              </div>
-            )}
+            {role === "student" &&
+              journal?.status === "rejected" &&
+              journal.rejectionReason && (
+                <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-2.5">
+                  <p className="flex items-start gap-1.5 text-xs text-destructive">
+                    <AlertCircle className="mt-0.5 h-3 w-3 shrink-0" />
+                    <span className="leading-snug">
+                      {journal.rejectionReason}
+                    </span>
+                  </p>
+                </div>
+              )}
 
             {/* Approved info */}
             {journal?.status === "approved" && journal.reviewedAt && (
@@ -449,7 +477,9 @@ export function JournalStatusCard({
               </DialogDescription>
               <div className="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
                 {studentName && (
-                  <span className="font-medium text-foreground">{studentName}</span>
+                  <span className="font-medium text-foreground">
+                    {studentName}
+                  </span>
                 )}
                 <span className="inline-flex items-center gap-1">
                   <CalendarDays className="h-3.5 w-3.5" />
@@ -566,7 +596,8 @@ const STATUS_PILLS: Record<
   draft: {
     label: "In progress",
     icon: Clock,
-    className: "bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300",
+    className:
+      "bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300",
   },
   pending: {
     label: "Submitted",
@@ -576,7 +607,8 @@ const STATUS_PILLS: Record<
   approved: {
     label: "Approved",
     icon: CheckCircle2,
-    className: "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300",
+    className:
+      "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300",
   },
   rejected: {
     label: "Returned",

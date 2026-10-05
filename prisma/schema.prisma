@@ -28,6 +28,7 @@ model PortalAccount {
   status             String @default("active")
   mustChangePassword Boolean @default(false)
   isDemo             Boolean @default(false)
+  writingPreferencesJson String @default("{}")
   school             PortalSchool @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   sessions           PortalSession[]
   receipts           PortalReceipt[]

@@ -3,8 +3,11 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const { startServer } = require("./server-harness.cjs");
 (async () => {
-  const app = await startServer(3111),
-    browser = await chromium.launch({ headless: true, args: ["--no-sandbox"] });
+  const browser = await chromium.launch({
+      headless: true,
+      args: ["--no-sandbox"],
+    }),
+    app = await startServer(3111);
   const page = await browser.newPage({
     viewport: { width: 1440, height: 1000 },
   });
@@ -70,6 +73,13 @@ const { startServer } = require("./server-harness.cjs");
     );
     for (const number of [2, 3, 1]) {
       await page.clock.runFor(6000);
+      await page.waitForFunction(
+        (number) =>
+          document
+            .querySelector('img[data-login-hero][data-active="true"]')
+            ?.getAttribute("data-login-hero") === String(number),
+        number,
+      );
       assert.equal(
         await page
           .locator('img[data-login-hero][data-active="true"]')
@@ -183,10 +193,16 @@ const { startServer } = require("./server-harness.cjs");
     );
     await screenshot("student-dark");
     await page.getByRole("button", { name: "Clock in", exact: true }).click();
-    await page.waitForFunction(async () => {
-      const { data } = await (await fetch("/api/portal")).json();
-      return data.timeLogs.some((t) => t.userId === "s1" && !t.clockOutAt);
-    });
+    for (let attempts = 0; attempts < 50; attempts++) {
+      if (
+        (await snapshot()).timeLogs.some(
+          (t) => t.userId === "s1" && !t.clockOutAt,
+        )
+      )
+        break;
+      if (attempts === 49) throw new Error("Clock-in was not saved.");
+      await page.waitForTimeout(100);
+    }
     await page.reload();
     await page
       .getByRole("button", { name: "Clock out", exact: true })

@@ -1,4 +1,5 @@
 "use client";
+import { journalPeriodLabel } from "@/domain/journal-period";
 
 import { useMemo, useState } from "react";
 import { FileCheck2, ArrowRight } from "lucide-react";
@@ -39,19 +40,21 @@ export function JournalApprovalQueue() {
 
   const pending = useMemo(
     () => pendingJournalsForSupervisor(journals, students, supervisorId),
-    [journals, students, supervisorId]
+    [journals, students, supervisorId],
   );
 
   // Build the "all" list: all journals for this supervisor's interns.
   const all = useMemo(() => {
     const internIds = new Set(
-      students
-        .filter((s) => s.supervisorId === supervisorId)
-        .map((s) => s.id)
+      students.filter((s) => s.supervisorId === supervisorId).map((s) => s.id),
     );
     return journals
       .filter((j) => internIds.has(j.studentId))
-      .sort((a, b) => (a.submittedAt ?? a.createdAt) < (b.submittedAt ?? b.createdAt) ? 1 : -1);
+      .sort((a, b) =>
+        (a.submittedAt ?? a.createdAt) < (b.submittedAt ?? b.createdAt)
+          ? 1
+          : -1,
+      );
   }, [journals, students, supervisorId]);
 
   const rows = filter === "pending" ? pending : all;
@@ -60,7 +63,7 @@ export function JournalApprovalQueue() {
   const sortedRows = useMemo(() => {
     if (filter !== "pending") return rows;
     return [...rows].sort((a, b) =>
-      (a.submittedAt ?? a.createdAt) > (b.submittedAt ?? b.createdAt) ? 1 : -1
+      (a.submittedAt ?? a.createdAt) > (b.submittedAt ?? b.createdAt) ? 1 : -1,
     );
   }, [rows, filter]);
 
@@ -89,9 +92,11 @@ export function JournalApprovalQueue() {
     },
     {
       key: "week",
-      header: "Week",
+      header: "Period",
       cell: (j) => (
-        <span className="text-sm text-muted-foreground">{weekLabel(j.date)}</span>
+        <span className="text-sm text-muted-foreground">
+          {journalPeriodLabel(j)}
+        </span>
       ),
       sortValue: (j) => weekLabel(j.date),
     },
@@ -99,7 +104,9 @@ export function JournalApprovalQueue() {
       key: "date",
       header: "Date",
       cell: (j) => (
-        <span className="text-sm text-muted-foreground">{formatDate(j.date)}</span>
+        <span className="text-sm text-muted-foreground">
+          {formatDate(j.date)}
+        </span>
       ),
       sortValue: (j) => j.date,
       hideOnMobile: true,
@@ -180,7 +187,7 @@ export function JournalApprovalQueue() {
                 "inline-flex h-9 items-center gap-2 rounded-full border px-4 text-sm font-medium transition-colors",
                 active
                   ? "border-primary bg-primary text-primary-foreground"
-                  : "border-border bg-background text-muted-foreground hover:bg-accent hover:text-foreground"
+                  : "border-border bg-background text-muted-foreground hover:bg-accent hover:text-foreground",
               )}
             >
               {f.label}
@@ -189,7 +196,7 @@ export function JournalApprovalQueue() {
                   "rounded-full px-1.5 text-xs tabular-nums",
                   active
                     ? "bg-primary-foreground/20 text-primary-foreground"
-                    : "bg-muted text-muted-foreground"
+                    : "bg-muted text-muted-foreground",
                 )}
               >
                 {count}
@@ -229,8 +236,8 @@ export function JournalApprovalQueue() {
               j.status === "pending"
                 ? "amber"
                 : j.status === "rejected"
-                ? "red"
-                : undefined
+                  ? "red"
+                  : undefined
             }
             mobileCard={(j) => {
               const student = getStudent(students, j.studentId);
@@ -252,14 +259,20 @@ export function JournalApprovalQueue() {
                   </div>
                   <div className="flex items-center justify-between gap-2 rounded-xl bg-muted/50 px-3 py-2">
                     <div className="min-w-0">
-                      <p className="text-xs font-medium text-muted-foreground">Week</p>
+                      <p className="text-xs font-medium text-muted-foreground">
+                        Week
+                      </p>
                       <p className="truncate text-xs font-semibold text-foreground">
                         {weekLabel(j.date)}
                       </p>
                     </div>
                     <div className="shrink-0 text-right">
-                      <p className="text-xs font-medium text-muted-foreground">Hours</p>
-                      <p className="text-xs font-semibold tabular-nums text-foreground">{j.hours}h</p>
+                      <p className="text-xs font-medium text-muted-foreground">
+                        Hours
+                      </p>
+                      <p className="text-xs font-semibold tabular-nums text-foreground">
+                        {j.hours}h
+                      </p>
                     </div>
                   </div>
                   <div className="flex items-center justify-between gap-2">

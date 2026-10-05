@@ -15,8 +15,119 @@ const { accountUsers, validateTimeEntry, responseErrors } = load(
 const { elapsedMs, validateToolUrl } = load("src/lib/selectors.ts");
 const { escapeCell } = load("src/lib/csv-export.ts");
 const state = () => store.getState();
+const { sampleWritingSuggestion } = load("src/domain/writing-assistant.ts");
+const { journalProgress } = load("src/domain/journal-progress.ts");
 beforeEach(() => {
   state().resetPrototype();
+});
+
+test("writing demo uses only supplied notes, requires real reflection answers and bounds context", () => {
+  const request = {
+    action: "grammar",
+    text: "i  checked the login",
+    preferences: { language: "english", detail: "concise" },
+  };
+  const result = sampleWritingSuggestion(request);
+  assert.equal(result.mode, "demo");
+  assert.equal(result.text, "I checked the login");
+  assert.ok(!/hours|approved|completed/i.test(result.text));
+  const reflection = sampleWritingSuggestion({
+    ...request,
+    action: "reflection",
+    preferences: { language: "filipino", detail: "detailed" },
+  });
+  assert.ok(reflection.text.includes("[Ilagay"));
+  assert.ok(reflection.text.includes("Natutuhan ko:"));
+  assert.ok(reflection.text.includes("Ebidensya o resulta:"));
+  assert.throws(
+    () => sampleWritingSuggestion({ ...request, text: "   " }),
+    /activity notes/,
+  );
+  assert.throws(
+    () => sampleWritingSuggestion({ ...request, text: "x".repeat(6001) }),
+    /shorter passage/,
+  );
+});
+
+test("journal coverage deduplicates periods, excludes running/other clocks, and never earns extra hours", () => {
+  const logs = [
+    {
+      userId: "s1",
+      role: "student",
+      clockInAt: "2026-10-05T08:00:00+08:00",
+      clockOutAt: "2026-10-05T16:00:00+08:00",
+    },
+    { userId: "s1", role: "student", clockInAt: "2026-10-06T08:00:00+08:00" },
+    {
+      userId: "s2",
+      role: "student",
+      clockInAt: "2026-10-05T08:00:00+08:00",
+      clockOutAt: "2026-10-05T16:00:00+08:00",
+    },
+  ];
+  const journals = [
+    {
+      studentId: "s1",
+      date: "2026-10-05",
+      status: "approved",
+      cadence: "weekly",
+    },
+    {
+      studentId: "s1",
+      date: "2026-10-06",
+      status: "pending",
+      cadence: "weekly",
+    },
+    {
+      studentId: "s1",
+      date: "2026-10-05",
+      status: "approved",
+      cadence: "daily",
+    },
+  ];
+  assert.deepEqual(journalProgress(logs, journals, "s1", 250), {
+    recorded: 8,
+    approved: 8,
+    pending: 0,
+    revision: 0,
+    unreported: 0,
+    remaining: 242,
+  });
+  assert.equal(journalProgress(logs, [], "s1", 4).remaining, 0);
+  assert.equal(journalProgress(logs, [], "s1", 250).unreported, 8);
+});
+
+test("coverage preserves captured cadence across preference changes and clips overnight shifts", () => {
+  const logs = [
+    {
+      userId: "s1",
+      role: "student",
+      clockInAt: "2026-10-07T22:00:00+08:00",
+      clockOutAt: "2026-10-08T02:00:00+08:00",
+    },
+  ];
+  const journals = [
+    {
+      studentId: "s1",
+      date: "2026-10-07",
+      status: "pending",
+      cadence: "twice-weekly",
+    },
+    {
+      studentId: "s1",
+      date: "2026-10-08",
+      status: "rejected",
+      cadence: "twice-weekly",
+    },
+  ];
+  assert.deepEqual(journalProgress(logs, journals, "s1", 250, "daily"), {
+    recorded: 4,
+    approved: 0,
+    pending: 2,
+    revision: 2,
+    unreported: 0,
+    remaining: 246,
+  });
 });
 
 test("attendance remains the single hours source through repeated approvals and deletion", () => {

@@ -66,11 +66,14 @@ export function Badge({
         "inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium ring-1 ring-inset",
         toneStyles[tone],
         outline && "bg-transparent",
-        className
+        className,
       )}
     >
       {dot && (
-        <span className={cn("h-1.5 w-1.5 rounded-full", toneDot[tone])} aria-hidden />
+        <span
+          className={cn("h-1.5 w-1.5 rounded-full", toneDot[tone])}
+          aria-hidden
+        />
       )}
       {Icon && !dot && <Icon className="h-3 w-3" />}
       {children}
@@ -87,7 +90,7 @@ const journalStatusConfig: Record<
   draft: { tone: "slate", label: "Draft", icon: FileEdit },
   pending: { tone: "amber", label: "Pending", icon: Clock },
   approved: { tone: "emerald", label: "Approved", icon: CheckCircle2 },
-  rejected: { tone: "red", label: "Rejected", icon: XCircle },
+  rejected: { tone: "amber", label: "Needs revision", icon: XCircle },
 };
 
 export function JournalStatusBadge({ status }: { status: JournalStatus }) {
@@ -107,7 +110,11 @@ const evaluationStatusConfig: Record<
   submitted: { tone: "teal", label: "Submitted", icon: Send },
 };
 
-export function EvaluationStatusBadge({ status }: { status: EvaluationStatus }) {
+export function EvaluationStatusBadge({
+  status,
+}: {
+  status: EvaluationStatus;
+}) {
   const cfg = evaluationStatusConfig[status];
   return (
     <Badge tone={cfg.tone} dot>
@@ -116,10 +123,7 @@ export function EvaluationStatusBadge({ status }: { status: EvaluationStatus }) 
   );
 }
 
-const formStatusConfig: Record<
-  FormStatus,
-  { tone: Tone; label: string }
-> = {
+const formStatusConfig: Record<FormStatus, { tone: Tone; label: string }> = {
   draft: { tone: "slate", label: "Draft" },
   published: { tone: "emerald", label: "Published" },
   archived: { tone: "amber", label: "Archived" },
@@ -156,7 +160,11 @@ export function SubmissionStatusBadge({
 }) {
   const cfg = submissionStatusConfig[status];
   return (
-    <Badge tone={cfg.tone} icon={withIcon ? cfg.icon : undefined} dot={!withIcon}>
+    <Badge
+      tone={cfg.tone}
+      icon={withIcon ? cfg.icon : undefined}
+      dot={!withIcon}
+    >
       {cfg.label}
     </Badge>
   );
@@ -187,7 +195,13 @@ export function RoleBadge({ role, solid }: { role: Role; solid?: boolean }) {
 }
 
 // ---- Score badge ----
-export function ScoreBadge({ score, className }: { score: number; className?: string }) {
+export function ScoreBadge({
+  score,
+  className,
+}: {
+  score: number;
+  className?: string;
+}) {
   let tone: Tone = "slate";
   if (score > 0) {
     if (score <= 2) tone = "red";

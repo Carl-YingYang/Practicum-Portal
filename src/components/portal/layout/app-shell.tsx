@@ -1,5 +1,6 @@
 "use client";
 import * as React from "react";
+import dynamic from "next/dynamic";
 import { refreshPortal } from "@/client/portal-client";
 import { ConfirmDialog } from "@/components/portal/shared/confirm-dialog";
 import { Sidebar, MobileSidebar } from "./sidebar";
@@ -8,6 +9,13 @@ import { BottomTabBar } from "./bottom-tab-bar";
 import { ActiveSessionBanner } from "@/components/portal/shared/active-session-banner";
 import { CommandPalette } from "@/components/portal/shared/command-palette";
 import { useAppStore } from "@/store/use-app-store";
+const TestingScenarios = dynamic(
+  () =>
+    import("@/components/portal/shared/testing-scenarios").then(
+      (m) => m.TestingScenarios,
+    ),
+  { ssr: false },
+);
 interface AppShellProps {
   children: React.ReactNode;
 }
@@ -30,6 +38,8 @@ export function AppShell({ children }: AppShellProps) {
   const [mobileNavOpen, setMobileNavOpen] = React.useState(false);
   const [paletteOpen, setPaletteOpen] = React.useState(false);
   const [resetOpen, setResetOpen] = React.useState(false);
+  const [scenariosOpen, setScenariosOpen] = React.useState(false);
+  const hasTestingAccounts = useAppStore((s) => s.demoAccounts.length > 0);
   const resetPrototype = useAppStore((s) => s.resetPrototype);
   const syncStatus = useAppStore((s) => s.syncStatus);
   const syncError = useAppStore((s) => s.syncError);
@@ -89,6 +99,9 @@ export function AppShell({ children }: AppShellProps) {
           onOpenMobileNav={() => setMobileNavOpen(true)}
           onOpenPalette={() => setPaletteOpen(true)}
           onResetDemo={canReset ? () => setResetOpen(true) : undefined}
+          onOpenTestingScenarios={
+            hasTestingAccounts ? () => setScenariosOpen(true) : undefined
+          }
         />
         <ActiveSessionBanner />
         <div
@@ -145,6 +158,9 @@ export function AppShell({ children }: AppShellProps) {
 
       {/* Mobile primary navigation — sticky bottom tab bar (<lg only). */}
       <BottomTabBar />
+      {hasTestingAccounts && scenariosOpen && (
+        <TestingScenarios onClose={() => setScenariosOpen(false)} />
+      )}
 
       <ConfirmDialog
         open={resetOpen}
