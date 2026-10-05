@@ -185,7 +185,7 @@ export function Sidebar({ collapsed, onToggleCollapse }: SidebarProps) {
             <div key={gi} className={cn(gi > 0 && "mt-4")}>
               {/* Section label — hidden when collapsed */}
               {!collapsed && group.section && (
-                <p className="px-2.5 pb-1 pt-1 text-[9.5px] font-semibold uppercase tracking-[0.12em] text-sidebar-foreground/35">
+                <p className="px-2.5 pb-1 pt-1 text-[9.5px] font-semibold uppercase tracking-[0.12em] text-sidebar-foreground/60">
                   {group.section}
                 </p>
               )}
@@ -207,7 +207,7 @@ export function Sidebar({ collapsed, onToggleCollapse }: SidebarProps) {
                         "group relative flex h-8 w-full items-center gap-2.5 rounded-[5px] text-[13px] font-medium transition-all duration-150",
                         collapsed ? "justify-center px-0" : "px-2.5",
                         active
-                          ? "bg-sidebar-accent text-sidebar-foreground"
+                          ? "bg-sidebar-accent text-sidebar-accent-foreground"
                           : "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-foreground/90"
                       )}
                     >
@@ -361,7 +361,7 @@ export function MobileSidebar({
         className={cn(
           "group relative flex h-10 w-full items-center gap-3 rounded-md px-3 text-sm font-medium transition-colors",
           active
-            ? "bg-sidebar-accent text-sidebar-foreground"
+            ? "bg-sidebar-accent text-sidebar-accent-foreground"
             : "text-sidebar-foreground/80 active:bg-sidebar-accent"
         )}
       >

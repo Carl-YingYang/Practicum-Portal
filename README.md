@@ -29,13 +29,7 @@ Google Fonts downloads are unnecessary: the UI uses system fonts. If the environ
 
 Expand **Explore the prototype** on the sign-in screen. Demo previews bypass credentials and open the selected local role; they still respect disabled records and the password-change gate. The account menu also lets you switch demo roles.
 
-Normal sign-in uses the following seeded credentials until a coordinator resets the account:
-
-| Role | Email | Initial password |
-|---|---|---|
-| Student | juan.delacruz@university.edu | 2021-00123 |
-| Supervisor | maria.santos@acmecorp.com | EMP-001 |
-| Coordinator | patricia.lim@university.edu | COORD-001 |
+Use **Explore the prototype** for the seeded demo roles. The README does not publish account emails or initial passwords.
 
 Newly provisioned or reset accounts use the generated temporary password and must choose a personal password at first sign-in. Personal passwords are case-sensitive. Credentials shown in provisioning exports are temporary credentials for invited accounts.
 
@@ -82,3 +76,10 @@ npm run test:browser
 The browser smoke test starts its own local production server on port 3101, so build first. It uses an isolated browser context and sample data. It checks all three dashboards, themes, attendance and journal persistence, a real custom-form PDF download, and mobile drawer navigation. It refreshes the screenshots in `docs/screenshots/`.
 
 Lint retains inherited controlled editor/modal `set-state-in-effect` findings as warnings; this branch does not claim zero lint debt. See [verification details](docs/VERIFICATION.md).
+
+
+## School colors and open-source options
+
+Main surfaces stay white in light mode and charcoal in dark mode. School Settings applies the school palette to actions, navigation selections, focus and charts; the separate editorial accent controls dashboard highlights. Its Live Preview shows unsaved colors, and Save applies them across the portal.
+
+See [the secondary color update](docs/TESTING_PLATFORM.md#secondary-color-correction--october-5-2026), [verification](docs/VERIFICATION.md), and the [open-source tool review](docs/OPEN_SOURCE_TOOLS.md) for Kimai, Solidtime, Frappe HR, HeyForm, Tiptap and Etherpad. These are researched candidates; the prototype has no new external service connection.

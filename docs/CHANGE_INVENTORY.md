@@ -98,3 +98,27 @@ Every affected path relative to the repository root. `M` = modified, `A` = added
 | M | `tsconfig.json` |
 
 Total: 92 affected files. Generated source/build output, local databases, dependencies, and scratch scripts are excluded.
+
+
+## Secondary color and tool research follow-up — October 5, 2026
+
+The prior inventory above describes the original testing-platform implementation. This follow-up changes the following 16 paths on the same branch:
+
+- `README.md`: school color behavior and research links; removed the demo credential table after publication review.
+- `docs/CHANGE_INVENTORY.md`: this follow-up inventory.
+- `docs/TESTING_PLATFORM.md`: color correction rationale, component changes, behavior and scope.
+- `docs/VERIFICATION.md`: 14 regression cases and expanded branding browser checks.
+- `docs/OPEN_SOURCE_TOOLS.md`: six researched projects, licensing/feature boundaries and proposed time-service proof of concept.
+- `docs/screenshots/student-light.png`: refreshed colored controls on white surfaces.
+- `docs/screenshots/student-dark.png`: refreshed colored controls on charcoal surfaces.
+- `docs/screenshots/coordinator-mobile.png`: refreshed mobile view.
+- `docs/screenshots/school-settings-light.png`: new light branding capture.
+- `docs/screenshots/school-settings-dark.png`: new dark branding capture.
+- `src/app/globals.css`: school color aliases for actions, selections, secondary controls and focus in light/dark mode; locally resolved preview tokens.
+- `src/components/portal/layout/sidebar.tsx`: active navigation foreground and section label legibility, desktop/mobile.
+- `src/components/portal/settings/school-identity-settings.tsx`: matching neutral preview, common accent swatches, selected-state accessibility, custom hex validation and current role descriptions; discard also clears validation messages.
+- `src/lib/school-themes.ts`: shared light/dark tokens, contrast calculation and safe custom fallback.
+- `tests/browser-smoke.cjs`: actual preview/save/discard/validation/reload checks and screenshots in both modes.
+- `tests/prototype.test.cjs`: palette contrast and independent accent/custom fallback regressions.
+
+No dependencies or external integrations were added. Other GitHub branches are outside this update.

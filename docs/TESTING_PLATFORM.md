@@ -130,3 +130,28 @@ Lint's inherited `react-hooks/set-state-in-effect` findings are now visible warn
 | P2 | Full responsive/accessibility audit of secondary tables, sheets, and editors | Dashboards/navigation were checked; that does not certify every legacy screen. |
 
 No production auth, OAuth sync, real billing, deployment, branch merge, or messages to other people were performed.
+
+
+## Secondary color correction — October 5, 2026
+
+The previous neutral override made actions and selected navigation gray/black, while School Settings still previewed an obsolete fully colored sidebar. This update restores the intended hierarchy:
+
+| Role | Light mode | Dark mode |
+|---|---|---|
+| Main backgrounds / cards / sidebar / header | White with neutral borders | Charcoal with neutral borders |
+| School palette | Colored action buttons, active navigation text/marker, soft selection backgrounds, secondary controls, focus rings and charts | Readable lighter school action color with subtle tinted selections |
+| Editorial accent | Independent dashboard progress/highlight color | Same independent accent color |
+
+- Shared `schoolThemeCssVars` powers both the saved application palette and unsaved Live Preview. The preview uses the actual Button component and neutral sidebar surfaces rather than an old blue mockup.
+- Draft palette changes update the preview and picker selection. Save applies the colors across the portal; Discard restores the saved preview. Existing browser branding persistence remains in use.
+- Custom colors require full six-digit hex values. Malformed persisted custom palettes safely fall back to Azure Blue. School action colors are adjusted for legibility; the upstream preset swatches remain the original colors.
+- Light/dark action text and active-selection text have a minimum computed 4.5:1 contrast against their corresponding fills. This is targeted color validation, not a full accessibility audit.
+- Accent swatches now use the same `ACCENT_HEX` values as the dashboard instead of slightly different hardcoded samples, with contrast-aware checkmarks.
+- School Settings descriptions and custom-color hints explain the actual color roles. Preset buttons expose their selected state with `aria-pressed`; hex fields have accessible labels.
+- Desktop and mobile active navigation use the colored selection foreground; desktop section labels are easier to read.
+- Added source-level palette regression coverage and browser checks for unsaved/saved preview matching, light/dark neutral surfaces, separate accents, discard, malformed custom values and persistence after reload.
+- Researched six open-source options in [OPEN_SOURCE_TOOLS.md](OPEN_SOURCE_TOOLS.md), including a concrete time-service proof-of-concept plan and distinctions between core/free/paid features. Research only: no services or dependencies were added.
+
+Changed implementation files: `src/lib/school-themes.ts`, `src/app/globals.css`, `src/components/portal/layout/sidebar.tsx`, and `src/components/portal/settings/school-identity-settings.tsx`. Updated both existing test suites, README, verification and change inventory. Refreshed dashboard/mobile captures and added light/dark School Settings captures under `docs/screenshots/`.
+
+Publication review: removed the README demo credential table after automatic approval review rejected redistributing account emails/initial passwords. Demo preview access remains available.

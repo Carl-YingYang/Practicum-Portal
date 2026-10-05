@@ -298,3 +298,27 @@ test('provisioning cannot assign a full or mismatched supervisor', () => {
   const added = state().createStudent({ name: 'Capacity Check', email: 'capacity@example.test', studentNumber: 'CAP-1', course: 'BSIT', requiredHours: 300, companyId: sup.companyId, supervisorId: sup.id });
   assert.equal(state().students.find((s) => s.id === added.studentId).supervisorId, null);
 });
+
+const { schoolThemeCssVars, resolveSchoolTheme, SCHOOL_THEME_PRESETS, colorContrast } = load("src/lib/school-themes.ts");
+
+test("every preset and extreme custom palette keeps action text and selected text readable in both modes", () => {
+  const palettes = [...SCHOOL_THEME_PRESETS.map((p) => ({ themePreset: p.key })),
+    ...["#ffffff", "#000000", "#ffff00"].map((color) => ({ themePreset: "custom", customColors: { primary: color, deep: color, light: color } }))];
+  for (const identity of palettes) {
+    const vars = schoolThemeCssVars({ ...identity, accentColor: "sand" });
+    for (const suffix of ["", "-dark"]) {
+      const primary = vars[`--school-primary${suffix}`];
+      assert.ok(colorContrast(primary, vars[`--school-on-primary${suffix}`]) >= 4.5);
+      assert.ok(colorContrast(primary, vars[`--school-soft${suffix}`]) >= 4.5);
+    }
+  }
+});
+
+test("theme rejects malformed custom colors and keeps school palette independent of editorial accent", () => {
+  const identity = { themePreset: "royal-navy", accentColor: "clay" };
+  const a = schoolThemeCssVars(identity);
+  const b = schoolThemeCssVars({ ...identity, accentColor: "sage" });
+  assert.equal(a["--school-primary"], b["--school-primary"]);
+  assert.notEqual(a["--brand-accent"], b["--brand-accent"]);
+  assert.deepEqual(resolveSchoolTheme({ themePreset: "custom", customColors: { primary: "#fff", deep: "red", light: "#ffffff" } }), SCHOOL_THEME_PRESETS[0].colors);
+});

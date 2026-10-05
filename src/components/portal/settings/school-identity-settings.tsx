@@ -43,9 +43,12 @@ import { cn } from "@/lib/utils";
 import {
   SCHOOL_THEME_PRESETS,
   resolveSchoolTheme,
+  schoolThemeCssVars,
+  isHexColor,
+  contrastingText,
 } from "@/lib/school-themes";
 import { resizeAndCompress, formatBytes } from "@/lib/image-utils";
-import type { SchoolIdentity, SchoolThemePreset } from "@/lib/types";
+import { ACCENT_HEX, type SchoolIdentity, type SchoolThemePreset } from "@/lib/types";
 
 const LOGO_MAX = 128; // px
 const LOGO_MAX_BYTES = 30 * 1024; // 30 KB
@@ -56,13 +59,9 @@ const HERO_MAX_DIM = 1600; // px — wide hero, kept under 1600px on the long ed
 const HERO_MAX_BYTES = 200 * 1024; // 200 KB
 
 // Accent color swatches — Facebook-page style warm editorial palette.
-const ACCENT_SWATCHES: { value: string; label: string; hex: string }[] = [
-  { value: "sage", label: "Sage", hex: "#84a98c" },
-  { value: "terracotta", label: "Terracotta", hex: "#c17a5a" },
-  { value: "slate", label: "Slate", hex: "#64748b" },
-  { value: "sand", label: "Sand", hex: "#d4b896" },
-  { value: "clay", label: "Clay", hex: "#a67c5a" },
-];
+const ACCENT_SWATCHES = Object.entries(ACCENT_HEX).map(([value, colors]) => ({
+  value, label: value[0].toUpperCase() + value.slice(1), hex: colors.base,
+}));
 
 export function SchoolIdentitySettings() {
   const schoolIdentity = useAppStore((s) => s.schoolIdentity);
@@ -91,8 +90,8 @@ export function SchoolIdentitySettings() {
     if (!draft.tagline.trim()) next.tagline = "Tagline is required.";
     if (draft.themePreset === "custom") {
       const c = draft.customColors;
-      if (!c?.primary || !c?.deep || !c?.light) {
-        next.themePreset = "Pick all three custom colors.";
+      if (!c || ![c.primary, c.deep, c.light].every(isHexColor)) {
+        next.themePreset = "Enter three valid hex colors, for example #003a70.";
       }
     }
     setErrors(next);
@@ -189,7 +188,7 @@ export function SchoolIdentitySettings() {
         <div className="order-1 mb-1 lg:order-2 lg:sticky lg:top-4 lg:self-start lg:mb-0">
           <SectionCard
             title="Live Preview"
-            description="Updates as you edit."
+            description="Unsaved colors preview here. Save to apply across the portal."
             contentClassName="p-3.5"
           >
             <LivePreview identity={draft} />
@@ -294,10 +293,10 @@ export function SchoolIdentitySettings() {
           {/* ---- Section 3: Theme ---- */}
           <SectionCard
             title="Color Theme"
-            description="Drives the sidebar, buttons, and accents across the entire portal."
+            description="Secondary school colors for actions, selected navigation and charts. Main surfaces stay white or charcoal."
             contentClassName="p-4"
           >
-            <div className="space-y-3">
+            <div className="school-theme-scope space-y-3" style={schoolThemeCssVars(draft) as React.CSSProperties}>
               {/* Preset grid — responsive: 1 col on mobile, 2 on sm, 3 on lg.
                   Descriptions wrap with line-clamp-2 so they never overflow. */}
               <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
@@ -307,6 +306,7 @@ export function SchoolIdentitySettings() {
                     <button
                       key={preset.key}
                       type="button"
+                      aria-pressed={active}
                       onClick={() => set("themePreset", preset.key as SchoolThemePreset)}
                       className={cn(
                         "group relative flex flex-col items-start gap-1.5 rounded-lg border p-2.5 text-left transition-all",
@@ -350,6 +350,7 @@ export function SchoolIdentitySettings() {
                 {/* Custom option */}
                 <button
                   type="button"
+                  aria-pressed={draft.themePreset === "custom"}
                   onClick={() => set("themePreset", "custom")}
                   className={cn(
                     "group relative flex flex-col items-start gap-1.5 rounded-lg border p-2.5 text-left transition-all",
@@ -387,7 +388,7 @@ export function SchoolIdentitySettings() {
                 <div className="grid gap-2.5 rounded-lg border border-border bg-muted/20 p-3 sm:grid-cols-3">
                   <ColorPicker
                     label="Primary"
-                    hint="Sidebar + buttons"
+                    hint="Actions + active navigation"
                     value={draft.customColors?.primary ?? themeColors.primary}
                     onChange={(v) =>
                       set("customColors", {
@@ -398,7 +399,7 @@ export function SchoolIdentitySettings() {
                   />
                   <ColorPicker
                     label="Deep"
-                    hint="Gradients / dark chrome"
+                    hint="Deep chart color"
                     value={draft.customColors?.deep ?? themeColors.deep}
                     onChange={(v) =>
                       set("customColors", {
@@ -409,7 +410,7 @@ export function SchoolIdentitySettings() {
                   />
                   <ColorPicker
                     label="Light"
-                    hint="Highlights + active strip"
+                    hint="Soft selection fills"
                     value={draft.customColors?.light ?? themeColors.light}
                     onChange={(v) =>
                       set("customColors", {
@@ -452,7 +453,7 @@ export function SchoolIdentitySettings() {
                     >
                       {active && (
                         <span className="absolute inset-0 flex items-center justify-center">
-                          <Check className="h-4 w-4 text-white" strokeWidth={3} />
+                          <Check className="h-4 w-4" style={{ color: contrastingText(sw.hex) }} strokeWidth={3} />
                         </span>
                       )}
                     </span>
@@ -469,7 +470,7 @@ export function SchoolIdentitySettings() {
           {/* ---- Section 5: Hero Image ---- */}
           <SectionCard
             title="Hero Image"
-            description="Single wide image shown on the login + dashboard heroes. Optimized to ≤ 200KB JPEG."
+            description="Single wide image for the institution dashboard hero. Optimized to ≤ 200KB JPEG."
             contentClassName="p-4"
           >
             <div className="space-y-3">
@@ -632,7 +633,7 @@ export function SchoolIdentitySettings() {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
-        <Button variant="outline" onClick={() => setDraft(schoolIdentity)} disabled={!dirty}>
+        <Button variant="outline" onClick={() => { setDraft(schoolIdentity); setErrors({}); }} disabled={!dirty}>
           Discard changes
         </Button>
         <Button onClick={handleSave} disabled={!dirty}>
@@ -735,6 +736,7 @@ function ColorPicker({
           aria-label={label}
         />
         <Input
+          aria-label={`${label} hex`}
           value={value}
           onChange={(e) => onChange(e.target.value)}
           className="font-mono text-xs"
@@ -814,113 +816,43 @@ function Field({
 // Live preview — brand panel + sidebar mockup
 // ============================================================
 function LivePreview({ identity }: { identity: SchoolIdentity }) {
-  const colors = resolveSchoolTheme(identity);
   return (
-    <div className="space-y-2.5">
-      {/* Brand panel preview */}
-      <div
-        className="relative overflow-hidden rounded-lg p-3 text-white"
-        style={{
-          background: `linear-gradient(135deg, ${colors.primary} 0%, ${colors.deep} 100%)`,
-        }}
-      >
-        <div className="relative flex items-center gap-2">
-          <div
-            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-white/15 ring-1 ring-white/25"
-          >
+    <div data-testid="school-theme-preview" className="school-theme-scope space-y-3" style={schoolThemeCssVars(identity) as React.CSSProperties}>
+      <div className="rounded-md border border-border bg-card p-3 text-card-foreground">
+        <div className="flex items-center gap-2">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-secondary text-secondary-foreground">
             {identity.logoDataUrl ? (
-              
-              <img
-                src={identity.logoDataUrl}
-                alt=""
-                className="h-full w-full rounded-md object-contain p-0.5"
-              />
-            ) : (
-              <School className="h-3.5 w-3.5" style={{ color: colors.light }} strokeWidth={2.2} />
-            )}
+              <img src={identity.logoDataUrl} alt="" className="h-full w-full object-contain p-0.5" />
+            ) : <School className="h-4 w-4" />}
           </div>
           <div className="min-w-0">
-            <p className="truncate text-[13px] font-bold leading-tight">
-              {identity.name || "School Name"}
-            </p>
-            <p className="truncate text-[10px] text-white/70">
-              {identity.tagline || "Tagline"}
-            </p>
+            <p className="truncate text-xs font-bold">{identity.name || "School Name"}</p>
+            <p className="truncate text-[10px] text-muted-foreground">{identity.tagline || "Tagline"}</p>
           </div>
         </div>
-        {identity.address && (
-          <p className="relative mt-1.5 flex items-center gap-1 text-[10px] text-white/60">
-            <MapPin className="h-2.5 w-2.5 shrink-0" />
-            <span className="truncate">{identity.address}</span>
-          </p>
-        )}
+        {identity.address && <p className="mt-2 flex items-center gap-1 text-[10px] text-muted-foreground"><MapPin className="h-3 w-3" />{identity.address}</p>}
       </div>
-
-      {/* Mini sidebar mockup */}
-      <div
-        className="overflow-hidden rounded-lg border"
-        style={{ backgroundColor: colors.primary }}
-      >
-        <div className="flex items-center gap-2 border-b border-white/15 px-2.5 py-2">
-          <div className="flex h-5 w-5 items-center justify-center rounded-[3px] bg-white/15 ring-1 ring-white/20">
-            {identity.logoDataUrl ? (
-              
-              <img
-                src={identity.logoDataUrl}
-                alt=""
-                className="h-full w-full rounded-[3px] object-contain p-0.5"
-              />
-            ) : (
-              <GraduationCap
-                className="h-2.5 w-2.5"
-                style={{ color: colors.light }}
-                strokeWidth={2.4}
-              />
-            )}
-          </div>
-          <p className="truncate text-[11px] font-bold text-white">
-            {identity.shortName || "School"}
-          </p>
+      <div data-testid="preview-sidebar" className="overflow-hidden rounded-md border border-sidebar-border bg-sidebar text-sidebar-foreground">
+        <div className="flex items-center gap-2 border-b border-sidebar-border px-3 py-2 text-xs font-bold">
+          <GraduationCap className="h-4 w-4 text-sidebar-primary" />{identity.shortName || "School"}
         </div>
-        <div className="space-y-0.5 p-1.5">
+        <div className="space-y-1 p-2">
           {["Dashboard", "Students", "Reports"].map((item, i) => (
-            <div
-              key={item}
-              className={cn(
-                "flex items-center gap-2 rounded-[3px] px-2 py-1 text-[10px] font-medium",
-                i === 0 ? "bg-white/15 text-white" : "text-white/60"
-              )}
-            >
-              <span
-                className="h-1.5 w-1.5 rounded-full"
-                style={{ backgroundColor: i === 0 ? colors.light : "currentColor" }}
-              />
-              {item}
+            <div key={item} className={cn("flex items-center gap-2 rounded px-2 py-2 text-xs", i === 0 ? "bg-sidebar-accent font-semibold text-sidebar-accent-foreground" : "text-sidebar-foreground/80")}>
+              <span className={cn("h-1.5 w-1.5 rounded-full", i === 0 ? "bg-sidebar-primary" : "bg-current")} />{item}
             </div>
           ))}
         </div>
       </div>
-
-      {/* Primary button preview */}
-      <div className="flex flex-wrap items-center gap-1.5">
-        <div
-          className="rounded-md px-2.5 py-1 text-[11px] font-semibold text-white"
-          style={{ backgroundColor: colors.primary }}
-        >
-          Primary button
-        </div>
-        <div
-          className="rounded-md border px-2.5 py-1 text-[11px] font-semibold"
-          style={{ borderColor: colors.primary, color: colors.primary }}
-        >
-          Outline
-        </div>
-        <span
-          className="rounded-full px-2 py-0.5 text-[10px] font-semibold"
-          style={{ backgroundColor: colors.light, color: colors.primary }}
-        >
-          Badge
-        </span>
+      <div className="flex flex-wrap gap-2">
+        <Button type="button" size="sm" tabIndex={-1} aria-disabled="true" data-testid="preview-primary">Primary action</Button>
+        <Button type="button" size="sm" variant="secondary" tabIndex={-1} aria-disabled="true">Secondary</Button>
+        <Button type="button" size="sm" variant="outline" tabIndex={-1} aria-disabled="true">Outline</Button>
+      </div>
+      <div className="rounded-md border border-border bg-card p-3">
+        <div className="flex items-center justify-between text-xs"><span>Practicum progress</span><span className="font-semibold">65%</span></div>
+        <div className="mt-2 h-2 overflow-hidden rounded-full bg-muted"><div data-testid="preview-accent" className="h-full w-[65%] rounded-full bg-[var(--brand-accent)]" /></div>
+        <p className="mt-2 text-[10px] text-muted-foreground">School color: actions and selection. Accent: dashboard highlights.</p>
       </div>
     </div>
   );

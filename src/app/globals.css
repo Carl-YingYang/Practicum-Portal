@@ -955,25 +955,25 @@
   --card-foreground: #191919;
   --popover: #ffffff;
   --popover-foreground: #191919;
-  --primary: #202020;
-  --primary-foreground: #ffffff;
-  --secondary: #f4f4f2;
-  --secondary-foreground: #252525;
+  --primary: var(--school-primary, #266ca9);
+  --primary-foreground: var(--school-on-primary, #ffffff);
+  --secondary: var(--school-soft, #edf5fa);
+  --secondary-foreground: var(--school-primary, #266ca9);
   --muted: #f5f5f3;
   --muted-foreground: #646461;
-  --accent: #ededeb;
-  --accent-foreground: #202020;
+  --accent: var(--school-soft, #edf5fa);
+  --accent-foreground: var(--school-primary, #266ca9);
   --border: #dcdcd7;
   --input: #d5d5d0;
-  --ring: #72726e;
+  --ring: var(--school-primary, #266ca9);
   --sidebar: #ffffff;
   --sidebar-foreground: #202020;
-  --sidebar-primary: #202020;
-  --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #efefec;
-  --sidebar-accent-foreground: #202020;
+  --sidebar-primary: var(--school-primary, #266ca9);
+  --sidebar-primary-foreground: var(--school-on-primary, #ffffff);
+  --sidebar-accent: var(--school-soft, #edf5fa);
+  --sidebar-accent-foreground: var(--school-primary, #266ca9);
   --sidebar-border: #dcdcd7;
-  --sidebar-ring: #72726e;
+  --sidebar-ring: var(--school-primary, #266ca9);
   --topbar: #ffffff;
   --topbar-foreground: #202020;
   --topbar-border: #dcdcd7;
@@ -986,28 +986,58 @@
   --card-foreground: #f2f2ed;
   --popover: #222222;
   --popover-foreground: #f2f2ed;
-  --primary: #efefea;
-  --primary-foreground: #171717;
-  --secondary: #2a2a29;
-  --secondary-foreground: #efefea;
+  --primary: var(--school-primary-dark, #88b7df);
+  --primary-foreground: var(--school-on-primary-dark, #171717);
+  --secondary: var(--school-soft-dark, #202a32);
+  --secondary-foreground: var(--school-primary-dark, #88b7df);
   --muted: #272726;
   --muted-foreground: #b1b1aa;
-  --accent: #30302e;
-  --accent-foreground: #efefea;
+  --accent: var(--school-soft-dark, #202a32);
+  --accent-foreground: var(--school-primary-dark, #88b7df);
   --border: #41413e;
   --input: #4c4c47;
-  --ring: #c5c5ba;
+  --ring: var(--school-primary-dark, #88b7df);
   --sidebar: #171717;
   --sidebar-foreground: #efefea;
-  --sidebar-primary: #efefea;
-  --sidebar-primary-foreground: #171717;
-  --sidebar-accent: #2b2b29;
-  --sidebar-accent-foreground: #efefea;
+  --sidebar-primary: var(--school-primary-dark, #88b7df);
+  --sidebar-primary-foreground: var(--school-on-primary-dark, #171717);
+  --sidebar-accent: var(--school-soft-dark, #202a32);
+  --sidebar-accent-foreground: var(--school-primary-dark, #88b7df);
   --sidebar-border: #41413e;
-  --sidebar-ring: #c5c5ba;
+  --sidebar-ring: var(--school-primary-dark, #88b7df);
   --topbar: #171717;
   --topbar-foreground: #efefea;
   --topbar-border: #41413e;
+}
+
+/* Resolve aliases locally so unsaved previews use their own palette. */
+.school-theme-scope {
+  --primary: var(--school-primary, #266ca9);
+  --primary-foreground: var(--school-on-primary, #ffffff);
+  --secondary: var(--school-soft, #edf5fa);
+  --secondary-foreground: var(--school-primary, #266ca9);
+  --accent: var(--school-soft, #edf5fa);
+  --accent-foreground: var(--school-primary, #266ca9);
+  --ring: var(--school-primary, #266ca9);
+  --sidebar-primary: var(--school-primary, #266ca9);
+  --sidebar-primary-foreground: var(--school-on-primary, #ffffff);
+  --sidebar-accent: var(--school-soft, #edf5fa);
+  --sidebar-accent-foreground: var(--school-primary, #266ca9);
+  --sidebar-ring: var(--school-primary, #266ca9);
+}
+.dark .school-theme-scope {
+  --primary: var(--school-primary-dark, #88b7df);
+  --primary-foreground: var(--school-on-primary-dark, #171717);
+  --secondary: var(--school-soft-dark, #202a32);
+  --secondary-foreground: var(--school-primary-dark, #88b7df);
+  --accent: var(--school-soft-dark, #202a32);
+  --accent-foreground: var(--school-primary-dark, #88b7df);
+  --ring: var(--school-primary-dark, #88b7df);
+  --sidebar-primary: var(--school-primary-dark, #88b7df);
+  --sidebar-primary-foreground: var(--school-on-primary-dark, #171717);
+  --sidebar-accent: var(--school-soft-dark, #202a32);
+  --sidebar-accent-foreground: var(--school-primary-dark, #88b7df);
+  --sidebar-ring: var(--school-primary-dark, #88b7df);
 }
 .editorial-shell [data-slot="card"] { border-radius: 4px; box-shadow: none; }
 .editorial-eyebrow { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: .16em; color: var(--muted-foreground); }

@@ -5,7 +5,7 @@ Executed October 5, 2026 on `practo/testing-platform` using Node 24.19.0 and npm
 | Check | Result |
 |---|---|
 | `npm run typecheck` | Passed; application TypeScript errors resolved. Reference examples are excluded. |
-| `npm test` | 12 regression tests passed against the actual TypeScript store/helpers. |
+| `npm test` | 14 regression tests passed against the actual TypeScript store/helpers. |
 | `npm run lint` | Completed with 0 errors and 22 inherited controlled-state effect warnings. |
 | `npm run build` | Successful production compilation with TypeScript checking enabled. `/`, not-found, and seven API paths generated. |
 | `npm run test:browser` | Chromium smoke passed: all three roles, themes, refresh persistence, actual PDF download, mobile drawer navigation, no browser page errors. |
@@ -27,6 +27,8 @@ The Node suite loads the actual TypeScript store through a small CommonJS transp
 10. Evaluation saves enforce supervisor ownership and keep submitted content immutable.
 11. Form responses require an assignment and a supervisor's target stays within their own intern roster.
 12. Provisioning does not assign students to a full supervisor.
+13. Every school preset and white/black/yellow custom palettes maintain at least 4.5:1 action and selection text contrast in both modes.
+14. Malformed custom colors safely fall back, and changing the editorial accent leaves the school action color intact.
 
 ## Browser smoke coverage
 
@@ -38,6 +40,7 @@ The test starts a production Next server on `127.0.0.1:3101` and opens a new iso
 - Clock-in, reload, restored clock-out action, and clock-out.
 - Open an assigned custom form and export its PDF. The downloaded bytes must begin with `%PDF` and contain more than an empty stub.
 - Switch to supervisor and coordinator roles, and open Forms & Reviews.
+- Open School Settings, preview Royal Navy + Clay without changing the saved theme, save, compare actual/preview actions in dark and light modes, verify neutral surfaces, change/discard the separate accent, reject invalid custom colors, then reload and verify persisted selections.
 - Resize to 390 × 844, check horizontal document containment, open the mobile drawer, and navigate to Students.
 - Assert no `pageerror` events occurred.
 
@@ -65,3 +68,13 @@ npm run test:browser
 ```
 
 Use sample data. The browser test modifies only its own fresh browser context and generated screenshot files.
+
+
+## Secondary color update captures
+
+The School Settings screenshots show the saved Royal Navy palette with Clay accent. Preview and application use the same theme tokens in both modes:
+
+- [Light School Settings](screenshots/school-settings-light.png)
+- [Dark School Settings](screenshots/school-settings-dark.png)
+
+The focused browser pass waits for hover/color transitions to settle before comparing computed button colors.
