@@ -1,7 +1,8 @@
 "use client";
-
+import { FormField as Field } from "@/components/portal/shared/form-field";
 import { accountUsers } from "@/lib/prototype";
 import * as React from "react";
+import { flushChanges } from "@/client/portal-client";
 import { useAppStore } from "@/store/use-app-store";
 import { getSupervisor, schoolYearOptions } from "@/lib/selectors";
 import type { ViewParams, Department } from "@/lib/types";
@@ -24,9 +25,16 @@ import {
 } from "@/components/ui/select";
 import { AlertCircle } from "lucide-react";
 import { toast } from "sonner";
-
-const SALUTATIONS = ["Mr.", "Ms.", "Mrs.", "Dr.", "Engr.", "Atty.", "Hon.", "Prof."];
-
+const SALUTATIONS = [
+  "Mr.",
+  "Ms.",
+  "Mrs.",
+  "Dr.",
+  "Engr.",
+  "Atty.",
+  "Hon.",
+  "Prof.",
+];
 export function SupervisorForm({
   supervisorId,
 }: {
@@ -40,13 +48,11 @@ export function SupervisorForm({
   const createSupervisor = useAppStore((s) => s.createSupervisor);
   const updateSupervisor = useAppStore((s) => s.updateSupervisor);
   const upsertCompany = useAppStore((s) => s.upsertCompany);
-
   const isEdit = !!supervisorId;
   const existing = React.useMemo(
     () => (supervisorId ? getSupervisor(supervisors, supervisorId) : undefined),
-    [supervisors, supervisorId]
+    [supervisors, supervisorId],
   );
-
   const [salutation, setSalutation] = React.useState<string>("");
   const [name, setName] = React.useState("");
   const [email, setEmail] = React.useState("");
@@ -67,7 +73,6 @@ export function SupervisorForm({
     userId: string;
     supervisorId: string;
   } | null>(null);
-
   // Live option lists (sourced from the roster / companies).
   const schoolYearOpts = React.useMemo(
     () => schoolYearOptions([[...supervisors], [...students], [...companies]]),
@@ -77,7 +82,6 @@ export function SupervisorForm({
     () => companies.map((c) => c.name).sort((a, b) => a.localeCompare(b)),
     [companies],
   );
-
   React.useEffect(() => {
     if (existing) {
       setSalutation(existing.salutation ?? "");
@@ -92,7 +96,6 @@ export function SupervisorForm({
       setSchoolYear(existing.schoolYear ?? "");
     }
   }, [existing, companies]);
-
   if (isEdit && !existing) {
     return (
       <div>
@@ -107,37 +110,45 @@ export function SupervisorForm({
       </div>
     );
   }
-
   const validate = () => {
     const next: Record<string, string> = {};
     if (!name.trim()) next.name = "Name is required.";
     if (!email.trim()) next.email = "Email is required.";
-    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) next.email = "Enter a valid email.";
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
+      next.email = "Enter a valid email.";
     if (!companyName.trim()) next.companyId = "Company is required.";
     if (!title.trim()) next.title = "Title is required.";
     if (!department) next.department = "Department is required.";
-    if (!capacity.trim() || Number.isNaN(Number(capacity)) || Number(capacity) <= 0)
+    if (
+      !capacity.trim() ||
+      Number.isNaN(Number(capacity)) ||
+      Number(capacity) <= 0
+    )
       next.capacity = "Capacity must be a positive number.";
-
     // Duplicate prevention (only on create).
     if (!isEdit) {
       const emailLower = email.trim().toLowerCase();
       const dupEmail = supervisors.some(
-        (s) => s.email.trim().toLowerCase() === emailLower
+        (s) => s.email.trim().toLowerCase() === emailLower,
       );
       if (dupEmail) {
-        next.email = next.email || "A supervisor with this email already exists.";
+        next.email =
+          next.email || "A supervisor with this email already exists.";
       }
     }
-
     setErrors(next);
     return Object.keys(next).length === 0;
   };
-
-  const handleSave = () => {
-    const duplicate = accountUsers(useAppStore.getState()).some((u) => u.email.toLowerCase() === email.trim().toLowerCase() && (u.studentId ?? u.supervisorId ?? u.coordinatorId) !== existing?.id);
-    if (duplicate) { toast.error("This email is already used by another account."); return; }
-
+  const handleSave = async () => {
+    const duplicate = accountUsers(useAppStore.getState()).some(
+      (u) =>
+        u.email.toLowerCase() === email.trim().toLowerCase() &&
+        (u.studentId ?? u.supervisorId ?? u.coordinatorId) !== existing?.id,
+    );
+    if (duplicate) {
+      toast.error("This email is already used by another account.");
+      return;
+    }
     if (!validate()) {
       toast.error("Please fix the highlighted fields.");
       return;
@@ -146,7 +157,7 @@ export function SupervisorForm({
     if (!isEdit) {
       const emailLower = email.trim().toLowerCase();
       const dupEmail = supervisors.some(
-        (s) => s.email.trim().toLowerCase() === emailLower
+        (s) => s.email.trim().toLowerCase() === emailLower,
       );
       if (dupEmail) {
         toast.error("Duplicate email", {
@@ -185,6 +196,11 @@ export function SupervisorForm({
           description: `New company record created for “${trimmedCompany}”.`,
         });
       }
+      try {
+        await flushChanges();
+      } catch {
+        return;
+      }
       toast.success("Supervisor updated", {
         description: `${name} saved.`,
       });
@@ -211,6 +227,11 @@ export function SupervisorForm({
           description: `New company record created for “${trimmedCompany}”.`,
         });
       }
+      try {
+        await flushChanges();
+      } catch {
+        return;
+      }
       setCreatedCreds({
         name: name.trim(),
         email: email.trim(),
@@ -221,7 +242,6 @@ export function SupervisorForm({
       setCredsOpen(true);
     }
   };
-
   return (
     <div>
       <PageHeader
@@ -326,7 +346,10 @@ export function SupervisorForm({
                 value={department}
                 onValueChange={(v) => setDepartment(v as Department)}
               >
-                <SelectTrigger className="w-full" aria-invalid={!!errors.department}>
+                <SelectTrigger
+                  className="w-full"
+                  aria-invalid={!!errors.department}
+                >
                   <SelectValue placeholder="Select department" />
                 </SelectTrigger>
                 <SelectContent>
@@ -389,39 +412,6 @@ export function SupervisorForm({
             });
           }}
         />
-      )}
-    </div>
-  );
-}
-
-function Field({
-  label,
-  required,
-  error,
-  hint,
-  children,
-  className,
-}: {
-  label: string;
-  required?: boolean;
-  error?: string;
-  hint?: string;
-  children: React.ReactNode;
-  className?: string;
-}) {
-  return (
-    <div className={className}>
-      <Label className="mb-1.5">
-        {label}
-        {required && <span className="text-destructive">*</span>}
-      </Label>
-      {children}
-      {hint && !error && <p className="mt-1 text-xs text-muted-foreground">{hint}</p>}
-      {error && (
-        <p className="mt-1 flex items-center gap-1 text-xs text-destructive">
-          <AlertCircle className="h-3 w-3" />
-          {error}
-        </p>
       )}
     </div>
   );

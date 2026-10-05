@@ -1,6 +1,6 @@
 "use client";
-
 import * as React from "react";
+import { flushChanges } from "@/client/portal-client";
 import { useAppStore } from "@/store/use-app-store";
 import { PageHeader } from "@/components/portal/layout/page-header";
 import { SectionCard } from "@/components/portal/shared/section-card";
@@ -48,41 +48,38 @@ import {
   contrastingText,
 } from "@/lib/school-themes";
 import { resizeAndCompress, formatBytes } from "@/lib/image-utils";
-import { ACCENT_HEX, type SchoolIdentity, type SchoolThemePreset } from "@/lib/types";
-
+import {
+  ACCENT_HEX,
+  type SchoolIdentity,
+  type SchoolThemePreset,
+} from "@/lib/types";
 const LOGO_MAX = 128; // px
 const LOGO_MAX_BYTES = 30 * 1024; // 30 KB
-
-
 // Hero image — wider, larger byte budget (≤ 200KB data URL).
 const HERO_MAX_DIM = 1600; // px — wide hero, kept under 1600px on the long edge
 const HERO_MAX_BYTES = 200 * 1024; // 200 KB
-
 // Accent color swatches — Facebook-page style warm editorial palette.
 const ACCENT_SWATCHES = Object.entries(ACCENT_HEX).map(([value, colors]) => ({
-  value, label: value[0].toUpperCase() + value.slice(1), hex: colors.base,
+  value,
+  label: value[0].toUpperCase() + value.slice(1),
+  hex: colors.base,
 }));
-
 export function SchoolIdentitySettings() {
   const schoolIdentity = useAppStore((s) => s.schoolIdentity);
   const updateSchoolIdentity = useAppStore((s) => s.updateSchoolIdentity);
   const resetSchoolIdentity = useAppStore((s) => s.resetSchoolIdentity);
-
   // Local draft so changes can be saved/cancelled as a unit.
   const [draft, setDraft] = React.useState<SchoolIdentity>(schoolIdentity);
   const [errors, setErrors] = React.useState<Record<string, string>>({});
   const [busy, setBusy] = React.useState<"logo" | "hero" | null>(null);
   const dirty = JSON.stringify(draft) !== JSON.stringify(schoolIdentity);
-
   React.useEffect(() => {
     setDraft(schoolIdentity);
   }, [schoolIdentity]);
-
   const set = <K extends keyof SchoolIdentity>(k: K, v: SchoolIdentity[K]) => {
     setDraft((d) => ({ ...d, [k]: v }));
     setErrors((p) => ({ ...p, [k]: "" }));
   };
-
   const validate = () => {
     const next: Record<string, string> = {};
     if (!draft.name.trim()) next.name = "School name is required.";
@@ -97,8 +94,7 @@ export function SchoolIdentitySettings() {
     setErrors(next);
     return Object.keys(next).length === 0;
   };
-
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!validate()) {
       toast.error("Please fix the highlighted fields.");
       return;
@@ -115,19 +111,28 @@ export function SchoolIdentitySettings() {
       accentColor: draft.accentColor,
       heroImage: draft.heroImage,
       visibleCards: draft.visibleCards,
+      journalCadence: draft.journalCadence ?? "weekly",
     });
+    try {
+      await flushChanges();
+    } catch {
+      return;
+    }
     toast.success("School identity saved", {
       description: "Students and supervisors will see the new branding.",
     });
   };
-
-  const handleReset = () => {
+  const handleReset = async () => {
     resetSchoolIdentity();
+    try {
+      await flushChanges();
+    } catch {
+      return;
+    }
     toast.success("Reset to Practo default", {
       description: "All branding has been cleared.",
     });
   };
-
   const handleLogoUpload = async (file: File) => {
     setBusy("logo");
     try {
@@ -150,7 +155,6 @@ export function SchoolIdentitySettings() {
       setBusy(null);
     }
   };
-
   const handleHeroUpload = async (file: File) => {
     setBusy("hero");
     try {
@@ -172,9 +176,7 @@ export function SchoolIdentitySettings() {
       setBusy(null);
     }
   };
-
   const themeColors = resolveSchoolTheme(draft);
-
   return (
     <div>
       <PageHeader
@@ -257,7 +259,6 @@ export function SchoolIdentitySettings() {
               {/* Preview */}
               <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-border bg-muted/30">
                 {draft.logoDataUrl ? (
-                   
                   <img
                     src={draft.logoDataUrl}
                     alt="School logo preview"
@@ -296,9 +297,12 @@ export function SchoolIdentitySettings() {
             description="Secondary school colors for actions, selected navigation and charts. Main surfaces stay white or charcoal."
             contentClassName="p-4"
           >
-            <div className="school-theme-scope space-y-3" style={schoolThemeCssVars(draft) as React.CSSProperties}>
+            <div
+              className="school-theme-scope space-y-3"
+              style={schoolThemeCssVars(draft) as React.CSSProperties}
+            >
               {/* Preset grid — responsive: 1 col on mobile, 2 on sm, 3 on lg.
-                  Descriptions wrap with line-clamp-2 so they never overflow. */}
+            Descriptions wrap with line-clamp-2 so they never overflow. */}
               <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
                 {SCHOOL_THEME_PRESETS.map((preset) => {
                   const active = draft.themePreset === preset.key;
@@ -307,12 +311,14 @@ export function SchoolIdentitySettings() {
                       key={preset.key}
                       type="button"
                       aria-pressed={active}
-                      onClick={() => set("themePreset", preset.key as SchoolThemePreset)}
+                      onClick={() =>
+                        set("themePreset", preset.key as SchoolThemePreset)
+                      }
                       className={cn(
                         "group relative flex flex-col items-start gap-1.5 rounded-lg border p-2.5 text-left transition-all",
                         active
                           ? "border-primary ring-1 ring-primary/30 bg-primary/5"
-                          : "border-border hover:border-border/80 hover:bg-muted/30"
+                          : "border-border hover:border-border/80 hover:bg-muted/30",
                       )}
                     >
                       {/* Color swatches */}
@@ -356,7 +362,7 @@ export function SchoolIdentitySettings() {
                     "group relative flex flex-col items-start gap-1.5 rounded-lg border p-2.5 text-left transition-all",
                     draft.themePreset === "custom"
                       ? "border-primary ring-1 ring-primary/30 bg-primary/5"
-                      : "border-border hover:border-border/80 hover:bg-muted/30"
+                      : "border-border hover:border-border/80 hover:bg-muted/30",
                   )}
                 >
                   <div className="flex w-full items-center gap-1">
@@ -368,7 +374,9 @@ export function SchoolIdentitySettings() {
                     )}
                   </div>
                   <div className="min-w-0 w-full">
-                    <p className="text-[13px] font-semibold leading-tight text-foreground">Custom</p>
+                    <p className="text-[13px] font-semibold leading-tight text-foreground">
+                      Custom
+                    </p>
                     <p className="line-clamp-2 break-words text-[11px] leading-snug text-muted-foreground">
                       Pick your own colors
                     </p>
@@ -444,7 +452,7 @@ export function SchoolIdentitySettings() {
                       "group flex flex-col items-center gap-1.5 rounded-lg border p-2 transition-all",
                       active
                         ? "border-primary ring-1 ring-primary/30 bg-primary/5"
-                        : "border-border hover:border-border/80 hover:bg-muted/30"
+                        : "border-border hover:border-border/80 hover:bg-muted/30",
                     )}
                   >
                     <span
@@ -453,17 +461,26 @@ export function SchoolIdentitySettings() {
                     >
                       {active && (
                         <span className="absolute inset-0 flex items-center justify-center">
-                          <Check className="h-4 w-4" style={{ color: contrastingText(sw.hex) }} strokeWidth={3} />
+                          <Check
+                            className="h-4 w-4"
+                            style={{ color: contrastingText(sw.hex) }}
+                            strokeWidth={3}
+                          />
                         </span>
                       )}
                     </span>
-                    <span className="text-[11px] font-medium text-foreground">{sw.label}</span>
+                    <span className="text-[11px] font-medium text-foreground">
+                      {sw.label}
+                    </span>
                   </button>
                 );
               })}
             </div>
             <p className="mt-2 text-xs text-muted-foreground">
-              Current: <span className="font-semibold text-foreground capitalize">{draft.accentColor ?? "terracotta"}</span>
+              Current:{" "}
+              <span className="font-semibold text-foreground capitalize">
+                {draft.accentColor ?? "terracotta"}
+              </span>
             </p>
           </SectionCard>
 
@@ -498,7 +515,9 @@ export function SchoolIdentitySettings() {
                 ) : (
                   <div className="flex h-full w-full flex-col items-center justify-center gap-1.5 text-muted-foreground">
                     <ImageIcon className="h-8 w-8 opacity-40" />
-                    <p className="text-xs">No hero image — gradient fallback will be used</p>
+                    <p className="text-xs">
+                      No hero image — gradient fallback will be used
+                    </p>
                   </div>
                 )}
               </div>
@@ -508,7 +527,9 @@ export function SchoolIdentitySettings() {
                   accept="image/png,image/jpeg"
                   onFile={handleHeroUpload}
                   busy={busy === "hero"}
-                  label={draft.heroImage ? "Replace hero image" : "Upload hero image"}
+                  label={
+                    draft.heroImage ? "Replace hero image" : "Upload hero image"
+                  }
                   hint="PNG or JPG, 21:9 or wider preferred. Compressed to ≤ 200KB."
                 />
                 {draft.heroImage && (
@@ -606,10 +627,42 @@ export function SchoolIdentitySettings() {
         </div>
       </div>
 
+      <SectionCard
+        title="Journal schedule"
+        description="Set the reporting frequency for new journal entries. Existing entries keep their original period."
+      >
+        <div className="px-4 pb-4">
+          <Label htmlFor="journal-cadence">Frequency</Label>
+          <select
+            id="journal-cadence"
+            className="mt-2 min-h-11 w-full rounded-lg border border-input bg-background px-3 text-sm sm:max-w-sm"
+            value={draft.journalCadence ?? "weekly"}
+            onChange={(event) =>
+              set(
+                "journalCadence",
+                event.target.value as SchoolIdentity["journalCadence"],
+              )
+            }
+          >
+            <option value="weekly">Weekly — Monday to Sunday</option>
+            <option value="twice-weekly">
+              Twice a week — Monday to Wednesday / Thursday to Sunday
+            </option>
+            <option value="daily">Daily</option>
+          </select>
+          <p className="mt-2 text-xs text-muted-foreground">
+            Periods use Philippine time. Journal hours come from completed
+            attendance.
+          </p>
+        </div>
+      </SectionCard>
       <ActionBar>
         <AlertDialog>
           <AlertDialogTrigger asChild>
-            <Button variant="outline" className="mr-auto text-destructive hover:text-destructive">
+            <Button
+              variant="outline"
+              className="mr-auto text-destructive hover:text-destructive"
+            >
               <RotateCcw className="h-4 w-4" />
               Reset to Practo default
             </Button>
@@ -633,7 +686,14 @@ export function SchoolIdentitySettings() {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
-        <Button variant="outline" onClick={() => { setDraft(schoolIdentity); setErrors({}); }} disabled={!dirty}>
+        <Button
+          variant="outline"
+          onClick={() => {
+            setDraft(schoolIdentity);
+            setErrors({});
+          }}
+          disabled={!dirty}
+        >
           Discard changes
         </Button>
         <Button onClick={handleSave} disabled={!dirty}>
@@ -643,7 +703,6 @@ export function SchoolIdentitySettings() {
     </div>
   );
 }
-
 // ============================================================
 // Upload button — drag-drop + click, single file
 // ============================================================
@@ -662,14 +721,12 @@ function UploadButton({
 }) {
   const inputRef = React.useRef<HTMLInputElement>(null);
   const [dragOver, setDragOver] = React.useState(false);
-
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     setDragOver(false);
     const f = e.dataTransfer.files?.[0];
     if (f) onFile(f);
   };
-
   return (
     <div>
       <div
@@ -684,7 +741,7 @@ function UploadButton({
           "flex cursor-pointer items-center gap-2 rounded-md border border-dashed px-3 py-2 text-sm transition-colors",
           dragOver
             ? "border-primary bg-primary/5"
-            : "border-border hover:border-primary/50 hover:bg-muted/30"
+            : "border-border hover:border-primary/50 hover:bg-muted/30",
         )}
       >
         {busy ? (
@@ -692,7 +749,9 @@ function UploadButton({
         ) : (
           <Upload className="h-4 w-4 text-muted-foreground" />
         )}
-        <span className="font-medium text-foreground">{busy ? "Processing…" : label}</span>
+        <span className="font-medium text-foreground">
+          {busy ? "Processing…" : label}
+        </span>
         <input
           ref={inputRef}
           type="file"
@@ -709,7 +768,6 @@ function UploadButton({
     </div>
   );
 }
-
 // ============================================================
 // Color picker — hex input + native color swatch
 // ============================================================
@@ -747,7 +805,6 @@ function ColorPicker({
     </div>
   );
 }
-
 // ============================================================
 // Visible cards toggle — icon + label + description + switch
 // ============================================================
@@ -777,7 +834,6 @@ function VisibleCardsToggle({
     </div>
   );
 }
-
 // ============================================================
 // Field wrapper
 // ============================================================
@@ -801,7 +857,9 @@ function Field({
         {required && <span className="text-destructive">*</span>}
       </Label>
       {children}
-      {hint && !error && <p className="mt-1 text-xs text-muted-foreground">{hint}</p>}
+      {hint && !error && (
+        <p className="mt-1 text-xs text-muted-foreground">{hint}</p>
+      )}
       {error && (
         <p className="mt-1 flex items-center gap-1 text-xs text-destructive">
           <AlertCircle className="h-3 w-3" />
@@ -811,48 +869,118 @@ function Field({
     </div>
   );
 }
-
 // ============================================================
 // Live preview — brand panel + sidebar mockup
 // ============================================================
 function LivePreview({ identity }: { identity: SchoolIdentity }) {
   return (
-    <div data-testid="school-theme-preview" className="school-theme-scope space-y-3" style={schoolThemeCssVars(identity) as React.CSSProperties}>
+    <div
+      data-testid="school-theme-preview"
+      className="school-theme-scope space-y-3"
+      style={schoolThemeCssVars(identity) as React.CSSProperties}
+    >
       <div className="rounded-md border border-border bg-card p-3 text-card-foreground">
         <div className="flex items-center gap-2">
           <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-secondary text-secondary-foreground">
             {identity.logoDataUrl ? (
-              <img src={identity.logoDataUrl} alt="" className="h-full w-full object-contain p-0.5" />
-            ) : <School className="h-4 w-4" />}
+              <img
+                src={identity.logoDataUrl}
+                alt=""
+                className="h-full w-full object-contain p-0.5"
+              />
+            ) : (
+              <School className="h-4 w-4" />
+            )}
           </div>
           <div className="min-w-0">
-            <p className="truncate text-xs font-bold">{identity.name || "School Name"}</p>
-            <p className="truncate text-[10px] text-muted-foreground">{identity.tagline || "Tagline"}</p>
+            <p className="truncate text-xs font-bold">
+              {identity.name || "School Name"}
+            </p>
+            <p className="truncate text-[10px] text-muted-foreground">
+              {identity.tagline || "Tagline"}
+            </p>
           </div>
         </div>
-        {identity.address && <p className="mt-2 flex items-center gap-1 text-[10px] text-muted-foreground"><MapPin className="h-3 w-3" />{identity.address}</p>}
+        {identity.address && (
+          <p className="mt-2 flex items-center gap-1 text-[10px] text-muted-foreground">
+            <MapPin className="h-3 w-3" />
+            {identity.address}
+          </p>
+        )}
       </div>
-      <div data-testid="preview-sidebar" className="overflow-hidden rounded-md border border-sidebar-border bg-sidebar text-sidebar-foreground">
+      <div
+        data-testid="preview-sidebar"
+        className="overflow-hidden rounded-md border border-sidebar-border bg-sidebar text-sidebar-foreground"
+      >
         <div className="flex items-center gap-2 border-b border-sidebar-border px-3 py-2 text-xs font-bold">
-          <GraduationCap className="h-4 w-4 text-sidebar-primary" />{identity.shortName || "School"}
+          <GraduationCap className="h-4 w-4 text-sidebar-primary" />
+          {identity.shortName || "School"}
         </div>
         <div className="space-y-1 p-2">
           {["Dashboard", "Students", "Reports"].map((item, i) => (
-            <div key={item} className={cn("flex items-center gap-2 rounded px-2 py-2 text-xs", i === 0 ? "bg-sidebar-accent font-semibold text-sidebar-accent-foreground" : "text-sidebar-foreground/80")}>
-              <span className={cn("h-1.5 w-1.5 rounded-full", i === 0 ? "bg-sidebar-primary" : "bg-current")} />{item}
+            <div
+              key={item}
+              className={cn(
+                "flex items-center gap-2 rounded px-2 py-2 text-xs",
+                i === 0
+                  ? "bg-sidebar-accent font-semibold text-sidebar-accent-foreground"
+                  : "text-sidebar-foreground/80",
+              )}
+            >
+              <span
+                className={cn(
+                  "h-1.5 w-1.5 rounded-full",
+                  i === 0 ? "bg-sidebar-primary" : "bg-current",
+                )}
+              />
+              {item}
             </div>
           ))}
         </div>
       </div>
       <div className="flex flex-wrap gap-2">
-        <Button type="button" size="sm" tabIndex={-1} aria-disabled="true" data-testid="preview-primary">Primary action</Button>
-        <Button type="button" size="sm" variant="secondary" tabIndex={-1} aria-disabled="true">Secondary</Button>
-        <Button type="button" size="sm" variant="outline" tabIndex={-1} aria-disabled="true">Outline</Button>
+        <Button
+          type="button"
+          size="sm"
+          tabIndex={-1}
+          aria-disabled="true"
+          data-testid="preview-primary"
+        >
+          Primary action
+        </Button>
+        <Button
+          type="button"
+          size="sm"
+          variant="secondary"
+          tabIndex={-1}
+          aria-disabled="true"
+        >
+          Secondary
+        </Button>
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          tabIndex={-1}
+          aria-disabled="true"
+        >
+          Outline
+        </Button>
       </div>
       <div className="rounded-md border border-border bg-card p-3">
-        <div className="flex items-center justify-between text-xs"><span>Practicum progress</span><span className="font-semibold">65%</span></div>
-        <div className="mt-2 h-2 overflow-hidden rounded-full bg-muted"><div data-testid="preview-accent" className="h-full w-[65%] rounded-full bg-[var(--brand-accent)]" /></div>
-        <p className="mt-2 text-[10px] text-muted-foreground">School color: actions and selection. Accent: dashboard highlights.</p>
+        <div className="flex items-center justify-between text-xs">
+          <span>Practicum progress</span>
+          <span className="font-semibold">65%</span>
+        </div>
+        <div className="mt-2 h-2 overflow-hidden rounded-full bg-muted">
+          <div
+            data-testid="preview-accent"
+            className="h-full w-[65%] rounded-full bg-[var(--brand-accent)]"
+          />
+        </div>
+        <p className="mt-2 text-[10px] text-muted-foreground">
+          School color: actions and selection. Accent: dashboard highlights.
+        </p>
       </div>
     </div>
   );

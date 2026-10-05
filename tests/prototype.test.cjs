@@ -7,7 +7,8 @@ global.localStorage = {
   removeItem: (k) => storage.delete(k),
 };
 const { load } = require("./load-ts.cjs");
-const { useAppStore: store } = load("src/store/use-app-store.ts");
+const { createPortalStore } = load("src/domain/portal/engine.ts");
+const store = createPortalStore();
 const { accountUsers, validateTimeEntry, responseErrors } = load(
   "src/lib/prototype.ts",
 );
@@ -98,35 +99,18 @@ test("manual attendance rejects invalid, reversed, future, long and overlapping 
   );
 });
 
-test("disabled demo users cannot sign in or use previews; reset replaces credentials", () => {
+test("disabled domain previews and reset credentials follow account lifecycle", () => {
   const user = accountUsers(state()).find((u) => u.studentId === "s1");
   state().login("coordinator");
   state().setAccountStatus("student", "s1", "disabled");
-  assert.equal(
-    state().loginByCredentials(user.email, user.idNumber),
-    "inactive",
-  );
   state().logout();
   state().loginAs(user.id);
   assert.equal(state().currentUser, null);
-  const reset = state().resetAccountCredentials("student", "s1");
-  assert.equal(state().loginByCredentials(user.email, user.idNumber), "bad-pw");
-  assert.equal(
-    state().loginByCredentials(user.email, reset.tempPassword),
-    "ok",
-  );
-  assert.equal(state().currentUser.mustChangePassword, true);
-  assert.equal(
-    state().completeFirstLoginPasswordChange(reset.tempPassword, "NewPassword7")
-      .ok,
-    true,
-  );
-  state().logout();
-  assert.equal(
-    state().loginByCredentials(user.email, "newpassword7"),
-    "bad-pw",
-  );
-  assert.equal(state().loginByCredentials(user.email, "NewPassword7"), "ok");
+  const result = state().resetAccountCredentials("student", "s1");
+  assert.ok(result.tempPassword.startsWith("Tmp-"));
+  const profile = state().students.find((s) => s.id === "s1");
+  assert.equal(profile.accountStatus, "invited");
+  assert.equal(profile.mustChangePassword, true);
 });
 
 test("new accounts get school identity and global email uniqueness", () => {
@@ -233,24 +217,20 @@ test("specific recipients, required responses, template snapshots, locked review
   );
 });
 
-test("browser persistence restores edits and reconciles the current user", async () => {
-  state().login("student");
+test("domain stores are isolated and snapshots restore data without browser storage", () => {
+  const other = createPortalStore();
   const id = state().createJournal({
     studentId: "s1",
     date: "2026-01-02",
     hours: 1,
-    tasks: "Persisted",
-    learnings: "Refresh",
+    tasks: "Stored",
+    learnings: "Isolated",
     submit: false,
   });
-  const snapshot = storage.get("practo:prototype:v1");
-  assert.ok(snapshot);
-  state().resetPrototype();
-  storage.set("practo:prototype:v1", snapshot);
-  await state().hydratePrototype();
-  assert.ok(state().journals.some((j) => j.id === id));
-  assert.equal(state().currentUser.role, "student");
-  assert.equal(state().hasHydrated, true);
+  assert.ok(!other.getState().journals.some((j) => j.id === id));
+  const { snapshot } = load("src/domain/portal/snapshot.ts");
+  other.setState(snapshot(state()));
+  assert.ok(other.getState().journals.some((j) => j.id === id));
 });
 
 test("tool links validate HTTPS and exact hosts; CSV values escape formulas", () => {
@@ -267,48 +247,107 @@ test("tool links validate HTTPS and exact hosts; CSV values escape formulas", ()
   assert.equal(escapeCell(-2), "-2");
 });
 
-test('evaluation ownership and submitted immutability hold for the actual store', () => {
-  state().login('supervisor');
-  const input = { studentId: 's1', supervisorId: 'sup1', term: '2026-2027', qualityOfWork: 5, jobKnowledge: 4, dependability: 4, strengths: 'Reliable', weaknesses: 'Practice', recommendations: 'Continue', submit: true };
+test("evaluation ownership and submitted immutability hold for the actual store", () => {
+  state().login("supervisor");
+  const input = {
+    studentId: "s1",
+    supervisorId: "sup1",
+    term: "2026-2027",
+    qualityOfWork: 5,
+    jobKnowledge: 4,
+    dependability: 4,
+    strengths: "Reliable",
+    weaknesses: "Practice",
+    recommendations: "Continue",
+    submit: true,
+  };
   const id = state().saveEvaluation(input);
-  assert.equal(state().evaluations.find((e) => e.id === id).status, 'submitted');
-  state().saveEvaluation({ ...input, id, strengths: 'Changed' });
-  assert.equal(state().evaluations.find((e) => e.id === id).strengths, 'Reliable');
-  const other = state().students.find((s) => s.supervisorId && s.supervisorId !== 'sup1');
+  assert.equal(
+    state().evaluations.find((e) => e.id === id).status,
+    "submitted",
+  );
+  state().saveEvaluation({ ...input, id, strengths: "Changed" });
+  assert.equal(
+    state().evaluations.find((e) => e.id === id).strengths,
+    "Reliable",
+  );
+  const other = state().students.find(
+    (s) => s.supervisorId && s.supervisorId !== "sup1",
+  );
   const before = state().evaluations.length;
   state().saveEvaluation({ ...input, studentId: other.id });
   assert.equal(state().evaluations.length, before);
 });
 
-test('responses require assignments and supervisor targets stay within the intern roster', () => {
-  const form = state().formDocuments.find((f) => f.status === 'published');
-  assert.equal(state().startFormResponse({ formId: form.id }), '');
-  state().login('supervisor');
-  const supervisorForm = state().formDocuments.find((f) => state().formAssignments.some((a) => a.formId === f.id && a.target === 'all_supervisors') && f.status === 'published');
-  const other = state().students.find((s) => s.supervisorId && s.supervisorId !== 'sup1');
-  assert.equal(state().startFormResponse({ formId: supervisorForm.id, targetStudentId: other.id }), '');
+test("responses require assignments and supervisor targets stay within the intern roster", () => {
+  const form = state().formDocuments.find((f) => f.status === "published");
+  assert.equal(state().startFormResponse({ formId: form.id }), "");
+  state().login("supervisor");
+  const supervisorForm = state().formDocuments.find(
+    (f) =>
+      state().formAssignments.some(
+        (a) => a.formId === f.id && a.target === "all_supervisors",
+      ) && f.status === "published",
+  );
+  const other = state().students.find(
+    (s) => s.supervisorId && s.supervisorId !== "sup1",
+  );
+  assert.equal(
+    state().startFormResponse({
+      formId: supervisorForm.id,
+      targetStudentId: other.id,
+    }),
+    "",
+  );
   store.setState({ formAssignments: [] });
-  assert.equal(state().startFormResponse({ formId: supervisorForm.id }), '');
+  assert.equal(state().startFormResponse({ formId: supervisorForm.id }), "");
 });
 
-test('provisioning cannot assign a full or mismatched supervisor', () => {
-  state().login('coordinator');
+test("provisioning cannot assign a full or mismatched supervisor", () => {
+  state().login("coordinator");
   const sup = state().supervisors[0];
-  store.setState({ supervisors: state().supervisors.map((s) => s.id === sup.id ? { ...s, capacity: 0 } : s) });
-  const added = state().createStudent({ name: 'Capacity Check', email: 'capacity@example.test', studentNumber: 'CAP-1', course: 'BSIT', requiredHours: 300, companyId: sup.companyId, supervisorId: sup.id });
-  assert.equal(state().students.find((s) => s.id === added.studentId).supervisorId, null);
+  store.setState({
+    supervisors: state().supervisors.map((s) =>
+      s.id === sup.id ? { ...s, capacity: 0 } : s,
+    ),
+  });
+  const added = state().createStudent({
+    name: "Capacity Check",
+    email: "capacity@example.test",
+    studentNumber: "CAP-1",
+    course: "BSIT",
+    requiredHours: 300,
+    companyId: sup.companyId,
+    supervisorId: sup.id,
+  });
+  assert.equal(
+    state().students.find((s) => s.id === added.studentId).supervisorId,
+    null,
+  );
 });
 
-const { schoolThemeCssVars, resolveSchoolTheme, SCHOOL_THEME_PRESETS, colorContrast } = load("src/lib/school-themes.ts");
+const {
+  schoolThemeCssVars,
+  resolveSchoolTheme,
+  SCHOOL_THEME_PRESETS,
+  colorContrast,
+} = load("src/lib/school-themes.ts");
 
 test("every preset and extreme custom palette keeps action text and selected text readable in both modes", () => {
-  const palettes = [...SCHOOL_THEME_PRESETS.map((p) => ({ themePreset: p.key })),
-    ...["#ffffff", "#000000", "#ffff00"].map((color) => ({ themePreset: "custom", customColors: { primary: color, deep: color, light: color } }))];
+  const palettes = [
+    ...SCHOOL_THEME_PRESETS.map((p) => ({ themePreset: p.key })),
+    ...["#ffffff", "#000000", "#ffff00"].map((color) => ({
+      themePreset: "custom",
+      customColors: { primary: color, deep: color, light: color },
+    })),
+  ];
   for (const identity of palettes) {
     const vars = schoolThemeCssVars({ ...identity, accentColor: "sand" });
     for (const suffix of ["", "-dark"]) {
       const primary = vars[`--school-primary${suffix}`];
-      assert.ok(colorContrast(primary, vars[`--school-on-primary${suffix}`]) >= 4.5);
+      assert.ok(
+        colorContrast(primary, vars[`--school-on-primary${suffix}`]) >= 4.5,
+      );
       assert.ok(colorContrast(primary, vars[`--school-soft${suffix}`]) >= 4.5);
     }
   }
@@ -320,5 +359,41 @@ test("theme rejects malformed custom colors and keeps school palette independent
   const b = schoolThemeCssVars({ ...identity, accentColor: "sage" });
   assert.equal(a["--school-primary"], b["--school-primary"]);
   assert.notEqual(a["--brand-accent"], b["--brand-accent"]);
-  assert.deepEqual(resolveSchoolTheme({ themePreset: "custom", customColors: { primary: "#fff", deep: "red", light: "#ffffff" } }), SCHOOL_THEME_PRESETS[0].colors);
+  assert.deepEqual(
+    resolveSchoolTheme({
+      themePreset: "custom",
+      customColors: { primary: "#fff", deep: "red", light: "#ffffff" },
+    }),
+    SCHOOL_THEME_PRESETS[0].colors,
+  );
+});
+
+test("journal cadence changes skip overlapping submitted periods and include overnight carryover", () => {
+  const { nextJournalDate, journalHours } = load(
+    "src/domain/journal-period.ts",
+  );
+  const logs = [
+    {
+      userId: "student",
+      role: "student",
+      clockInAt: "2026-10-04T22:00:00+08:00",
+      clockOutAt: "2026-10-05T02:00:00+08:00",
+    },
+  ];
+  const journals = [
+    {
+      studentId: "student",
+      date: "2026-10-01",
+      cadence: "weekly",
+      status: "approved",
+    },
+  ];
+  assert.equal(
+    nextJournalDate(logs, journals, "student", "2026-10-06", "twice-weekly"),
+    "2026-10-05",
+  );
+  assert.equal(
+    journalHours(logs, "student", "2026-10-05", "twice-weekly").hours,
+    2,
+  );
 });

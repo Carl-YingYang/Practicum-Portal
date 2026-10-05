@@ -1,85 +1,53 @@
-# Practo — Practicum Portal prototype
+# Practo — connected testing platform
 
-An interactive practicum workspace for students, supervisors, and coordinators, built with Next.js 16, React 19, TypeScript, Tailwind 4, shadcn/ui, and Zustand.
+Practicum management for students, supervisors and coordinators. The `practo/testing-platform` branch now uses one Next.js application with a seeded SQLite database, server sessions and authorized APIs. White is the default surface; charcoal is optional, with school colors used as secondary accents.
 
-The `practo/testing-platform` branch starts from `feature/sandbox-prototype` at `09a4245b2941952e29f6ee10653176717dbc974e`. It adds a white-default editorial interface, optional charcoal dark mode, browser persistence, and workflow fixes. See [the complete improvement log](docs/TESTING_PLATFORM.md), [the verification guide](docs/VERIFICATION.md), and [the changed-file inventory](docs/CHANGE_INVENTORY.md).
+This is a testing prototype. Use fictional data. Demo access and shared reset are explicitly gated by server environment flags.
 
 ## Run locally
 
-Use Node 24 and npm. This branch's `package-lock.json` records the versions used for verification. The existing Bun lockfile belongs to the earlier baseline; use npm for reproducing this branch.
+Node.js 22+ and npm are recommended. Install and start from this branch:
 
 ```bash
-git clone --branch practo/testing-platform https://github.com/Carl-YingYang/Practicum-Portal.git
-cd Practicum-Portal
+git switch practo/testing-platform
+git pull --ff-only origin practo/testing-platform
 npm ci
 cp .env.example .env
+npm run db:setup
 npm run dev
 ```
 
-Open http://localhost:3000. For production compilation:
+Open http://localhost:3000. Expand **Explore the prototype** to try one sample account per role. Seed setup creates a private `.seed-credentials.json` file for regular password sign-in; it is git ignored and must never be committed or uploaded. Seeding preserves existing data. `npm run db:reset:test` explicitly resets shared sample data when `APP_ENV=testing`.
 
-```bash
-npm run build
-npm start
-```
+No separate Kimai, HR, forms server, API key, or browser extension is needed for attendance, journals, evaluations, and built-in forms. Optional external tool links remain ordinary links.
 
-Google Fonts downloads are unnecessary: the UI uses system fonts. If the environment restricts network interface discovery, start with an explicit host: `npm start -- --hostname 127.0.0.1`.
+## What changed
 
-## Explore the roles
+- Shared server persistence, hashed passwords, HTTP-only sessions, school/role ownership and retry-safe commands.
+- Fictional test accounts, recent attendance, journals in different states, forms, and an isolated school for permission tests.
+- All three login hero PNGs, subdued backgrounds, mobile-first sign-in and clear supervisor account creation.
+- Compact Drafting Room with account/placement details, attendance-derived period hours and cumulative progress.
+- Daily, weekly or twice-weekly journal preferences under **School Settings → Journal schedule**. Old entries retain their cadence.
+- Lazy workspace screens, PDF libraries and journal Word exports, static loading placeholders and real save/error feedback.
+- Separate domain actions, client transport, server services, route handlers and shared form fields.
 
-Expand **Explore the prototype** on the sign-in screen. Demo previews bypass credentials and open the selected local role; they still respect disabled records and the password-change gate. The account menu also lets you switch demo roles.
+See [the implementation details](docs/CONNECTED_PLATFORM.md), [file inventory](docs/CHANGE_INVENTORY.md), and [verification](docs/VERIFICATION.md). Earlier UI improvements remain recorded in [the historical changelog](docs/TESTING_PLATFORM.md).
 
-Use **Explore the prototype** for the seeded demo roles. The README does not publish account emails or initial passwords.
-
-Newly provisioned or reset accounts use the generated temporary password and must choose a personal password at first sign-in. Personal passwords are case-sensitive. Credentials shown in provisioning exports are temporary credentials for invited accounts.
-
-## What persists
-
-Accounts, companies, students, supervisors, coordinators, journals, evaluations, attendance, activity, forms, assignments, responses, and the local session are stored in `practo:prototype:v1` in browser localStorage. Branding, schools, external tool links, and billing settings use their existing separate localStorage keys.
-
-**Reset demo data**, available in the profile menu and desktop footer, asks for confirmation, restores the domain fixtures, and signs you out. It keeps branding, external tool settings, and billing configuration. Refresh opens your role's dashboard; view history and in-progress screen selection are intentionally temporary. Draft journals, evaluation edits, and form responses save as they change.
-
-Use sample data and sample passwords: accounts and credentials are stored locally without server authentication or password hashing. Browser data does not sync across devices or between tabs in real time.
-
-## Hours and dates
-
-Completed attendance is the sole source of credited practicum hours. Approving a journal records review status and feedback; it does not add attendance hours. Deleting attendance recomputes the student's total. An active session survives refresh, but only a completed session contributes to the credited total.
-
-Manual attendance rejects invalid dates, reversed intervals, future completed entries, sessions longer than 24 hours, and overlapping sessions. Manual time inputs and common date/time formatting use Philippine time, `Asia/Manila`.
-
-New default cohort dates follow August 1 to July 31 of the current academic year. The coordinator can configure those dates in External Tools. Historical seed records keep their original dates and terms. Aggregate reports explicitly say **All terms** rather than implying that historical data belongs to the current term.
-
-## External tools and APIs
-
-Google Drive, Docs, Forms, and Jibble settings are optional links. They are not OAuth connections or background sync. Local journal edits are not written to Google Docs. Built-in journals, attendance, evaluations, and custom forms work without those services.
-
-The `/api/students`, `/api/supervisors`, `/api/forms`, and timesheet routes remain read-only fixture APIs. They do not read browser changes and do not form a production backend. The Prisma SQLite `User`/`Post` schema is optional scaffolding and is not the portal domain database. To exercise that scaffold:
-
-```bash
-npm run db:generate
-npm run db:push
-```
-
-`.env.example` matches the SQLite datasource (`DATABASE_URL="file:./dev.db"`). The database path is relative to the Prisma schema directory. Production deployment needs a real domain schema, server sessions and authorization, password hashing, persistence, uploads, integrations, audit records, and backup policy; see the improvement log's follow-up list.
-
-## Verification
+## Verify
 
 ```bash
 npm run typecheck
 npm test
 npm run lint
 npm run build
-npx playwright install chromium
+npm run test:integration
 npm run test:browser
 ```
 
-The browser smoke test starts its own local production server on port 3101, so build first. It uses an isolated browser context and sample data. It checks all three dashboards, themes, attendance and journal persistence, a real custom-form PDF download, and mobile drawer navigation. It refreshes the screenshots in `docs/screenshots/`.
+HTTP and browser tests create temporary databases and private in-memory credentials, run their own production servers, and clean up afterward. They do not reset your development database. Browser checks update `docs/screenshots/`.
 
-Lint retains inherited controlled editor/modal `set-state-in-effect` findings as warnings; this branch does not claim zero lint debt. See [verification details](docs/VERIFICATION.md).
+## Hosting
 
+Deploy this single Next.js app on a Node host with a **persistent writable volume** for SQLite. Set an absolute `DATABASE_URL`, run `npm run db:setup`, then `npm run build` and `npm run start`. Set `APP_ORIGIN` to the public HTTPS origin when behind a reverse proxy. Production sessions use secure cookies; `COOKIE_SECURE=false` is only for local HTTP testing.
 
-## School colors and open-source options
-
-Main surfaces stay white in light mode and charcoal in dark mode. School Settings applies the school palette to actions, navigation selections, focus and charts; the separate editorial accent controls dashboard highlights. Its Live Preview shows unsaved colors, and Save applies them across the portal.
-
-See [the secondary color update](docs/TESTING_PLATFORM.md#secondary-color-correction--october-5-2026), [verification](docs/VERIFICATION.md), and the [open-source tool review](docs/OPEN_SOURCE_TOOLS.md) for Kimai, Solidtime, Frappe HR, HeyForm, Tiptap and Etherpad. These are researched candidates; the prototype has no new external service connection.
+Keep `APP_ENV=testing` and `ENABLE_DEMO_LOGIN=true` only for an intentionally disposable demonstration. For real accounts, use `APP_ENV=production` and disable demo login. Read the remaining deployment work in [CONNECTED_PLATFORM.md](docs/CONNECTED_PLATFORM.md#remaining-work). Ephemeral serverless filesystems need an external persistent database; this SQLite prototype does not provide persistence there.

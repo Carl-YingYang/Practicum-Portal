@@ -1,15 +1,18 @@
 "use client";
 import { assignmentAppliesTo } from "@/lib/selectors";
 import { configuredTerm } from "@/lib/prototype";
-
 import * as React from "react";
+import { flushChanges } from "@/client/portal-client";
 import { responseErrors } from "@/lib/prototype";
 import { downloadFormPdf } from "@/lib/form-export";
 import { useAppStore } from "@/store/use-app-store";
 import { PageHeader } from "@/components/portal/layout/page-header";
 import { SectionCard } from "@/components/portal/shared/section-card";
 import { EmptyState } from "@/components/portal/shared/empty-state";
-import { FormStatusBadge, SubmissionStatusBadge } from "@/components/portal/shared/badges";
+import {
+  FormStatusBadge,
+  SubmissionStatusBadge,
+} from "@/components/portal/shared/badges";
 import { FormBlockRenderer } from "@/components/portal/shared/form-block-renderer";
 import { Avatar } from "@/components/portal/shared/avatar";
 import { Button } from "@/components/ui/button";
@@ -51,9 +54,7 @@ import {
   getSupervisor,
   submissionFor,
 } from "@/lib/selectors";
-
 type FieldValue = string | Record<string, string>;
-
 /**
  * SupervisorFormWorkspace — the focused form-filling experience.
  * Replaces the old in-memory-only viewer. Now:
@@ -69,7 +70,9 @@ export function SupervisorFormWorkspace({ formId }: { formId?: string }) {
   const navigate = useAppStore((s) => s.navigate);
   const back = useAppStore((s) => s.back);
   const canBack = useAppStore((s) => s.history.length > 0);
-  const liveForm = useAppStore((s) => s.formDocuments.find((d) => d.id === formId));
+  const liveForm = useAppStore((s) =>
+    s.formDocuments.find((d) => d.id === formId),
+  );
   const currentUser = useAppStore((s) => s.currentUser);
   const submissions = useAppStore((s) => s.formSubmissions);
   const toolsConfig = useAppStore((s) => s.toolsConfig);
@@ -80,26 +83,31 @@ export function SupervisorFormWorkspace({ formId }: { formId?: string }) {
   const startFormResponse = useAppStore((s) => s.startFormResponse);
   const saveSubmissionDraft = useAppStore((s) => s.saveSubmissionDraft);
   const submitFormResponse = useAppStore((s) => s.submitFormResponse);
-
   // For evaluation/ojt forms: which intern is the supervisor currently evaluating?
   const myInterns = React.useMemo(() => {
     if (!currentUser?.supervisorId) return [];
     return students
-      .filter((s) => s.supervisorId === currentUser.supervisorId && s.status === "active")
+      .filter(
+        (s) =>
+          s.supervisorId === currentUser.supervisorId && s.status === "active",
+      )
       .sort((a, b) => a.name.localeCompare(b.name));
   }, [students, currentUser]);
-
-  const isStudentTargeted = liveForm?.category === "evaluation" || liveForm?.category === "ojt";
-  const [selectedStudentId, setSelectedStudentId] = React.useState<string | undefined>(
-    isStudentTargeted && myInterns.length > 0 ? myInterns[0].id : undefined
-  );
-
+  const isStudentTargeted =
+    liveForm?.category === "evaluation" || liveForm?.category === "ojt";
+  const [selectedStudentId, setSelectedStudentId] = React.useState<
+    string | undefined
+  >(isStudentTargeted && myInterns.length > 0 ? myInterns[0].id : undefined);
   // current submission for this form (+ selected student)
   const currentSubmission = React.useMemo(() => {
     if (!formId || !currentUser) return undefined;
-    return submissionFor(submissions, formId, currentUser.id, selectedStudentId);
+    return submissionFor(
+      submissions,
+      formId,
+      currentUser.id,
+      selectedStudentId,
+    );
   }, [submissions, formId, currentUser, selectedStudentId]);
-
   // Auto-fill context: resolve the current supervisor + selected student
   // (for evaluation/ojt forms) + their company. info-field blocks use this
   // to auto-populate (Student Name / Company / Supervisor / Term / Date…).
@@ -110,7 +118,9 @@ export function SupervisorFormWorkspace({ formId }: { formId?: string }) {
     const student = selectedStudentId
       ? students.find((st) => st.id === selectedStudentId)
       : undefined;
-    const studentCompany = student ? getCompany(companies, student.companyId) : undefined;
+    const studentCompany = student
+      ? getCompany(companies, student.companyId)
+      : undefined;
     const supervisorCompany = supervisor
       ? getCompany(companies, supervisor.companyId)
       : undefined;
@@ -125,22 +135,28 @@ export function SupervisorFormWorkspace({ formId }: { formId?: string }) {
       supervisorTitle: supervisor?.title,
       term: configuredTerm(toolsConfig),
     });
-  }, [currentUser, supervisors, students, companies, selectedStudentId, toolsConfig]);
-
+  }, [
+    currentUser,
+    supervisors,
+    students,
+    companies,
+    selectedStudentId,
+    toolsConfig,
+  ]);
   // local values mirror the submission's values (so typing feels instant)
   const form = currentSubmission?.formSnapshot ?? liveForm;
   const valuesRef = React.useRef<Record<string, FieldValue>>({});
   const [values, setValues] = React.useState<Record<string, FieldValue>>({});
-  const [saveState, setSaveState] = React.useState<"idle" | "saving" | "saved">("idle");
+  const [saveState, setSaveState] = React.useState<"idle" | "saving" | "saved">(
+    "idle",
+  );
   const saveTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
-
   // sync local values when the submission changes
   React.useEffect(() => {
     valuesRef.current = currentSubmission?.values ?? {};
     setValues(valuesRef.current);
     setSaveState("idle");
   }, [currentSubmission?.id]);
-
   // autosave (debounced) — only if the user has actually started a submission
   function handleValueChange(blockId: string, value: FieldValue) {
     const next = { ...valuesRef.current, [blockId]: value };
@@ -148,12 +164,23 @@ export function SupervisorFormWorkspace({ formId }: { formId?: string }) {
     setValues(next);
     if (!formId || !currentUser) return;
     // ensure a submission exists
-    const subId = currentSubmission?.id ?? startFormResponse({ formId, targetStudentId: selectedStudentId });
-    if (!subId) { toast({ title: "Cannot start this response", description: "Check the assignment and selected intern.", variant: "destructive" }); return; }
+    const subId =
+      currentSubmission?.id ??
+      startFormResponse({ formId, targetStudentId: selectedStudentId });
+    if (!subId) {
+      toast({
+        title: "Cannot start this response",
+        description: "Check the assignment and selected intern.",
+        variant: "destructive",
+      });
+      return;
+    }
     saveSubmissionDraft(subId, next);
-    setSaveState("saved");
+    setSaveState("saving");
+    void flushChanges()
+      .then(() => setSaveState("saved"))
+      .catch(() => setSaveState("idle"));
   }
-
   if (!form) {
     return (
       <div className="space-y-4">
@@ -170,9 +197,15 @@ export function SupervisorFormWorkspace({ formId }: { formId?: string }) {
       </div>
     );
   }
-
-  const hasAssignment = currentUser && assignments.some((a) => a.formId === formId && assignmentAppliesTo(a, currentUser));
-  if ((!liveForm || liveForm.status !== "published" || !hasAssignment) && !currentSubmission) {
+  const hasAssignment =
+    currentUser &&
+    assignments.some(
+      (a) => a.formId === formId && assignmentAppliesTo(a, currentUser),
+    );
+  if (
+    (!liveForm || liveForm.status !== "published" || !hasAssignment) &&
+    !currentSubmission
+  ) {
     return (
       <div className="space-y-4">
         <PageHeader title={form.title} showBack={canBack} />
@@ -188,17 +221,18 @@ export function SupervisorFormWorkspace({ formId }: { formId?: string }) {
       </div>
     );
   }
-
-  const publishedDate = form.publishedAt ? format(new Date(form.publishedAt), "MMM d, yyyy 'at' h:mm a") : "";
+  const publishedDate = form.publishedAt
+    ? format(new Date(form.publishedAt), "MMM d, yyyy 'at' h:mm a")
+    : "";
   const blockCount = form.blocks.length;
-  const ratingTables = form.blocks.filter((b) => b.type === "rating-table").length;
+  const ratingTables = form.blocks.filter(
+    (b) => b.type === "rating-table",
+  ).length;
   const status = currentSubmission?.status ?? "not_started";
-
   const isReadOnly =
     status === "submitted" ||
     status === "under_review" ||
     status === "approved";
-
   function handlePrint() {
     window.print();
   }
@@ -212,29 +246,50 @@ export function SupervisorFormWorkspace({ formId }: { formId?: string }) {
     saveSubmissionDraft(currentSubmission.id, {});
     toast({ title: "Responses cleared" });
   }
-  function handleSubmit() {
+  async function handleSubmit() {
     if (!currentSubmission) {
-      toast({ title: "Nothing to submit", description: "Add at least one response first.", variant: "destructive" });
+      toast({
+        title: "Nothing to submit",
+        description: "Add at least one response first.",
+        variant: "destructive",
+      });
       return;
     }
     // save latest values first
     if (!form) return;
     const errors = responseErrors(form, valuesRef.current);
-    if (errors.length) { toast({ title: "Complete the form", description: errors[0], variant: "destructive" }); return; }
+    if (errors.length) {
+      toast({
+        title: "Complete the form",
+        description: errors[0],
+        variant: "destructive",
+      });
+      return;
+    }
     saveSubmissionDraft(currentSubmission.id, valuesRef.current);
     submitFormResponse(currentSubmission.id);
+    try {
+      await flushChanges();
+    } catch {
+      return;
+    }
     toast({
       title: "Form submitted",
-      description: "Your responses have been sent to the coordinator for review.",
+      description:
+        "Your responses have been sent to the coordinator for review.",
     });
   }
-
   return (
     <div className="space-y-3">
       {/* Sticky action bar */}
-      <div className="sticky top-0 z-20 -mx-5 border-b border-border/60 bg-background/95 px-5 py-2 backdrop-blur sm:-mx-6 sm:px-6">
+      <div className="sticky top-0 z-20 -mx-4 border-b border-border/60 bg-background/95 px-4 py-2 backdrop-blur sm:-mx-6 sm:px-6">
         <div className="flex flex-wrap items-center gap-2">
-          <Button variant="ghost" size="sm" onClick={back} className="gap-1 text-muted-foreground hover:text-foreground">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={back}
+            className="gap-1 text-muted-foreground hover:text-foreground"
+          >
             <ChevronLeft className="h-4 w-4" /> Back to forms
           </Button>
           <div className="hidden h-5 w-px bg-border/70 sm:block" />
@@ -243,27 +298,45 @@ export function SupervisorFormWorkspace({ formId }: { formId?: string }) {
             <span className="rounded-full bg-muted/60 px-2 py-0.5 text-[11px] font-medium text-muted-foreground ring-1 ring-inset ring-border/60">
               {FORM_CATEGORY_LABELS[form.category]}
             </span>
-            <span className="text-[11px] text-muted-foreground">v{form.version}</span>
+            <span className="text-[11px] text-muted-foreground">
+              v{form.version}
+            </span>
           </div>
           <div className="ml-auto flex items-center gap-1.5">
             {/* autosave indicator */}
             {status === "in_progress" && (
               <span className="hidden items-center gap-1 text-[11px] text-muted-foreground sm:inline-flex">
                 {saveState === "saving" ? (
-                  <><Save className="h-3 w-3 animate-pulse" /> Saving…</>
+                  <>
+                    <Save className="h-3 w-3 animate-pulse" /> Saving…
+                  </>
                 ) : saveState === "saved" ? (
-                  <><CheckCircle2 className="h-3 w-3 text-emerald-600" /> Saved</>
+                  <>
+                    <CheckCircle2 className="h-3 w-3 text-emerald-600" /> Saved
+                  </>
                 ) : (
-                  <><Clock className="h-3 w-3" /> Autosaved</>
+                  <>
+                    <Clock className="h-3 w-3" /> Autosaved
+                  </>
                 )}
               </span>
             )}
-            <Button variant="outline" size="sm" className="gap-1.5" onClick={handlePrint}>
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1.5"
+              onClick={handlePrint}
+            >
               <Printer className="h-3.5 w-3.5" /> Print
             </Button>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-8 w-8" aria-label="More form actions">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8"
+                  aria-label="More form actions"
+                >
                   <MoreHorizontal className="h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>
@@ -291,11 +364,13 @@ export function SupervisorFormWorkspace({ formId }: { formId?: string }) {
       {/* Meta strip */}
       <div className="flex flex-wrap items-center gap-3 rounded-lg border border-border/60 bg-card px-3.5 py-2 text-[11.5px] text-muted-foreground">
         <span className="inline-flex items-center gap-1">
-          <Layers className="h-3 w-3" /> {blockCount} {blockCount === 1 ? "block" : "blocks"}
+          <Layers className="h-3 w-3" /> {blockCount}{" "}
+          {blockCount === 1 ? "block" : "blocks"}
         </span>
         {ratingTables > 0 && (
           <span className="inline-flex items-center gap-1">
-            <FileText className="h-3 w-3" /> {ratingTables} rating {ratingTables === 1 ? "table" : "tables"}
+            <FileText className="h-3 w-3" /> {ratingTables} rating{" "}
+            {ratingTables === 1 ? "table" : "tables"}
           </span>
         )}
         {publishedDate && (
@@ -306,17 +381,29 @@ export function SupervisorFormWorkspace({ formId }: { formId?: string }) {
         {currentSubmission?.submittedAt && (
           <span className="ml-auto inline-flex items-center gap-1.5 text-emerald-700 dark:text-emerald-400">
             <CheckCircle2 className="h-3.5 w-3.5" />
-            Submitted {format(new Date(currentSubmission.submittedAt), "MMM d 'at' h:mm a")}
+            Submitted{" "}
+            {format(
+              new Date(currentSubmission.submittedAt),
+              "MMM d 'at' h:mm a",
+            )}
           </span>
         )}
       </div>
 
       {/* Intern picker (for evaluation/ojt forms) */}
       {isStudentTargeted && myInterns.length > 0 && (
-        <SectionCard title="Select intern to evaluate" description="You can fill one form per assigned intern. Switch any time — your drafts are saved.">
+        <SectionCard
+          title="Select intern to evaluate"
+          description="You can fill one form per assigned intern. Switch any time — your drafts are saved."
+        >
           <div className="flex flex-wrap gap-1.5">
             {myInterns.map((stu) => {
-              const sub = submissionFor(submissions, form.id, currentUser!.id, stu.id);
+              const sub = submissionFor(
+                submissions,
+                form.id,
+                currentUser!.id,
+                stu.id,
+              );
               const isSelected = selectedStudentId === stu.id;
               return (
                 <button
@@ -326,23 +413,32 @@ export function SupervisorFormWorkspace({ formId }: { formId?: string }) {
                     "flex items-center gap-2 rounded-md border px-2.5 py-1.5 text-left transition-colors",
                     isSelected
                       ? "border-primary bg-primary/5 ring-1 ring-inset ring-primary/30"
-                      : "border-border/60 hover:bg-muted/40"
+                      : "border-border/60 hover:bg-muted/40",
                   )}
                 >
                   <Avatar name={stu.name} size="sm" color="#64748b" />
                   <div className="min-w-0">
-                    <div className="truncate text-[12px] font-medium text-foreground">{stu.name}</div>
+                    <div className="truncate text-[12px] font-medium text-foreground">
+                      {stu.name}
+                    </div>
                     <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
                       {stu.studentNumber}
                       {sub && (
-                        <span className={cn(
-                          "rounded-full px-1 text-[9px] font-medium",
-                          sub.status === "approved" && "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300",
-                          sub.status === "submitted" && "bg-teal-100 text-teal-700 dark:bg-teal-950/40 dark:text-teal-300",
-                          sub.status === "under_review" && "bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300",
-                          sub.status === "needs_revision" && "bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-300",
-                          sub.status === "in_progress" && "bg-slate-100 text-slate-600 dark:bg-slate-800/60 dark:text-slate-300",
-                        )}>
+                        <span
+                          className={cn(
+                            "rounded-full px-1 text-[9px] font-medium",
+                            sub.status === "approved" &&
+                              "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300",
+                            sub.status === "submitted" &&
+                              "bg-teal-100 text-teal-700 dark:bg-teal-950/40 dark:text-teal-300",
+                            sub.status === "under_review" &&
+                              "bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300",
+                            sub.status === "needs_revision" &&
+                              "bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-300",
+                            sub.status === "in_progress" &&
+                              "bg-slate-100 text-slate-600 dark:bg-slate-800/60 dark:text-slate-300",
+                          )}
+                        >
                           {sub.status.replace("_", " ")}
                         </span>
                       )}
@@ -382,7 +478,10 @@ export function SupervisorFormWorkspace({ formId }: { formId?: string }) {
           <div className="text-[12.5px] text-emerald-800 dark:text-emerald-300">
             <span className="font-semibold">Approved.</span>
             {currentSubmission?.reviewNote && (
-              <span className="text-emerald-700/80 dark:text-emerald-400/80"> {currentSubmission.reviewNote}</span>
+              <span className="text-emerald-700/80 dark:text-emerald-400/80">
+                {" "}
+                {currentSubmission.reviewNote}
+              </span>
             )}
           </div>
         </div>
@@ -417,27 +516,46 @@ export function SupervisorFormWorkspace({ formId }: { formId?: string }) {
         <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border/60 bg-muted/30 p-3">
           <div className="flex items-center gap-2 text-[12.5px] text-muted-foreground">
             <Eye className="h-4 w-4" />
-            {status === "submitted" && "Submitted — waiting for the coordinator to review."}
-            {status === "under_review" && "Currently under review by the coordinator."}
+            {status === "submitted" &&
+              "Submitted — waiting for the coordinator to review."}
+            {status === "under_review" &&
+              "Currently under review by the coordinator."}
             {status === "approved" && "Approved — responses are locked."}
           </div>
           <div className="flex items-center gap-1.5">
-            <Button variant="outline" size="sm" onClick={handlePrint} className="gap-1.5">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handlePrint}
+              className="gap-1.5"
+            >
               <Printer className="h-3.5 w-3.5" /> Print
             </Button>
-            <Button variant="outline" size="sm" onClick={() => navigate("supervisor.forms")} className="gap-1.5">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => navigate("supervisor.forms")}
+              className="gap-1.5"
+            >
               <ChevronLeft className="h-3.5 w-3.5" /> Back to forms
             </Button>
           </div>
         </div>
       ) : (
         <div className="flex flex-wrap items-center justify-end gap-2 rounded-lg border border-border/60 bg-card p-3">
-          <Button variant="ghost" size="sm" onClick={handleReset} className="gap-1.5 text-muted-foreground">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleReset}
+            className="gap-1.5 text-muted-foreground"
+          >
             <RotateCcw className="h-3.5 w-3.5" /> Clear
           </Button>
           <Button size="sm" onClick={handleSubmit} className="gap-1.5">
             <Send className="h-3.5 w-3.5" />
-            {status === "needs_revision" ? "Resubmit responses" : "Submit responses"}
+            {status === "needs_revision"
+              ? "Resubmit responses"
+              : "Submit responses"}
           </Button>
         </div>
       )}

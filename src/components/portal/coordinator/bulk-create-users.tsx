@@ -1,4 +1,5 @@
 "use client";
+import { flushChanges } from "@/client/portal-client";
 import { accountUsers } from "@/lib/prototype";
 
 import * as React from "react";
@@ -29,12 +30,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "@/components/ui/tabs";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   ArrowLeft,
   CheckCircle2,
@@ -94,7 +90,8 @@ function splitLine(line: string): string[] {
 function parseRole(raw: string): ParsedRole | null {
   const v = raw.trim().toLowerCase();
   if (v === "student" || v === "s") return "student";
-  if (v === "supervisor" || v === "sup" || v === "company supervisor") return "supervisor";
+  if (v === "supervisor" || v === "sup" || v === "company supervisor")
+    return "supervisor";
   return null;
 }
 
@@ -168,10 +165,10 @@ function parseAndValidate(text: string, ctx: BuildContext): ParsedRow[] {
         const emailLower = r.email.toLowerCase();
         const exists =
           ctx.students.some(
-            (s) => s.email.trim().toLowerCase() === emailLower
+            (s) => s.email.trim().toLowerCase() === emailLower,
           ) ||
           ctx.supervisors.some(
-            (s) => s.email.trim().toLowerCase() === emailLower
+            (s) => s.email.trim().toLowerCase() === emailLower,
           );
         if (exists) {
           issues.push("Email already exists in the system.");
@@ -195,7 +192,7 @@ function parseAndValidate(text: string, ctx: BuildContext): ParsedRow[] {
         if (r.studentNumber) {
           const key = r.studentNumber.trim().toLowerCase();
           const exists = ctx.students.some(
-            (s) => s.studentNumber.trim().toLowerCase() === key
+            (s) => s.studentNumber.trim().toLowerCase() === key,
           );
           if (exists) {
             issues.push("Student number already exists.");
@@ -253,7 +250,7 @@ export function BulkCreateUsers() {
   // ---- parse preview for manual entry ----
   const parsedRows = React.useMemo(
     () => parseAndValidate(rawText, { students, supervisors }),
-    [rawText, students, supervisors]
+    [rawText, students, supervisors],
   );
   const validCount = parsedRows.filter((r) => r.valid).length;
   const invalidCount = parsedRows.length - validCount;
@@ -267,8 +264,17 @@ export function BulkCreateUsers() {
       return;
     }
     const validRows = parsedRows.filter((r) => r.valid);
-    const emails = new Set(accountUsers(useAppStore.getState()).map((u) => u.email.trim().toLowerCase()));
-    if (validRows.some((r) => emails.has(r.email.trim().toLowerCase()))) { toast.error("A row uses an existing account email. Update it before creating users."); return; }
+    const emails = new Set(
+      accountUsers(useAppStore.getState()).map((u) =>
+        u.email.trim().toLowerCase(),
+      ),
+    );
+    if (validRows.some((r) => emails.has(r.email.trim().toLowerCase()))) {
+      toast.error(
+        "A row uses an existing account email. Update it before creating users.",
+      );
+      return;
+    }
     if (validRows.length === 0) {
       toast.error("No valid rows to create.");
       return;
@@ -315,13 +321,18 @@ export function BulkCreateUsers() {
           });
         }
       }
+      await flushChanges();
       setCreated(results);
       setPhase("results");
       toast.success(`Created ${results.length} users`, {
         description: "Credentials are shown once — export them now.",
       });
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Could not create the accounts.");
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Could not create the accounts.",
+      );
     } finally {
       setCreating(false);
     }
@@ -331,7 +342,12 @@ export function BulkCreateUsers() {
   const validateQuickAdd = () => {
     const next: Record<string, string> = {};
     if (!qaName.trim()) next.name = "Name is required.";
-    if (accountUsers(useAppStore.getState()).some((u) => u.email.toLowerCase() === qaEmail.trim().toLowerCase())) next.email = "Email already belongs to an account.";
+    if (
+      accountUsers(useAppStore.getState()).some(
+        (u) => u.email.toLowerCase() === qaEmail.trim().toLowerCase(),
+      )
+    )
+      next.email = "Email already belongs to an account.";
     if (!qaEmail.trim()) next.email = "Email is required.";
     else if (!EMAIL_RE.test(qaEmail)) next.email = "Enter a valid email.";
     if (!defaultCompanyId) next.companyId = "Pick a default company above.";
@@ -343,7 +359,8 @@ export function BulkCreateUsers() {
         students.some((s) => s.email.trim().toLowerCase() === emailLower) ||
         supervisors.some((s) => s.email.trim().toLowerCase() === emailLower) ||
         created.some((c) => c.email.toLowerCase() === emailLower);
-      if (exists) next.email = next.email || "A user with this email already exists.";
+      if (exists)
+        next.email = next.email || "A user with this email already exists.";
     }
 
     if (qaRole === "student") {
@@ -353,10 +370,11 @@ export function BulkCreateUsers() {
         const numLower = qaStudentNumber.trim().toLowerCase();
         const exists =
           students.some(
-            (s) => s.studentNumber.trim().toLowerCase() === numLower
+            (s) => s.studentNumber.trim().toLowerCase() === numLower,
           ) || created.some((c) => c.idNumber.toLowerCase() === numLower);
         if (exists)
-          next.studentNumber = next.studentNumber || "This student number already exists.";
+          next.studentNumber =
+            next.studentNumber || "This student number already exists.";
       }
       if (!qaCourse.trim()) next.course = "Course is required.";
       if (
@@ -372,7 +390,7 @@ export function BulkCreateUsers() {
     return Object.keys(next).length === 0;
   };
 
-  const handleQuickAddCreate = () => {
+  const handleQuickAddCreate = async () => {
     if (!validateQuickAdd()) {
       toast.error("Please fix the highlighted fields.");
       return;
@@ -415,10 +433,18 @@ export function BulkCreateUsers() {
         recordId: res.supervisorId,
       };
     }
+    try {
+      await flushChanges();
+    } catch {
+      return;
+    }
     setCreated((prev) => [...prev, result]);
-    toast.success(`${result.role === "student" ? "Student" : "Supervisor"} created`, {
-      description: `${result.name} added. Temp password: ${result.tempPassword}`,
-    });
+    toast.success(
+      `${result.role === "student" ? "Student" : "Supervisor"} created`,
+      {
+        description: `${result.name} added. Temp password: ${result.tempPassword}`,
+      },
+    );
     // Reset relevant fields, keep role + company for fast repeat entry.
     setQaName("");
     setQaEmail("");
@@ -498,7 +524,9 @@ export function BulkCreateUsers() {
                   <TableHead>Name</TableHead>
                   <TableHead className="hidden sm:table-cell">Role</TableHead>
                   <TableHead>Email</TableHead>
-                  <TableHead className="hidden md:table-cell">ID Number</TableHead>
+                  <TableHead className="hidden md:table-cell">
+                    ID Number
+                  </TableHead>
                   <TableHead>Temp Password</TableHead>
                 </TableRow>
               </TableHeader>
@@ -656,7 +684,9 @@ export function BulkCreateUsers() {
                 <p className="font-medium text-foreground">Format per line:</p>
                 <ul className="mt-1 space-y-0.5">
                   <li>
-                    <span className="font-mono">Student, Name, Email, StudentNumber, Course, RequiredHours</span>
+                    <span className="font-mono">
+                      Student, Name, Email, StudentNumber, Course, RequiredHours
+                    </span>
                   </li>
                   <li>
                     <span className="font-mono">Supervisor, Name, Email</span>
@@ -687,17 +717,27 @@ export function BulkCreateUsers() {
                         <TableHead>Status</TableHead>
                         <TableHead>Role</TableHead>
                         <TableHead>Name</TableHead>
-                        <TableHead className="hidden sm:table-cell">Email</TableHead>
-                        <TableHead className="hidden md:table-cell">ID</TableHead>
-                        <TableHead className="hidden md:table-cell">Course</TableHead>
-                        <TableHead className="hidden lg:table-cell">Hours</TableHead>
+                        <TableHead className="hidden sm:table-cell">
+                          Email
+                        </TableHead>
+                        <TableHead className="hidden md:table-cell">
+                          ID
+                        </TableHead>
+                        <TableHead className="hidden md:table-cell">
+                          Course
+                        </TableHead>
+                        <TableHead className="hidden lg:table-cell">
+                          Hours
+                        </TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {parsedRows.map((r) => (
                         <TableRow
                           key={r.line}
-                          className={r.valid ? "" : "bg-amber-50/40 dark:bg-amber-950/10"}
+                          className={
+                            r.valid ? "" : "bg-amber-50/40 dark:bg-amber-950/10"
+                          }
                         >
                           <TableCell className="text-xs tabular-nums text-muted-foreground">
                             {r.line}
@@ -716,7 +756,9 @@ export function BulkCreateUsers() {
                                     className="inline-flex items-start gap-1 text-xs font-medium text-amber-700 dark:text-amber-400"
                                   >
                                     <AlertCircle className="mt-0.5 h-3 w-3 shrink-0" />
-                                    <span className="leading-tight">{issue}</span>
+                                    <span className="leading-tight">
+                                      {issue}
+                                    </span>
                                   </span>
                                 ))}
                               </div>
@@ -724,11 +766,17 @@ export function BulkCreateUsers() {
                           </TableCell>
                           <TableCell>
                             {r.role ? (
-                              <Badge tone={r.role === "student" ? "slate" : "teal"}>
-                                {r.role === "student" ? "Student" : "Supervisor"}
+                              <Badge
+                                tone={r.role === "student" ? "slate" : "teal"}
+                              >
+                                {r.role === "student"
+                                  ? "Student"
+                                  : "Supervisor"}
                               </Badge>
                             ) : (
-                              <span className="text-xs text-muted-foreground">—</span>
+                              <span className="text-xs text-muted-foreground">
+                                —
+                              </span>
                             )}
                           </TableCell>
                           <TableCell className="text-sm text-foreground">
@@ -923,7 +971,9 @@ export function BulkCreateUsers() {
                     <TableHeader>
                       <TableRow>
                         <TableHead>Name</TableHead>
-                        <TableHead className="hidden sm:table-cell">Role</TableHead>
+                        <TableHead className="hidden sm:table-cell">
+                          Role
+                        </TableHead>
                         <TableHead>Email</TableHead>
                         <TableHead>Temp Password</TableHead>
                       </TableRow>
@@ -940,7 +990,9 @@ export function BulkCreateUsers() {
                             </div>
                           </TableCell>
                           <TableCell className="hidden sm:table-cell">
-                            <Badge tone={c.role === "student" ? "slate" : "teal"}>
+                            <Badge
+                              tone={c.role === "student" ? "slate" : "teal"}
+                            >
                               {c.role === "student" ? "Student" : "Supervisor"}
                             </Badge>
                           </TableCell>

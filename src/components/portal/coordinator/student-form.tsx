@@ -1,7 +1,8 @@
 "use client";
-
+import { FormField as Field } from "@/components/portal/shared/form-field";
 import { accountUsers } from "@/lib/prototype";
 import * as React from "react";
+import { flushChanges } from "@/client/portal-client";
 import { useAppStore } from "@/store/use-app-store";
 import {
   courseOptions,
@@ -30,10 +31,8 @@ import {
 } from "@/components/ui/select";
 import { AlertCircle } from "lucide-react";
 import { toast } from "sonner";
-
 const UNASSIGNED = "__unassigned__";
 const WORK_MODES: WorkMode[] = ["onsite", "hybrid", "remote"];
-
 /** Convert an ISO datetime string to a yyyy-MM-dd value for <input type=date>. */
 function toDateInput(iso: string | null | undefined): string {
   if (!iso) return "";
@@ -44,8 +43,11 @@ function toDateInput(iso: string | null | undefined): string {
   const dd = String(d.getDate()).padStart(2, "0");
   return `${yyyy}-${mm}-${dd}`;
 }
-
-export function StudentForm({ studentId }: { studentId?: ViewParams["studentId"] }) {
+export function StudentForm({
+  studentId,
+}: {
+  studentId?: ViewParams["studentId"];
+}) {
   const navigate = useAppStore((s) => s.navigate);
   const back = useAppStore((s) => s.back);
   const students = useAppStore((s) => s.students);
@@ -54,13 +56,11 @@ export function StudentForm({ studentId }: { studentId?: ViewParams["studentId"]
   const createStudent = useAppStore((s) => s.createStudent);
   const updateStudent = useAppStore((s) => s.updateStudent);
   const upsertCompany = useAppStore((s) => s.upsertCompany);
-
   const isEdit = !!studentId;
   const existing = React.useMemo(
     () => (studentId ? getStudent(students, studentId) : undefined),
-    [students, studentId]
+    [students, studentId],
   );
-
   const [studentNumber, setStudentNumber] = React.useState("");
   const [name, setName] = React.useState("");
   const [email, setEmail] = React.useState("");
@@ -86,7 +86,6 @@ export function StudentForm({ studentId }: { studentId?: ViewParams["studentId"]
     userId: string;
     studentId: string;
   } | null>(null);
-
   // Live option lists for the comboboxes (sourced from the roster so any
   // previously-typed value becomes an option next time).
   const courseOpts = React.useMemo(() => courseOptions(students), [students]);
@@ -99,7 +98,6 @@ export function StudentForm({ studentId }: { studentId?: ViewParams["studentId"]
     () => companies.map((c) => c.name).sort((a, b) => a.localeCompare(b)),
     [companies],
   );
-
   // Resolve the typed company name to an existing company id (case-insensitive)
   // so the SupervisorPicker can filter by company. A new (unsaved) company
   // name returns undefined — the picker just shows all supervisors in that case.
@@ -108,7 +106,6 @@ export function StudentForm({ studentId }: { studentId?: ViewParams["studentId"]
     if (!t) return undefined;
     return companies.find((c) => c.name.trim().toLowerCase() === t)?.id;
   }, [companyName, companies]);
-
   // Hydrate form in edit mode
   React.useEffect(() => {
     if (existing) {
@@ -129,7 +126,6 @@ export function StudentForm({ studentId }: { studentId?: ViewParams["studentId"]
       setSupervisorId(existing.supervisorId);
     }
   }, [existing, companies]);
-
   if (isEdit && !existing) {
     return (
       <div>
@@ -144,48 +140,57 @@ export function StudentForm({ studentId }: { studentId?: ViewParams["studentId"]
       </div>
     );
   }
-
   const validate = () => {
     const next: Record<string, string> = {};
-    if (!studentNumber.trim()) next.studentNumber = "Student number is required.";
+    if (!studentNumber.trim())
+      next.studentNumber = "Student number is required.";
     if (!name.trim()) next.name = "Name is required.";
     if (!email.trim()) next.email = "Email is required.";
-    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) next.email = "Enter a valid email.";
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
+      next.email = "Enter a valid email.";
     if (!course) next.course = "Course is required.";
-    if (!requiredHours.trim() || Number.isNaN(Number(requiredHours)) || Number(requiredHours) <= 0)
+    if (
+      !requiredHours.trim() ||
+      Number.isNaN(Number(requiredHours)) ||
+      Number(requiredHours) <= 0
+    )
       next.requiredHours = "Required hours must be a positive number.";
     // NOTE: Company, Position, and Department are intentionally OPTIONAL here.
     // Students can be added to the masterlist before OJT deployment (bulk-upload
     // workflow). These fields are filled in later when the coordinator assigns
     // a placement. The state-driven workspace gates features on supervisorId.
-
     // Duplicate prevention (only on create — skip the record being edited).
     if (!isEdit) {
       const emailLower = email.trim().toLowerCase();
       const dupEmail = students.some(
-        (s) => s.email.trim().toLowerCase() === emailLower
+        (s) => s.email.trim().toLowerCase() === emailLower,
       );
       if (dupEmail) {
         next.email = next.email || "A student with this email already exists.";
       }
       const numTrim = studentNumber.trim();
       const dupNum = students.some(
-        (s) => s.studentNumber.trim().toLowerCase() === numTrim.toLowerCase()
+        (s) => s.studentNumber.trim().toLowerCase() === numTrim.toLowerCase(),
       );
       if (dupNum) {
         next.studentNumber =
-          next.studentNumber || "A student with this student number already exists.";
+          next.studentNumber ||
+          "A student with this student number already exists.";
       }
     }
-
     setErrors(next);
     return Object.keys(next).length === 0;
   };
-
-  const handleSave = () => {
-    const duplicate = accountUsers(useAppStore.getState()).some((u) => u.email.toLowerCase() === email.trim().toLowerCase() && (u.studentId ?? u.supervisorId ?? u.coordinatorId) !== existing?.id);
-    if (duplicate) { toast.error("This email is already used by another account."); return; }
-
+  const handleSave = async () => {
+    const duplicate = accountUsers(useAppStore.getState()).some(
+      (u) =>
+        u.email.toLowerCase() === email.trim().toLowerCase() &&
+        (u.studentId ?? u.supervisorId ?? u.coordinatorId) !== existing?.id,
+    );
+    if (duplicate) {
+      toast.error("This email is already used by another account.");
+      return;
+    }
     if (!validate()) {
       toast.error("Please fix the highlighted fields.");
       return;
@@ -195,11 +200,11 @@ export function StudentForm({ studentId }: { studentId?: ViewParams["studentId"]
     if (!isEdit) {
       const emailLower = email.trim().toLowerCase();
       const dupEmail = students.some(
-        (s) => s.email.trim().toLowerCase() === emailLower
+        (s) => s.email.trim().toLowerCase() === emailLower,
       );
       const numTrim = studentNumber.trim();
       const dupNum = students.some(
-        (s) => s.studentNumber.trim().toLowerCase() === numTrim.toLowerCase()
+        (s) => s.studentNumber.trim().toLowerCase() === numTrim.toLowerCase(),
       );
       if (dupEmail) {
         toast.error("Duplicate email", {
@@ -223,11 +228,16 @@ export function StudentForm({ studentId }: { studentId?: ViewParams["studentId"]
       }
     }
     const supId = supervisorId;
-    const startDateIso = startDate ? new Date(startDate + "T08:00:00").toISOString() : null;
-    const endDateIso = endDate ? new Date(endDate + "T08:00:00").toISOString() : null;
+    const startDateIso = startDate
+      ? new Date(startDate + "T08:00:00").toISOString()
+      : null;
+    const endDateIso = endDate
+      ? new Date(endDate + "T08:00:00").toISOString()
+      : null;
     // Resolve placement fields — default to neutral values when unassigned so
     // the student is valid in the masterlist even before OJT deployment.
-    const resolvedDepartment: Department = (department || "Other") as Department;
+    const resolvedDepartment: Department = (department ||
+      "Other") as Department;
     const resolvedPosition = position.trim() || "Unassigned";
     // Resolve the company id from the typed company name (upsert on save).
     let resolvedCompanyId = "";
@@ -259,6 +269,11 @@ export function StudentForm({ studentId }: { studentId?: ViewParams["studentId"]
           description: `New company record created for “${trimmedCompany}”.`,
         });
       }
+      try {
+        await flushChanges();
+      } catch {
+        return;
+      }
       toast.success("Student updated", {
         description: `${name} (${studentNumber}) saved.`,
       });
@@ -285,6 +300,11 @@ export function StudentForm({ studentId }: { studentId?: ViewParams["studentId"]
           description: `New company record created for “${trimmedCompany}”.`,
         });
       }
+      try {
+        await flushChanges();
+      } catch {
+        return;
+      }
       setCreatedCreds({
         name: name.trim(),
         email: email.trim(),
@@ -295,7 +315,6 @@ export function StudentForm({ studentId }: { studentId?: ViewParams["studentId"]
       setCredsOpen(true);
     }
   };
-
   return (
     <div>
       <PageHeader
@@ -335,7 +354,12 @@ export function StudentForm({ studentId }: { studentId?: ViewParams["studentId"]
                 aria-invalid={!!errors.name}
               />
             </Field>
-            <Field label="Email" required error={errors.email} className="sm:col-span-2">
+            <Field
+              label="Email"
+              required
+              error={errors.email}
+              className="sm:col-span-2"
+            >
               <Input
                 type="email"
                 value={email}
@@ -344,7 +368,12 @@ export function StudentForm({ studentId }: { studentId?: ViewParams["studentId"]
                 aria-invalid={!!errors.email}
               />
             </Field>
-            <Field label="Course" required error={errors.course} hint="Type to search or add a new course (e.g. BSED, BSBA).">
+            <Field
+              label="Course"
+              required
+              error={errors.course}
+              hint="Type to search or add a new course (e.g. BSED, BSBA)."
+            >
               <ComboInput
                 value={course}
                 onChange={setCourse}
@@ -427,9 +456,14 @@ export function StudentForm({ studentId }: { studentId?: ViewParams["studentId"]
               <Field label="Department" error={errors.department}>
                 <Select
                   value={department || UNASSIGNED}
-                  onValueChange={(v) => setDepartment(v === UNASSIGNED ? "" : (v as Department))}
+                  onValueChange={(v) =>
+                    setDepartment(v === UNASSIGNED ? "" : (v as Department))
+                  }
                 >
-                  <SelectTrigger className="w-full" aria-invalid={!!errors.department}>
+                  <SelectTrigger
+                    className="w-full"
+                    aria-invalid={!!errors.department}
+                  >
                     <SelectValue placeholder="Not yet assigned" />
                   </SelectTrigger>
                   <SelectContent>
@@ -497,7 +531,8 @@ export function StudentForm({ studentId }: { studentId?: ViewParams["studentId"]
                   onClick={() => {
                     setSupervisorId(null);
                     toast.info("Supervisor cleared", {
-                      description: "Student will be saved without a supervisor.",
+                      description:
+                        "Student will be saved without a supervisor.",
                     });
                   }}
                 >
@@ -519,7 +554,9 @@ export function StudentForm({ studentId }: { studentId?: ViewParams["studentId"]
         >
           Cancel
         </Button>
-        <Button onClick={handleSave}>{isEdit ? "Save Changes" : "Create Student"}</Button>
+        <Button onClick={handleSave}>
+          {isEdit ? "Save Changes" : "Create Student"}
+        </Button>
       </ActionBar>
 
       {createdCreds && (
@@ -535,42 +572,11 @@ export function StudentForm({ studentId }: { studentId?: ViewParams["studentId"]
             toast.success("Student created", {
               description: `${createdCreds.name} was added and invited to sign in.`,
             });
-            navigate("coordinator.student-view", { studentId: createdCreds.studentId });
+            navigate("coordinator.student-view", {
+              studentId: createdCreds.studentId,
+            });
           }}
         />
-      )}
-    </div>
-  );
-}
-
-function Field({
-  label,
-  required,
-  error,
-  hint,
-  children,
-  className,
-}: {
-  label: string;
-  required?: boolean;
-  error?: string;
-  hint?: string;
-  children: React.ReactNode;
-  className?: string;
-}) {
-  return (
-    <div className={className}>
-      <Label className="mb-1.5">
-        {label}
-        {required && <span className="text-destructive">*</span>}
-      </Label>
-      {children}
-      {hint && !error && <p className="mt-1 text-xs text-muted-foreground">{hint}</p>}
-      {error && (
-        <p className="mt-1 flex items-center gap-1 text-xs text-destructive">
-          <AlertCircle className="h-3 w-3" />
-          {error}
-        </p>
       )}
     </div>
   );

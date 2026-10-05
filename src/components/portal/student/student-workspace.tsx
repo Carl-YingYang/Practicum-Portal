@@ -1,18 +1,7 @@
 "use client";
-
+import dynamic from "next/dynamic";
+import { WorkspaceLoader } from "@/components/portal/shared/workspace-loader";
 import { useAppStore } from "@/store/use-app-store";
-import { StudentDashboard } from "./student-dashboard";
-import { JournalsList } from "./journals-list";
-import { JournalForm } from "./journal-form";
-import { JournalDetail } from "./journal-detail";
-import { EvaluationsList } from "./evaluations-list";
-import { EvaluationView } from "./evaluation-view";
-import { StudentReports } from "./student-reports";
-import { TimeClockView } from "@/components/portal/shared/time-clock-view";
-import { StudentProfile } from "./student-profile";
-import { StudentForms } from "./student-forms";
-import { StudentFormWorkspace } from "./student-form-workspace";
-
 export {
   StudentDashboard,
   JournalsList,
@@ -26,7 +15,56 @@ export {
   StudentForms,
   StudentFormWorkspace,
 };
-
+const StudentDashboard = dynamic(
+  () => import("./student-dashboard").then((module) => module.StudentDashboard),
+  { loading: () => <WorkspaceLoader /> },
+);
+const JournalsList = dynamic(
+  () => import("./journals-list").then((module) => module.JournalsList),
+  { loading: () => <WorkspaceLoader /> },
+);
+const JournalForm = dynamic(
+  () => import("./journal-form").then((module) => module.JournalForm),
+  { loading: () => <WorkspaceLoader /> },
+);
+const JournalDetail = dynamic(
+  () => import("./journal-detail").then((module) => module.JournalDetail),
+  { loading: () => <WorkspaceLoader /> },
+);
+const EvaluationsList = dynamic(
+  () => import("./evaluations-list").then((module) => module.EvaluationsList),
+  { loading: () => <WorkspaceLoader /> },
+);
+const EvaluationView = dynamic(
+  () => import("./evaluation-view").then((module) => module.EvaluationView),
+  { loading: () => <WorkspaceLoader /> },
+);
+const StudentReports = dynamic(
+  () => import("./student-reports").then((module) => module.StudentReports),
+  { loading: () => <WorkspaceLoader /> },
+);
+const TimeClockView = dynamic(
+  () =>
+    import("@/components/portal/shared/time-clock-view").then(
+      (module) => module.TimeClockView,
+    ),
+  { loading: () => <WorkspaceLoader /> },
+);
+const StudentProfile = dynamic(
+  () => import("./student-profile").then((module) => module.StudentProfile),
+  { loading: () => <WorkspaceLoader /> },
+);
+const StudentForms = dynamic(
+  () => import("./student-forms").then((module) => module.StudentForms),
+  { loading: () => <WorkspaceLoader /> },
+);
+const StudentFormWorkspace = dynamic(
+  () =>
+    import("./student-form-workspace").then(
+      (module) => module.StudentFormWorkspace,
+    ),
+  { loading: () => <WorkspaceLoader /> },
+);
 /**
  * Top-level router for the Student workspace. Reads `view` from the store
  * and renders the matching page component. Default falls back to dashboard.
@@ -34,11 +72,12 @@ export {
 export function StudentWorkspace() {
   const view = useAppStore((s) => s.view);
   const viewParams = useAppStore((s) => s.viewParams);
-
   const currentUser = useAppStore((s) => s.currentUser);
-  const student = useAppStore((s) => s.students.find((st) => st.id === currentUser?.studentId));
-  if (!student?.supervisorId && view !== "student.profile") return <StudentDashboard />;
-
+  const student = useAppStore((s) =>
+    s.students.find((st) => st.id === currentUser?.studentId),
+  );
+  if (!student?.supervisorId && view !== "student.profile")
+    return <StudentDashboard />;
   switch (view) {
     case "student.dashboard":
       return <StudentDashboard />;
@@ -66,5 +105,4 @@ export function StudentWorkspace() {
       return <StudentDashboard />;
   }
 }
-
 export default StudentWorkspace;

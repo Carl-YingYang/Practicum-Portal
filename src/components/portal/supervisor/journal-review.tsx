@@ -1,5 +1,5 @@
 "use client";
-
+import { flushChanges } from "@/client/portal-client";
 import { useState } from "react";
 import {
   Check,
@@ -41,7 +41,6 @@ import {
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-
 export function JournalReview() {
   const viewParams = useAppStore((s) => s.viewParams);
   const journals = useAppStore((s) => s.journals);
@@ -52,16 +51,18 @@ export function JournalReview() {
   const back = useAppStore((s) => s.back);
   const approveJournal = useAppStore((s) => s.approveJournal);
   const rejectJournal = useAppStore((s) => s.rejectJournal);
-
   const journal = getJournal(journals, viewParams.journalId);
   const [rejectOpen, setRejectOpen] = useState(false);
   const [reason, setReason] = useState("");
   const [approveOpen, setApproveOpen] = useState(false);
-
   if (!journal) {
     return (
       <div>
-        <PageHeader showBack breadcrumb="Journal Approvals" title="Journal not found" />
+        <PageHeader
+          showBack
+          breadcrumb="Journal Approvals"
+          title="Journal not found"
+        />
         <EmptyState
           icon={NotebookText}
           title="Journal not found"
@@ -72,33 +73,41 @@ export function JournalReview() {
       </div>
     );
   }
-
   const student = getStudent(students, journal.studentId);
-  const company = student ? getCompany(companies, student.companyId) : undefined;
+  const company = student
+    ? getCompany(companies, student.companyId)
+    : undefined;
   const reviewer = getSupervisor(supervisors, journal.reviewedBy ?? null);
   const isPending = journal.status === "pending";
   const isRejected = journal.status === "rejected";
   const isApproved = journal.status === "approved";
-
-  const handleApprove = () => {
+  const handleApprove = async () => {
     approveJournal(journal.id);
+    try {
+      await flushChanges();
+    } catch {
+      return;
+    }
     setApproveOpen(false);
     toast.success("Journal approved", {
-      description: `${student?.name ?? "Intern"}'s hours have been logged.`,
+      description: `${student?.name ?? "Intern"}'s entry has been reviewed. Attendance hours stay unchanged.`,
     });
     navigate("supervisor.journals");
   };
-
-  const handleReject = () => {
+  const handleReject = async () => {
     if (!reason.trim()) return;
     rejectJournal(journal.id, reason.trim());
+    try {
+      await flushChanges();
+    } catch {
+      return;
+    }
     setRejectOpen(false);
     toast.success("Journal rejected", {
-      description: "The intern has been notified with your reason.",
+      description: "The intern can see your reason and revise this entry.",
     });
     navigate("supervisor.journals");
   };
-
   return (
     <div>
       <PageHeader
@@ -116,7 +125,7 @@ export function JournalReview() {
             "mb-4 flex items-start gap-3 rounded-lg border px-4 py-3 text-sm",
             isApproved
               ? "border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-300"
-              : "border-red-200 bg-red-50 text-red-800 dark:border-red-900 dark:bg-red-950/40 dark:text-red-300"
+              : "border-red-200 bg-red-50 text-red-800 dark:border-red-900 dark:bg-red-950/40 dark:text-red-300",
           )}
         >
           {isApproved ? (
@@ -198,7 +207,8 @@ export function JournalReview() {
       {isPending && (
         <ActionBar>
           <span className="hidden text-xs text-muted-foreground sm:mr-auto sm:block">
-            Reviewing {student?.name ?? "intern"}'s journal for {weekLabel(journal.date)}.
+            Reviewing {student?.name ?? "intern"}'s journal for{" "}
+            {weekLabel(journal.date)}.
           </span>
           <Button
             variant="outline"
@@ -253,8 +263,8 @@ export function JournalReview() {
           <DialogHeader>
             <DialogTitle>Reject this journal?</DialogTitle>
             <DialogDescription>
-              Please provide a reason. The intern will see this feedback and
-              can revise and resubmit.
+              Please provide a reason. The intern will see this feedback and can
+              revise and resubmit.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-2">
@@ -276,7 +286,7 @@ export function JournalReview() {
                 "text-xs",
                 reason.trim() === ""
                   ? "text-amber-700 dark:text-amber-300"
-                  : "text-muted-foreground"
+                  : "text-muted-foreground",
               )}
             >
               {reason.trim() === ""
@@ -303,7 +313,10 @@ export function JournalReview() {
       {/* Back button when not pending */}
       {!isPending && (
         <div className="mt-6 flex justify-end">
-          <Button variant="outline" onClick={() => (back ? back() : navigate("supervisor.journals"))}>
+          <Button
+            variant="outline"
+            onClick={() => (back ? back() : navigate("supervisor.journals"))}
+          >
             Back to approvals
           </Button>
         </div>

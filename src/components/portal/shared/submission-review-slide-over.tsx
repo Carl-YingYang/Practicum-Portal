@@ -1,5 +1,5 @@
 "use client";
-
+import { flushChanges } from "@/client/portal-client";
 import { downloadFormPdf } from "@/lib/form-export";
 import * as React from "react";
 import { SlideOver } from "@/components/portal/shared/slide-over";
@@ -33,9 +33,12 @@ import {
   ArrowLeft, // Dinagdag natin ang ArrowLeft para sa mobile back button
 } from "lucide-react";
 import { useAccountUsers } from "@/lib/use-account-users";
-import { type FormSubmission, FORM_CATEGORY_LABELS, type FormSubmissionStatus } from "@/lib/types";
+import {
+  type FormSubmission,
+  FORM_CATEGORY_LABELS,
+  type FormSubmissionStatus,
+} from "@/lib/types";
 import { format, formatDistanceToNow } from "date-fns";
-
 export function SubmissionReviewSlideOver({
   open,
   onOpenChange,
@@ -48,25 +51,24 @@ export function SubmissionReviewSlideOver({
   const portalUsers = useAccountUsers();
   const { toast } = useToast();
   const submission = useAppStore((s) =>
-    s.formSubmissions.find((x) => x.id === submissionId)
+    s.formSubmissions.find((x) => x.id === submissionId),
   );
   const liveForm = useAppStore((s) =>
-    s.formDocuments.find((d) => d.id === submission?.formId)
+    s.formDocuments.find((d) => d.id === submission?.formId),
   );
   const form = submission?.formSnapshot ?? liveForm;
   const students = useAppStore((s) => s.students);
   const reviewSubmission = useAppStore((s) => s.reviewSubmission);
-
   const [reviewNote, setReviewNote] = React.useState("");
-  const [decision, setDecision] = React.useState<"approve" | "request_revision" | null>(null);
-
+  const [decision, setDecision] = React.useState<
+    "approve" | "request_revision" | null
+  >(null);
   React.useEffect(() => {
     if (open) {
       setReviewNote(submission?.reviewNote ?? "");
       setDecision(null);
     }
   }, [open, submission?.id]);
-
   if (!submission || !form) {
     return (
       <SlideOver
@@ -75,49 +77,63 @@ export function SubmissionReviewSlideOver({
         title="Submission not found"
         description="It may have been removed."
       >
-        <div className="text-[12px] text-muted-foreground">Close this panel and pick another submission from the queue.</div>
+        <div className="text-[12px] text-muted-foreground">
+          Close this panel and pick another submission from the queue.
+        </div>
       </SlideOver>
     );
   }
-
   const submitter = portalUsers.find((u) => u.id === submission.userId);
   const targetStudent = submission.targetStudentId
     ? students.find((s) => s.id === submission.targetStudentId)
     : undefined;
-
   const submittedDate = submission.submittedAt
     ? format(new Date(submission.submittedAt), "MMM d, yyyy 'at' h:mm a")
     : null;
   const reviewedDate = submission.reviewedAt
     ? format(new Date(submission.reviewedAt), "MMM d, yyyy 'at' h:mm a")
     : null;
-  const updatedRel = formatDistanceToNow(new Date(submission.updatedAt), { addSuffix: true });
-
+  const updatedRel = formatDistanceToNow(new Date(submission.updatedAt), {
+    addSuffix: true,
+  });
   const isPendingReview =
     submission.status === "submitted" || submission.status === "under_review";
-  const isReviewed = submission.status === "approved" || submission.status === "needs_revision";
-
-  function handleConfirm() {
+  const isReviewed =
+    submission.status === "approved" || submission.status === "needs_revision";
+  async function handleConfirm() {
     if (!decision || !submission) return;
-    if (decision === "request_revision" && !reviewNote.trim()) { toast({ title: "Add a revision note", description: "Tell the respondent what needs to change.", variant: "destructive" }); return; }
+    if (decision === "request_revision" && !reviewNote.trim()) {
+      toast({
+        title: "Add a revision note",
+        description: "Tell the respondent what needs to change.",
+        variant: "destructive",
+      });
+      return;
+    }
     reviewSubmission(submission.id, decision, reviewNote.trim() || undefined);
-    const label = decision === "approve" ? "approved" : "sent back for revision";
+    try {
+      await flushChanges();
+    } catch {
+      return;
+    }
+    const label =
+      decision === "approve" ? "approved" : "sent back for revision";
     toast({
       title: `Submission ${label}`,
-      description: decision === "approve"
-        ? `${submitter?.name ?? "Submitter"} has been notified.`
-        : `${submitter?.name ?? "Submitter"} will see your note in their Forms inbox.`,
+      description:
+        decision === "approve"
+          ? `${submitter?.name ?? "Submitter"} can see the review in Practo.`
+          : `${submitter?.name ?? "Submitter"} will see your note in their Forms inbox.`,
     });
     onOpenChange(false);
   }
-
   function handlePrint() {
     window.print();
   }
   function handleDownload() {
-    if (form && submission) downloadFormPdf(form, submission.values, submitter?.name);
+    if (form && submission)
+      downloadFormPdf(form, submission.values, submitter?.name);
   }
-
   return (
     <SlideOver
       open={open}
@@ -128,7 +144,12 @@ export function SubmissionReviewSlideOver({
       description={form.description || undefined}
       headerActions={
         <>
-          <Button variant="outline" size="sm" onClick={handlePrint} className="hidden sm:inline-flex gap-1.5">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handlePrint}
+            className="hidden sm:inline-flex gap-1.5"
+          >
             <Printer className="h-3.5 w-3.5" /> Print
           </Button>
           <DropdownMenu>
@@ -153,8 +174,13 @@ export function SubmissionReviewSlideOver({
           <div className="space-y-4">
             {decision && (
               <div className="space-y-2">
-                <Label htmlFor="sr-note" className="text-[12px] font-semibold text-foreground">
-                  {decision === "approve" ? "Approval note (optional)" : "Revision note (required)"}
+                <Label
+                  htmlFor="sr-note"
+                  className="text-[12px] font-semibold text-foreground"
+                >
+                  {decision === "approve"
+                    ? "Approval note (optional)"
+                    : "Revision note (required)"}
                 </Label>
                 <Textarea
                   id="sr-note"
@@ -175,22 +201,30 @@ export function SubmissionReviewSlideOver({
             <div className="flex flex-col-reverse gap-2 sm:flex-row sm:items-center sm:justify-end">
               {decision ? (
                 <>
-                  <Button variant="ghost" size="sm" className="w-full sm:w-auto" onClick={() => setDecision(null)}>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="w-full sm:w-auto"
+                    onClick={() => setDecision(null)}
+                  >
                     Cancel
                   </Button>
                   <Button
                     size="sm"
                     onClick={handleConfirm}
-                    disabled={decision === "request_revision" && !reviewNote.trim()}
+                    disabled={
+                      decision === "request_revision" && !reviewNote.trim()
+                    }
                     className={cn(
                       "w-full sm:w-auto gap-1.5",
                       decision === "approve"
                         ? "bg-emerald-600 hover:bg-emerald-700"
-                        : "bg-amber-600 hover:bg-amber-700 text-white"
+                        : "bg-amber-600 hover:bg-amber-700 text-white",
                     )}
                   >
                     <CheckCircle2 className="h-4 w-4" />
-                    Confirm {decision === "approve" ? "approval" : "revision request"}
+                    Confirm{" "}
+                    {decision === "approve" ? "approval" : "revision request"}
                   </Button>
                 </>
               ) : (
@@ -217,13 +251,22 @@ export function SubmissionReviewSlideOver({
         ) : isReviewed ? (
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-[12px]">
             <span className="text-muted-foreground text-center sm:text-left">
-              {submission.status === "approved" ? "Approved" : "Sent back for revision"} · {updatedRel}
+              {submission.status === "approved"
+                ? "Approved"
+                : "Sent back for revision"}{" "}
+              · {updatedRel}
             </span>
             {isReviewed && (
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => setDecision(submission.status === "approved" ? "request_revision" : "approve")}
+                onClick={() =>
+                  setDecision(
+                    submission.status === "approved"
+                      ? "request_revision"
+                      : "approve",
+                  )
+                }
                 className="w-full sm:w-auto gap-1.5"
               >
                 <RotateCcw className="h-3.5 w-3.5" /> Reopen review
@@ -243,7 +286,6 @@ export function SubmissionReviewSlideOver({
       }
     >
       <div className="space-y-4">
-
         {/* Mobile Back Button (Visible lang sa small screens) */}
         <div className="sm:hidden mb-2 -mt-2">
           <Button
@@ -267,7 +309,9 @@ export function SubmissionReviewSlideOver({
             />
             <div className="min-w-0 flex-1">
               <div className="flex flex-col sm:flex-row sm:items-center gap-1.5 sm:gap-2">
-                <span className="text-[14px] font-semibold text-foreground">{submitter?.name ?? "Unknown"}</span>
+                <span className="text-[14px] font-semibold text-foreground">
+                  {submitter?.name ?? "Unknown"}
+                </span>
                 <SubmissionStatusBadge status={submission.status} withIcon />
               </div>
               <div className="mt-1 text-[12px] text-muted-foreground">
@@ -277,8 +321,12 @@ export function SubmissionReviewSlideOver({
                 <div className="mt-3 flex flex-wrap items-center gap-1.5 rounded-lg bg-muted/40 px-2.5 py-1.5 text-[12px] text-muted-foreground border border-border/40">
                   <GraduationCap className="h-3.5 w-3.5" />
                   <span>Evaluating:</span>
-                  <span className="font-medium text-foreground">{targetStudent.name}</span>
-                  <span className="hidden sm:inline text-muted-foreground/70">· {targetStudent.studentNumber}</span>
+                  <span className="font-medium text-foreground">
+                    {targetStudent.name}
+                  </span>
+                  <span className="hidden sm:inline text-muted-foreground/70">
+                    · {targetStudent.studentNumber}
+                  </span>
                 </div>
               )}
             </div>
@@ -289,7 +337,11 @@ export function SubmissionReviewSlideOver({
             <TimelineItem
               icon={Calendar}
               label="Started"
-              value={submission.startedAt ? format(new Date(submission.startedAt), "MMM d, h:mm a") : "—"}
+              value={
+                submission.startedAt
+                  ? format(new Date(submission.startedAt), "MMM d, h:mm a")
+                  : "—"
+              }
             />
             <TimelineItem
               icon={FileText}
@@ -308,7 +360,9 @@ export function SubmissionReviewSlideOver({
                 <div className="flex items-center gap-1.5 font-semibold mb-1">
                   <MessageSquare className="h-3.5 w-3.5" /> Reviewer note
                 </div>
-                <div className="leading-relaxed opacity-90">{submission.reviewNote}</div>
+                <div className="leading-relaxed opacity-90">
+                  {submission.reviewNote}
+                </div>
               </div>
             )}
           </div>
@@ -340,13 +394,14 @@ export function SubmissionReviewSlideOver({
     </SlideOver>
   );
 }
-
 function TimelineItem({
   icon: Icon,
   label,
   value,
 }: {
-  icon: React.ComponentType<{ className?: string }>;
+  icon: React.ComponentType<{
+    className?: string;
+  }>;
   label: string;
   value: string;
 }) {

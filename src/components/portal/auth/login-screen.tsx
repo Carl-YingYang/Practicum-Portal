@@ -1,39 +1,48 @@
 "use client";
-
 import { useState } from "react";
 import { useTheme } from "next-themes";
 import { ArrowUpRight, Eye, EyeOff, Moon, Sun } from "lucide-react";
 import { useAppStore } from "@/store/use-app-store";
-import { useAccountUsers } from "@/lib/use-account-users";
-import { mockUsers } from "@/lib/mock-data";
+import Image from "next/image";
+import { signIn, demoSignIn, initializePortal } from "@/client/portal-client";
 import { ROLE_LABELS } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-
 export function LoginScreen() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [visible, setVisible] = useState(false);
   const [error, setError] = useState("");
   const [showDemo, setShowDemo] = useState(false);
-  const login = useAppStore((s) => s.loginByCredentials);
-  const loginAs = useAppStore((s) => s.loginAs);
-  const users = useAccountUsers();
+  const [busy, setBusy] = useState(false);
+  const [hero, setHero] = useState(1);
+  const users = useAppStore((s) => s.demoAccounts);
+  const serverError = useAppStore((s) => s.syncError);
   const { setTheme } = useTheme();
-
-  function submit(e: React.FormEvent) {
+  async function submit(e: React.FormEvent) {
     e.preventDefault();
-    const result = login(email, password);
-    setError(
-      result === "inactive"
-        ? "This account is disabled. Contact your coordinator."
-        : result !== "ok"
-          ? "Check your email and password, then try again."
-          : "",
-    );
+    setBusy(true);
+    setError("");
+    try {
+      await signIn(email, password);
+    } catch (error) {
+      setError(error instanceof Error ? error.message : "Sign-in failed.");
+    } finally {
+      setBusy(false);
+    }
   }
-
+  async function preview(userId: string) {
+    setBusy(true);
+    setError("");
+    try {
+      await demoSignIn(userId);
+    } catch (error) {
+      setError(error instanceof Error ? error.message : "Preview failed.");
+    } finally {
+      setBusy(false);
+    }
+  }
   return (
     <main className="editorial-login min-h-screen bg-background text-foreground">
       <header className="flex items-center justify-between border-b border-border px-6 py-5 md:px-10">
@@ -63,12 +72,47 @@ export function LoginScreen() {
         </div>
       </header>
       <div className="mx-auto grid max-w-[1400px] lg:min-h-[calc(100vh-85px)] lg:grid-cols-[1.2fr_1fr]">
-        <section className="flex flex-col justify-between border-b border-border p-6 md:p-10 lg:border-b-0 lg:border-r lg:p-14">
-          <div>
+        <section className="relative order-2 flex flex-col justify-between overflow-hidden border-t border-border p-6 md:p-10 lg:order-1 lg:border-r lg:border-t-0 lg:p-14">
+          <div
+            className="pointer-events-none absolute inset-0"
+            aria-hidden="true"
+          >
+            {[1, 2, 3].map((number) => (
+              <Image
+                key={number}
+                src={`/login-hero-${number}.png`}
+                alt=""
+                fill
+                sizes="(max-width: 1023px) 100vw, 60vw"
+                priority={number === 1}
+                className={`object-cover opacity-[.14] dark:opacity-[.10] ${hero === number ? "block" : "hidden"}`}
+              />
+            ))}
+            <div className="absolute inset-0 bg-gradient-to-t from-background/95 via-background/40 to-background/20" />
+          </div>
+          <div
+            className="relative mb-5 flex gap-2"
+            role="group"
+            aria-label="Login background"
+          >
+            {[1, 2, 3].map((number) => (
+              <button
+                key={number}
+                type="button"
+                aria-label={`Show login hero ${number}`}
+                aria-pressed={hero === number}
+                onClick={() => setHero(number)}
+                className="min-h-10 min-w-10 rounded-full border border-border bg-background/80 text-xs aria-pressed:border-primary aria-pressed:text-primary"
+              >
+                0{number}
+              </button>
+            ))}
+          </div>
+          <div className="relative">
             <p className="editorial-eyebrow">
               A clearer path from campus to career
             </p>
-            <h1 className="mt-6 max-w-xl text-5xl font-semibold leading-[.98] tracking-[-.06em] md:text-7xl">
+            <h1 className="mt-6 max-w-xl text-4xl font-semibold leading-[.98] tracking-[-.06em] md:text-7xl">
               Good work.
               <br />
               Real progress.
@@ -79,11 +123,10 @@ export function LoginScreen() {
             </h1>
             <p className="mt-6 max-w-md text-sm leading-7 text-muted-foreground">
               A focused workspace for students, supervisors, and coordinators.
-              Keep attendance, weekly journals, evaluations, and forms moving
-              together.
+              Keep attendance, journals, evaluations, and forms moving together.
             </p>
           </div>
-          <div className="mt-10 grid grid-cols-3 border-y border-border py-5 text-xs">
+          <div className="relative mt-8 grid grid-cols-3 border-y border-border py-5 text-xs">
             <div>
               <span className="editorial-eyebrow">01 / Students</span>
               <p className="mt-2">Track your work.</p>
@@ -98,7 +141,7 @@ export function LoginScreen() {
             </div>
           </div>
         </section>
-        <section className="flex items-center justify-center p-6 py-12 md:p-12">
+        <section className="order-1 flex items-center justify-center p-5 py-8 md:p-12 lg:order-2">
           <div className="w-full max-w-sm">
             <p className="editorial-eyebrow">Your workspace awaits</p>
             <h2 className="mt-3 text-3xl font-semibold tracking-tight">
@@ -107,7 +150,7 @@ export function LoginScreen() {
             <p className="mb-8 mt-3 text-sm leading-6 text-muted-foreground">
               Sign in with the account provided by your coordinator.
             </p>
-            <form onSubmit={submit} className="space-y-5">
+            <form aria-busy={busy} onSubmit={submit} className="space-y-5">
               <div className="space-y-2">
                 <Label htmlFor="email">Email address</Label>
                 <Input
@@ -159,53 +202,73 @@ export function LoginScreen() {
                   {error}
                 </p>
               )}
-              <Button type="submit" className="h-11 w-full justify-between">
-                Sign in <ArrowUpRight className="size-4" />
+              <Button
+                disabled={busy}
+                type="submit"
+                className="h-11 w-full justify-between"
+              >
+                {busy ? "Signing in…" : "Sign in"}{" "}
+                <ArrowUpRight className="size-4" />
               </Button>
             </form>
             <p className="mt-5 text-xs leading-5 text-muted-foreground">
               Need access or a password reset? Ask your coordinator.
             </p>
-            <div className="mt-10 border-t border-border pt-5">
-              <button
-                type="button"
-                aria-expanded={showDemo}
-                onClick={() => setShowDemo(!showDemo)}
-                className="flex w-full justify-between text-xs font-medium"
-              >
-                Explore the prototype <span>{showDemo ? "−" : "+"}</span>
-              </button>
-              {showDemo && (
-                <div className="mt-4 space-y-2">
-                  {users
-                    .filter(
-                      (u) =>
-                        mockUsers.some((m) => m.id === u.id) &&
-                        u.accountStatus !== "disabled",
-                    )
-                    .map((u) => (
-                      <button
-                        key={u.id}
-                        type="button"
-                        onClick={() => loginAs(u.id)}
-                        className="flex w-full items-center justify-between border border-border px-3 py-3 text-left text-xs hover:bg-muted"
-                      >
-                        <span>
-                          {ROLE_LABELS[u.role]}
-                          <span className="mt-1 block text-muted-foreground">
-                            {u.name}
+            {serverError && (
+              <div role="alert" className="mt-5 text-sm text-destructive">
+                {serverError}
+                <Button
+                  variant="outline"
+                  className="mt-2 w-full"
+                  onClick={() => void initializePortal()}
+                >
+                  Retry connection
+                </Button>
+              </div>
+            )}
+            {users.length > 0 && (
+              <div className="mt-7 border-t border-border pt-5">
+                <button
+                  type="button"
+                  aria-expanded={showDemo}
+                  onClick={() => setShowDemo(!showDemo)}
+                  className="flex w-full justify-between text-xs font-medium"
+                >
+                  Explore the prototype <span>{showDemo ? "−" : "+"}</span>
+                </button>
+                {showDemo && (
+                  <div className="mt-4 space-y-2">
+                    {users
+                      .filter(
+                        (u, index) =>
+                          users.findIndex((other) => other.role === u.role) ===
+                          index,
+                      )
+                      .map((u) => (
+                        <button
+                          key={u.id}
+                          type="button"
+                          disabled={busy}
+                          onClick={() => void preview(u.id)}
+                          className="flex w-full items-center justify-between border border-border px-3 py-3 text-left text-xs hover:bg-muted"
+                        >
+                          <span>
+                            {ROLE_LABELS[u.role]}
+                            <span className="mt-1 block text-muted-foreground">
+                              {u.name}
+                            </span>
                           </span>
-                        </span>
-                        <ArrowUpRight className="size-4" />
-                      </button>
-                    ))}
-                  <p className="pt-2 text-[11px] leading-5 text-muted-foreground">
-                    Demo previews bypass sign-in. This prototype stores changes
-                    and credentials locally in this browser; use sample data.
-                  </p>
-                </div>
-              )}
-            </div>
+                          <ArrowUpRight className="size-4" />
+                        </button>
+                      ))}
+                    <p className="pt-2 text-[11px] leading-5 text-muted-foreground">
+                      Sample accounts use the shared test database. Changes are
+                      visible to other test sessions.
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </section>
       </div>

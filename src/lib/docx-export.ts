@@ -11,7 +11,6 @@
  * The styling mimics Google Docs: a clean white page, serif body, bold
  * headings, subtle accent color for the title bar.
  */
-
 import {
   Document,
   Packer,
@@ -25,12 +24,11 @@ import {
   ShadingType,
 } from "docx";
 import { saveAs } from "file-saver";
-
 // ============================================================
 // Types — minimal mirrors of the portal domain types
 // ============================================================
-
 interface JournalDocInput {
+  cadenceLabel?: string;
   studentName: string;
   studentNumber: string;
   course: string;
@@ -43,7 +41,6 @@ interface JournalDocInput {
   status?: string;
   schoolName?: string;
 }
-
 interface FormDocInput {
   formTitle: string;
   formDescription?: string;
@@ -51,17 +48,18 @@ interface FormDocInput {
   studentNumber?: string;
   submittedAt?: string;
   /** Q&A pairs — the block label + the student's answer (or "—"). */
-  blocks: { label: string; answer: string; type?: string }[];
+  blocks: {
+    label: string;
+    answer: string;
+    type?: string;
+  }[];
   schoolName?: string;
 }
-
 // ============================================================
 // Helpers
 // ============================================================
-
 const ACCENT = "0F766E"; // teal — matches the portal's brand
 const MUTED = "64748B"; // slate-500
-
 /** Split a textarea string into paragraphs (blank line separated). */
 function toParagraphs(text: string): string[] {
   if (!text?.trim()) return [];
@@ -70,7 +68,6 @@ function toParagraphs(text: string): string[] {
     .map((p) => p.trim())
     .filter(Boolean);
 }
-
 /** Convert plain text with single newlines into separate TextRuns (line breaks). */
 function textWithBreaks(text: string, opts: IRunOptions = {}): TextRun[] {
   if (!text) return [new TextRun({ text: "", ...opts })];
@@ -82,14 +79,11 @@ function textWithBreaks(text: string, opts: IRunOptions = {}): TextRun[] {
   });
   return runs;
 }
-
 // ============================================================
 // Journal → .docx
 // ============================================================
-
 export async function exportJournalToDocx(input: JournalDocInput) {
   const children: Paragraph[] = [];
-
   // ---- Title bar (school name, accent shading) ----
   if (input.schoolName) {
     children.push(
@@ -105,10 +99,9 @@ export async function exportJournalToDocx(input: JournalDocInput) {
             font: "Calibri",
           }),
         ],
-      })
+      }),
     );
   }
-
   // ---- Document title ----
   children.push(
     new Paragraph({
@@ -116,16 +109,15 @@ export async function exportJournalToDocx(input: JournalDocInput) {
       spacing: { before: 0, after: 120 },
       children: [
         new TextRun({
-          text: "Weekly Practicum Journal",
+          text: `${input.cadenceLabel ?? "Weekly"} Practicum Journal`,
           bold: true,
           size: 32, // 16pt
           color: "0F172A",
           font: "Calibri",
         }),
       ],
-    })
+    }),
   );
-
   // ---- Meta line ----
   children.push(
     new Paragraph({
@@ -138,9 +130,8 @@ export async function exportJournalToDocx(input: JournalDocInput) {
           font: "Calibri",
         }),
       ],
-    })
+    }),
   );
-
   // ---- Student info table-like block ----
   const metaLines: [string, string][] = [
     ["Student", `${input.studentName} (${input.studentNumber})`],
@@ -149,7 +140,6 @@ export async function exportJournalToDocx(input: JournalDocInput) {
     ["Supervisor", input.supervisorName || "—"],
   ];
   if (input.status) metaLines.push(["Status", input.status]);
-
   for (const [label, value] of metaLines) {
     children.push(
       new Paragraph({
@@ -169,13 +159,11 @@ export async function exportJournalToDocx(input: JournalDocInput) {
             font: "Calibri",
           }),
         ],
-      })
+      }),
     );
   }
-
   // ---- Divider ----
   children.push(dividerParagraph());
-
   // ---- Tasks Performed ----
   children.push(sectionHeading("Tasks Performed"));
   const taskParas = toParagraphs(input.tasks);
@@ -186,7 +174,6 @@ export async function exportJournalToDocx(input: JournalDocInput) {
       children.push(bodyParagraph(p));
     }
   }
-
   // ---- Learnings & Reflections ----
   children.push(sectionHeading("Learnings & Reflections"));
   const learnParas = toParagraphs(input.learnings);
@@ -197,7 +184,6 @@ export async function exportJournalToDocx(input: JournalDocInput) {
       children.push(bodyParagraph(p));
     }
   }
-
   // ---- Footer ----
   children.push(dividerParagraph());
   children.push(
@@ -213,9 +199,8 @@ export async function exportJournalToDocx(input: JournalDocInput) {
           font: "Calibri",
         }),
       ],
-    })
+    }),
   );
-
   const doc = new Document({
     sections: [
       {
@@ -228,19 +213,18 @@ export async function exportJournalToDocx(input: JournalDocInput) {
       },
     ],
   });
-
   const blob = await Packer.toBlob(doc);
   const safeName = input.studentName.replace(/[^a-z0-9]+/gi, "-").toLowerCase();
-  saveAs(blob, `journal-${safeName}-${input.dateLabel.replace(/[^a-z0-9]+/gi, "-").toLowerCase()}.docx`);
+  saveAs(
+    blob,
+    `journal-${safeName}-${input.dateLabel.replace(/[^a-z0-9]+/gi, "-").toLowerCase()}.docx`,
+  );
 }
-
 // ============================================================
 // Form submission → .docx
 // ============================================================
-
 export async function exportFormToDocx(input: FormDocInput) {
   const children: Paragraph[] = [];
-
   // ---- Title bar ----
   if (input.schoolName) {
     children.push(
@@ -256,10 +240,9 @@ export async function exportFormToDocx(input: FormDocInput) {
             font: "Calibri",
           }),
         ],
-      })
+      }),
     );
   }
-
   // ---- Form title ----
   children.push(
     new Paragraph({
@@ -274,9 +257,8 @@ export async function exportFormToDocx(input: FormDocInput) {
           font: "Calibri",
         }),
       ],
-    })
+    }),
   );
-
   if (input.formDescription) {
     children.push(
       new Paragraph({
@@ -290,18 +272,15 @@ export async function exportFormToDocx(input: FormDocInput) {
             font: "Calibri",
           }),
         ],
-      })
+      }),
     );
   }
-
   // ---- Student / submission meta ----
   if (input.studentName || input.submittedAt) {
     const metaParts: string[] = [];
     if (input.studentName) {
       metaParts.push(
-        `Student: ${input.studentName}${
-          input.studentNumber ? ` (${input.studentNumber})` : ""
-        }`
+        `Student: ${input.studentName}${input.studentNumber ? ` (${input.studentNumber})` : ""}`,
       );
     }
     if (input.submittedAt) metaParts.push(`Submitted: ${input.submittedAt}`);
@@ -316,12 +295,10 @@ export async function exportFormToDocx(input: FormDocInput) {
             font: "Calibri",
           }),
         ],
-      })
+      }),
     );
   }
-
   children.push(dividerParagraph());
-
   // ---- Q&A blocks ----
   for (const block of input.blocks) {
     children.push(
@@ -347,7 +324,7 @@ export async function exportFormToDocx(input: FormDocInput) {
               ]
             : []),
         ],
-      })
+      }),
     );
     // Answer — preserve line breaks
     const answer = block.answer?.trim() || "—";
@@ -359,10 +336,9 @@ export async function exportFormToDocx(input: FormDocInput) {
           size: 22,
           font: "Calibri",
         }),
-      })
+      }),
     );
   }
-
   // ---- Footer ----
   children.push(dividerParagraph());
   children.push(
@@ -378,9 +354,8 @@ export async function exportFormToDocx(input: FormDocInput) {
           font: "Calibri",
         }),
       ],
-    })
+    }),
   );
-
   const doc = new Document({
     sections: [
       {
@@ -393,16 +368,13 @@ export async function exportFormToDocx(input: FormDocInput) {
       },
     ],
   });
-
   const blob = await Packer.toBlob(doc);
   const safeTitle = input.formTitle.replace(/[^a-z0-9]+/gi, "-").toLowerCase();
   saveAs(blob, `form-${safeTitle}.docx`);
 }
-
 // ============================================================
 // Small paragraph builders — shared
 // ============================================================
-
 function sectionHeading(text: string): Paragraph {
   return new Paragraph({
     heading: HeadingLevel.HEADING_2,
@@ -418,7 +390,6 @@ function sectionHeading(text: string): Paragraph {
     ],
   });
 }
-
 function bodyParagraph(text: string): Paragraph {
   return new Paragraph({
     spacing: { after: 120, line: 276 }, // 1.15 line spacing
@@ -429,7 +400,6 @@ function bodyParagraph(text: string): Paragraph {
     }),
   });
 }
-
 function dividerParagraph(): Paragraph {
   const opts: IParagraphOptions = {
     spacing: { before: 120, after: 120 },

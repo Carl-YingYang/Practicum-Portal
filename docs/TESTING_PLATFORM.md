@@ -1,5 +1,8 @@
 # Testing platform improvement log
 
+> Historical UI changelog for versions 0.2–0.3. The current 0.4 connected implementation, server persistence and permissions are documented in [CONNECTED_PLATFORM.md](CONNECTED_PLATFORM.md). Earlier browser-only limitations below have been superseded.
+
+
 Date: October 5, 2026  
 Branch: `practo/testing-platform`  
 Base branch: `feature/sandbox-prototype`  

@@ -1,23 +1,72 @@
 "use client";
-
+import dynamic from "next/dynamic";
+import { WorkspaceLoader } from "@/components/portal/shared/workspace-loader";
 import { useAppStore } from "@/store/use-app-store";
-import { SupervisorDashboard } from "./supervisor-dashboard";
-import { InternsList } from "./interns-list";
-import { InternDetail } from "./intern-detail";
-import { EvaluationForm } from "./evaluation-form";
-import { EvaluationView } from "./evaluation-view";
-import { EvaluationsList } from "./evaluations-list";
-import { JournalApprovalQueue } from "./journal-approval-queue";
-import { JournalReview } from "./journal-review";
-import { SupervisorReports } from "./supervisor-reports";
-import { SupervisorProfile } from "./supervisor-profile";
-import { SupervisorFormsList } from "./supervisor-forms-list";
-import { SupervisorFormWorkspace } from "./supervisor-form-workspace";
-
+const SupervisorDashboard = dynamic(
+  () =>
+    import("./supervisor-dashboard").then(
+      (module) => module.SupervisorDashboard,
+    ),
+  { loading: () => <WorkspaceLoader /> },
+);
+const InternsList = dynamic(
+  () => import("./interns-list").then((module) => module.InternsList),
+  { loading: () => <WorkspaceLoader /> },
+);
+const InternDetail = dynamic(
+  () => import("./intern-detail").then((module) => module.InternDetail),
+  { loading: () => <WorkspaceLoader /> },
+);
+const EvaluationForm = dynamic(
+  () => import("./evaluation-form").then((module) => module.EvaluationForm),
+  { loading: () => <WorkspaceLoader /> },
+);
+const EvaluationView = dynamic(
+  () => import("./evaluation-view").then((module) => module.EvaluationView),
+  { loading: () => <WorkspaceLoader /> },
+);
+const EvaluationsList = dynamic(
+  () => import("./evaluations-list").then((module) => module.EvaluationsList),
+  { loading: () => <WorkspaceLoader /> },
+);
+const JournalApprovalQueue = dynamic(
+  () =>
+    import("./journal-approval-queue").then(
+      (module) => module.JournalApprovalQueue,
+    ),
+  { loading: () => <WorkspaceLoader /> },
+);
+const JournalReview = dynamic(
+  () => import("./journal-review").then((module) => module.JournalReview),
+  { loading: () => <WorkspaceLoader /> },
+);
+const SupervisorReports = dynamic(
+  () =>
+    import("./supervisor-reports").then((module) => module.SupervisorReports),
+  { loading: () => <WorkspaceLoader /> },
+);
+const SupervisorProfile = dynamic(
+  () =>
+    import("./supervisor-profile").then((module) => module.SupervisorProfile),
+  { loading: () => <WorkspaceLoader /> },
+);
+const SupervisorFormsList = dynamic(
+  () =>
+    import("./supervisor-forms-list").then(
+      (module) => module.SupervisorFormsList,
+    ),
+  { loading: () => <WorkspaceLoader /> },
+);
+const SupervisorFormWorkspace = dynamic(
+  () =>
+    import("./supervisor-form-workspace").then(
+      (module) => module.SupervisorFormWorkspace,
+    ),
+  { loading: () => <WorkspaceLoader /> },
+);
 export function SupervisorWorkspace() {
   const view = useAppStore((s) => s.view);
   const viewParams = useAppStore((s) => s.viewParams);
-
   switch (view) {
     case "supervisor.dashboard":
       return <SupervisorDashboard />;
@@ -51,7 +100,6 @@ export function SupervisorWorkspace() {
       return <SupervisorDashboard />;
   }
 }
-
 // Re-export page components as named exports.
 export {
   SupervisorDashboard,
@@ -67,5 +115,4 @@ export {
   SupervisorFormsList,
   SupervisorFormWorkspace,
 };
-
 export default SupervisorWorkspace;

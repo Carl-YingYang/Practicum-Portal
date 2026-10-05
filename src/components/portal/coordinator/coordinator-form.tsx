@@ -1,7 +1,8 @@
 "use client";
-
+import { FormField as Field } from "@/components/portal/shared/form-field";
 import { accountUsers } from "@/lib/prototype";
 import * as React from "react";
+import { flushChanges } from "@/client/portal-client";
 import { useAppStore } from "@/store/use-app-store";
 import type { ViewParams } from "@/lib/types";
 import { COORDINATOR_DEPARTMENTS } from "@/lib/types";
@@ -22,7 +23,6 @@ import {
 } from "@/components/ui/select";
 import { AlertCircle, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
-
 /**
  * CoordinatorForm — create (or edit) a Practicum Coordinator account.
  *
@@ -40,13 +40,14 @@ export function CoordinatorForm({
   const coordinators = useAppStore((s) => s.coordinators);
   const createCoordinator = useAppStore((s) => s.createCoordinator);
   const updateCoordinator = useAppStore((s) => s.updateCoordinator);
-
   const isEdit = !!coordinatorId;
   const existing = React.useMemo(
-    () => (coordinatorId ? coordinators.find((c) => c.id === coordinatorId) : undefined),
-    [coordinators, coordinatorId]
+    () =>
+      coordinatorId
+        ? coordinators.find((c) => c.id === coordinatorId)
+        : undefined,
+    [coordinators, coordinatorId],
   );
-
   const [name, setName] = React.useState("");
   const [email, setEmail] = React.useState("");
   const [title, setTitle] = React.useState("");
@@ -60,7 +61,6 @@ export function CoordinatorForm({
     userId: string;
     coordinatorId: string;
   } | null>(null);
-
   React.useEffect(() => {
     if (existing) {
       setName(existing.name);
@@ -69,11 +69,14 @@ export function CoordinatorForm({
       setDepartment(existing.department);
     }
   }, [existing]);
-
   if (isEdit && !existing) {
     return (
       <div>
-        <PageHeader title="Edit Coordinator" showBack breadcrumb="User Management" />
+        <PageHeader
+          title="Edit Coordinator"
+          showBack
+          breadcrumb="User Management"
+        />
         <EmptyState
           icon={AlertCircle}
           title="Coordinator not found"
@@ -84,34 +87,38 @@ export function CoordinatorForm({
       </div>
     );
   }
-
   const validate = () => {
     const next: Record<string, string> = {};
     if (!name.trim()) next.name = "Name is required.";
     if (!email.trim()) next.email = "Email is required.";
-    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) next.email = "Enter a valid email.";
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
+      next.email = "Enter a valid email.";
     if (!title.trim()) next.title = "Title is required.";
     if (!department) next.department = "Department is required.";
-
     // Duplicate prevention (only on create).
     if (!isEdit) {
       const emailLower = email.trim().toLowerCase();
       const dupEmail = coordinators.some(
-        (c) => c.email.trim().toLowerCase() === emailLower
+        (c) => c.email.trim().toLowerCase() === emailLower,
       );
       if (dupEmail) {
-        next.email = next.email || "A coordinator with this email already exists.";
+        next.email =
+          next.email || "A coordinator with this email already exists.";
       }
     }
-
     setErrors(next);
     return Object.keys(next).length === 0;
   };
-
-  const handleSave = () => {
-    const duplicate = accountUsers(useAppStore.getState()).some((u) => u.email.toLowerCase() === email.trim().toLowerCase() && (u.studentId ?? u.supervisorId ?? u.coordinatorId) !== existing?.id);
-    if (duplicate) { toast.error("This email is already used by another account."); return; }
-
+  const handleSave = async () => {
+    const duplicate = accountUsers(useAppStore.getState()).some(
+      (u) =>
+        u.email.toLowerCase() === email.trim().toLowerCase() &&
+        (u.studentId ?? u.supervisorId ?? u.coordinatorId) !== existing?.id,
+    );
+    if (duplicate) {
+      toast.error("This email is already used by another account.");
+      return;
+    }
     if (!validate()) {
       toast.error("Please fix the highlighted fields.");
       return;
@@ -120,7 +127,7 @@ export function CoordinatorForm({
     if (!isEdit) {
       const emailLower = email.trim().toLowerCase();
       const dupEmail = coordinators.some(
-        (c) => c.email.trim().toLowerCase() === emailLower
+        (c) => c.email.trim().toLowerCase() === emailLower,
       );
       if (dupEmail) {
         toast.error("Duplicate email", {
@@ -140,6 +147,11 @@ export function CoordinatorForm({
         title: title.trim(),
         department,
       });
+      try {
+        await flushChanges();
+      } catch {
+        return;
+      }
       toast.success("Coordinator updated", {
         description: `${name} saved.`,
       });
@@ -151,6 +163,11 @@ export function CoordinatorForm({
         title: title.trim(),
         department,
       });
+      try {
+        await flushChanges();
+      } catch {
+        return;
+      }
       setCreatedCreds({
         name: name.trim(),
         email: email.trim(),
@@ -161,7 +178,6 @@ export function CoordinatorForm({
       setCredsOpen(true);
     }
   };
-
   return (
     <div>
       <PageHeader
@@ -187,9 +203,9 @@ export function CoordinatorForm({
                 Coordinator accounts have full access
               </p>
               <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">
-                Coordinators can manage students, supervisors, and other coordinators,
-                export reports, and configure practicum forms. Only grant this role to
-                authorised university staff.
+                Coordinators can manage students, supervisors, and other
+                coordinators, export reports, and configure practicum forms.
+                Only grant this role to authorised university staff.
               </p>
             </div>
           </div>
@@ -237,9 +253,16 @@ export function CoordinatorForm({
                 aria-invalid={!!errors.title}
               />
             </Field>
-            <Field label="Academic Department" required error={errors.department}>
+            <Field
+              label="Academic Department"
+              required
+              error={errors.department}
+            >
               <Select value={department} onValueChange={setDepartment}>
-                <SelectTrigger className="w-full" aria-invalid={!!errors.department}>
+                <SelectTrigger
+                  className="w-full"
+                  aria-invalid={!!errors.department}
+                >
                   <SelectValue placeholder="Select department" />
                 </SelectTrigger>
                 <SelectContent>
@@ -280,39 +303,6 @@ export function CoordinatorForm({
             navigate("coordinator.user-management");
           }}
         />
-      )}
-    </div>
-  );
-}
-
-function Field({
-  label,
-  required,
-  error,
-  hint,
-  children,
-  className,
-}: {
-  label: string;
-  required?: boolean;
-  error?: string;
-  hint?: string;
-  children: React.ReactNode;
-  className?: string;
-}) {
-  return (
-    <div className={className}>
-      <Label className="mb-1.5">
-        {label}
-        {required && <span className="text-destructive">*</span>}
-      </Label>
-      {children}
-      {hint && !error && <p className="mt-1 text-xs text-muted-foreground">{hint}</p>}
-      {error && (
-        <p className="mt-1 flex items-center gap-1 text-xs text-destructive">
-          <AlertCircle className="h-3 w-3" />
-          {error}
-        </p>
       )}
     </div>
   );

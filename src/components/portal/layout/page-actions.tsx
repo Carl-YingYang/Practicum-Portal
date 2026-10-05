@@ -1,5 +1,4 @@
 "use client";
-
 import * as React from "react";
 import { useAppStore } from "@/store/use-app-store";
 import { Avatar } from "@/components/portal/shared/avatar";
@@ -25,30 +24,32 @@ import {
 } from "lucide-react";
 import { useTheme } from "next-themes";
 import { ROLE_LABELS } from "@/lib/types";
-import { mockUsers } from "@/lib/mock-data";
 import { NotificationsDropdown } from "./notifications-dropdown";
-
 interface PageActionsProps {
   onOpenMobileNav: () => void;
   onOpenPalette?: () => void;
   onResetDemo?: () => void;
 }
-
 /** Ruled workspace header: search, notifications, theme, account and demo reset. */
-export function PageActions({ onOpenMobileNav, onOpenPalette, onResetDemo }: PageActionsProps) {
+export function PageActions({
+  onOpenMobileNav,
+  onOpenPalette,
+  onResetDemo,
+}: PageActionsProps) {
   const currentUser = useAppStore((s) => s.currentUser);
   const navigate = useAppStore((s) => s.navigate);
   const logout = useAppStore((s) => s.logout);
+  const demoUsers = useAppStore((s) => s.demoAccounts);
   const loginAs = useAppStore((s) => s.loginAs);
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = React.useState(false);
   React.useEffect(() => setMounted(true), []);
-
   const role = currentUser?.role;
-
   return (
     <div className="sticky top-0 z-30 flex min-h-16 items-center justify-between gap-2 border-b border-border bg-background px-4 sm:px-6 lg:px-8">
-      <p className="text-[10px] font-semibold uppercase tracking-[.2em] text-muted-foreground">Practo <span className="hidden sm:inline">/ Workspace</span></p>
+      <p className="text-[10px] font-semibold uppercase tracking-[.2em] text-muted-foreground">
+        Practo <span className="hidden sm:inline">/ Workspace</span>
+      </p>
       <div className="flex items-center gap-0.5 py-2">
         {/* Mobile: hamburger — opens the drawer */}
         <Button
@@ -133,7 +134,9 @@ export function PageActions({ onOpenMobileNav, onOpenPalette, onResetDemo }: Pag
                 {role && <RoleBadge role={role} solid />}
               </div>
               <div className="px-2 pb-2">
-                <p className="text-sm font-semibold text-foreground">{currentUser.name}</p>
+                <p className="text-sm font-semibold text-foreground">
+                  {currentUser.name}
+                </p>
                 <p className="truncate text-xs text-muted-foreground">
                   {currentUser.email}
                 </p>
@@ -142,8 +145,10 @@ export function PageActions({ onOpenMobileNav, onOpenPalette, onResetDemo }: Pag
               <DropdownMenuItem
                 onClick={() => {
                   if (role === "student") navigate("student.profile");
-                  else if (role === "supervisor") navigate("supervisor.profile");
-                  else if (role === "coordinator") navigate("coordinator.profile");
+                  else if (role === "supervisor")
+                    navigate("supervisor.profile");
+                  else if (role === "coordinator")
+                    navigate("coordinator.profile");
                 }}
                 className="gap-2 rounded-md"
               >
@@ -156,8 +161,13 @@ export function PageActions({ onOpenMobileNav, onOpenPalette, onResetDemo }: Pag
               <DropdownMenuLabel className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
                 Prototype: switch demo role
               </DropdownMenuLabel>
-              {mockUsers
-                .filter((u) => u.role !== role)
+              {demoUsers
+                .filter(
+                  (u, index) =>
+                    u.role !== role &&
+                    demoUsers.findIndex((other) => other.role === u.role) ===
+                      index,
+                )
                 .map((u) => (
                   <DropdownMenuItem
                     key={u.id}
@@ -175,7 +185,12 @@ export function PageActions({ onOpenMobileNav, onOpenPalette, onResetDemo }: Pag
                 ))}
 
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={onResetDemo} className="gap-2"><RotateCcw className="h-4 w-4" />Reset demo data</DropdownMenuItem>
+              {onResetDemo && (
+                <DropdownMenuItem onClick={onResetDemo} className="gap-2">
+                  <RotateCcw className="h-4 w-4" />
+                  Reset test data
+                </DropdownMenuItem>
+              )}
               <DropdownMenuItem
                 onClick={logout}
                 className="gap-2 rounded-md text-destructive focus:text-destructive"

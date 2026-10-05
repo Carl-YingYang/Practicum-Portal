@@ -1,13 +1,11 @@
 "use client";
-
 import * as React from "react";
 import dynamic from "next/dynamic";
-import { Loader2 } from "lucide-react";
+import { WorkspaceLoader } from "@/components/portal/shared/workspace-loader";
 import { useAppStore } from "@/store/use-app-store";
 import { LoginScreen } from "@/components/portal/auth/login-screen";
 import { FirstLoginPasswordChange } from "@/components/portal/auth/first-login-password";
 import { AppShell } from "@/components/portal/layout/app-shell";
-
 // Role workspaces are code-split so the initial `/` compile only builds the
 // login screen. Each workspace (and its heavy deps — mdxeditor, recharts,
 // xlsx, docx, etc.) is compiled on demand after the user logs in. This keeps
@@ -42,15 +40,6 @@ const CoordinatorWorkspace = dynamic(
     loading: () => <WorkspaceLoader />,
   },
 );
-
-function WorkspaceLoader() {
-  return (
-    <div className="flex min-h-[60vh] w-full items-center justify-center">
-      <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-    </div>
-  );
-}
-
 /**
  * Root orchestrator for the Practicum Evaluation Portal.
  *
@@ -64,31 +53,19 @@ export function PortalApp() {
   const hydratePrototype = useAppStore((s) => s.hydratePrototype);
   const currentUser = useAppStore((s) => s.currentUser);
   const view = useAppStore((s) => s.view);
-  const viewParams = useAppStore((s) => s.viewParams);
-  const hydrateToolsConfig = useAppStore((s) => s.hydrateToolsConfig);
-  const hydrateSubscription = useAppStore((s) => s.hydrateSubscription);
-  const hydrateSchools = useAppStore((s) => s.hydrateSchools);
-
-  // v5: hydrate tool config from localStorage once on mount (matches the
-  // manual localStorage convention used elsewhere — no persist middleware).
-  // Also hydrate the subscription + schools so branding edits persist.
   React.useEffect(() => {
-    void hydratePrototype().then(() => { hydrateToolsConfig(); hydrateSubscription(); hydrateSchools(); });
-  }, [hydratePrototype, hydrateToolsConfig, hydrateSubscription, hydrateSchools]);
-
+    void hydratePrototype();
+  }, [hydratePrototype]);
   if (!hasHydrated) return <WorkspaceLoader />;
-
   // Public route.
   if (!currentUser || view === "login") {
     return <LoginScreen />;
   }
-
   // Invited accounts must replace their one-time temporary password with a
   // personal one before reaching any workspace — focused, unskippable gate.
   if (currentUser.mustChangePassword) {
     return <FirstLoginPasswordChange />;
   }
-
   // Role-scoped workspaces.
   let workspace: React.ReactNode;
   switch (currentUser.role) {
@@ -104,10 +81,5 @@ export function PortalApp() {
     default:
       workspace = <LoginScreen />;
   }
-
-  return (
-    <AppShell>
-      {workspace}
-    </AppShell>
-  );
+  return <AppShell>{workspace}</AppShell>;
 }

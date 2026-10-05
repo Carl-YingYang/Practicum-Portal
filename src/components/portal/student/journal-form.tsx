@@ -1,12 +1,23 @@
 "use client";
-
 import * as React from "react";
 import { PageHeader } from "@/components/portal/layout/page-header";
 import { ActionBar } from "@/components/portal/shared/action-bar";
 import { ConfirmDialog } from "@/components/portal/shared/confirm-dialog";
-import { GoogleDocEditor } from "@/components/portal/shared/google-doc-editor";
+import { JournalEditor } from "@/components/portal/shared/journal-editor";
 import { JournalStatusBadge } from "@/components/portal/shared/badges";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 import { useAppStore } from "@/store/use-app-store";
+import { flushChanges } from "@/client/portal-client";
+import {
+  cadenceLabels,
+  journalHours,
+  nextJournalDate,
+} from "@/domain/journal-period";
 import {
   getJournal,
   getStudent,
@@ -21,440 +32,393 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import {
-  AlertCircle,
-  Clock,
-  FilePlus2,
-  List,
-  Save,
-  Send,
-  X,
-} from "lucide-react";
+import { AlertCircle, FilePlus2, List, Save, Send } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Journal } from "@/lib/types";
-import { exportJournalToDocx } from "@/lib/docx-export";
-
-interface FormState {
-  date: string;
-  hours: string;
-  tasks: string;
-  learnings: string;
-}
-
-interface FormErrors {
-  date?: string;
-  hours?: string;
-  tasks?: string;
-  learnings?: string;
-}
-
-/**
- * JournalForm — the "Drafting Room".
- *
- * Mirrors the law-office pattern the user referenced: a left rail listing the
- * student's journals (drafts + submitted) and a right pane that is an embedded
- * Google-Docs-style editor where the week's journal is written in place. The
- * portal owns the meta (date, hours, status) and delegates the writing surface
- * to the Docs-like editor, with an "Open original in Google Docs" link keeping
- * the delegation honest.
- */
+/** Attendance-derived periods, real server saves, and a compact writing surface. */
 export function JournalForm() {
-  const currentUser = useAppStore((s) => s.currentUser);
-  const students = useAppStore((s) => s.students);
-  const journals = useAppStore((s) => s.journals);
-  const companies = useAppStore((s) => s.companies);
-  const supervisors = useAppStore((s) => s.supervisors);
-  const schoolIdentity = useAppStore((s) => s.schoolIdentity);
-  const toolsConfig = useAppStore((s) => s.toolsConfig);
-  const viewParams = useAppStore((s) => s.viewParams);
-  const navigate = useAppStore((s) => s.navigate);
-  const back = useAppStore((s) => s.back);
-  const canGoBack = useAppStore((s) => s.history.length > 0);
-  const createJournal = useAppStore((s) => s.createJournal);
-  const updateJournalDraft = useAppStore((s) => s.updateJournalDraft);
-  const submitJournal = useAppStore((s) => s.submitJournal);
-
-  const student = getStudent(students, currentUser?.studentId);
-  const editingId = viewParams.journalId;
-  const existingJournal = getJournal(journals, editingId);
-
-  const draftIdRef = React.useRef<string | undefined>(editingId);
-  const [draftId, setDraftId] = React.useState<string | undefined>(editingId);
-  const [form, setForm] = React.useState<FormState>({
-    date: todayISODate(),
-    hours: "40",
-    tasks: "",
-    learnings: "",
-  });
-  const [errors, setErrors] = React.useState<FormErrors>({});
-  const [submitOpen, setSubmitOpen] = React.useState(false);
-  const [redirected, setRedirected] = React.useState(false);
-  const [saveState, setSaveState] = React.useState<"idle" | "saving" | "saved">("idle");
-  const [railOpen, setRailOpen] = React.useState(false);
-  const saveTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  // If editing an existing journal, prefill from it (only drafts are editable).
-  React.useEffect(() => {
-    if (editingId && existingJournal) {
-      if (!["draft", "rejected"].includes(existingJournal.status)) {
-        if (!redirected) {
-          setRedirected(true);
-          navigate("student.journal-view", { journalId: editingId });
-        }
-        return;
-      }
-      draftIdRef.current = editingId;
-      setDraftId(editingId);
-      setForm({
-        date: existingJournal.date,
-        hours: String(existingJournal.hours),
-        tasks: existingJournal.tasks,
-        learnings: existingJournal.learnings,
-      });
-    }
-  }, [editingId, navigate, redirected]);
-
-  // Debounced autosave indicator whenever the body changes (draft only).
-  const flashSaving = () => {
-    setSaveState("saving");
-    if (saveTimer.current) clearTimeout(saveTimer.current);
-    saveTimer.current = setTimeout(() => setSaveState("saved"), 700);
-  };
-
-  React.useEffect(() => () => { if (saveTimer.current) clearTimeout(saveTimer.current); }, []);
-
-  if (!student) {
-    return null;
-  }
-
+  const state = useAppStore();
+  const student = getStudent(state.students, state.currentUser?.studentId);
+  const existing = getJournal(state.journals, state.viewParams.journalId);
+  const cadence =
+    existing?.cadence ?? state.schoolIdentity.journalCadence ?? "weekly";
   const today = todayISODate();
-  const hoursNum = Number(form.hours) || 0;
-
-  const myJournals = journalsForStudent(journals, student.id).sort(
-    (a, b) => (a.date < b.date ? 1 : -1),
+  const draftId = React.useRef(existing?.id);
+  const [activeId, setActiveId] = React.useState(existing?.id);
+  const [form, setForm] = React.useState(() => ({
+    date:
+      existing?.date ??
+      nextJournalDate(
+        state.timeLogs,
+        state.journals,
+        student?.id ?? "",
+        today,
+        cadence,
+      ),
+    tasks: existing?.tasks ?? "",
+    learnings: existing?.learnings ?? "",
+  }));
+  const [confirm, setConfirm] = React.useState(false),
+    [railOpen, setRailOpen] = React.useState(false),
+    [busy, setBusy] = React.useState(false);
+  const [edited, setEdited] = React.useState(false),
+    [error, setError] = React.useState("");
+  const context = journalHours(
+    state.timeLogs,
+    student?.id ?? "",
+    form.date || today,
+    cadence,
   );
-
-  const update = (patch: Partial<FormState>) => {
-    const next = { ...form, ...patch };
-    setForm(next);
-    const payload = { date: next.date || todayISODate(), hours: Number(next.hours) || 0, tasks: next.tasks, learnings: next.learnings };
-    if (draftIdRef.current) updateJournalDraft(draftIdRef.current, payload);
+  const payload = { ...form, hours: context.hours };
+  const save = React.useCallback(async () => {
+    if (!student || !form.date) return;
+    if (draftId.current)
+      state.updateJournalDraft(draftId.current, {
+        ...form,
+        hours: context.hours,
+      });
     else {
-      const id = createJournal({ studentId: student.id, ...payload, submit: false });
-      draftIdRef.current = id; setDraftId(id);
-    }
-    setErrors((e) => {
-      const next = { ...e };
-      for (const k of Object.keys(patch) as (keyof FormState)[]) {
-        delete next[k];
-      }
-      return next;
-    });
-    // Only flash autosave for body fields, not date/hours.
-    if ("tasks" in patch || "learnings" in patch) {
-      flashSaving();
-    }
-  };
-
-  const validate = (): FormErrors => {
-    const e: FormErrors = {};
-    if (!form.date) e.date = "Date is required.";
-    if (!form.hours || hoursNum <= 0)
-      e.hours = "Hours must be greater than 0.";
-    if (!form.tasks.trim()) e.tasks = "Please describe the tasks you performed.";
-    if (!form.learnings.trim())
-      e.learnings = "Please share what you learned this week.";
-    return e;
-  };
-
-  const persistDraft = (opts: { silent?: boolean } = {}) => {
-    const payload = {
-      date: form.date || todayISODate(),
-      hours: hoursNum,
-      tasks: form.tasks,
-      learnings: form.learnings,
-    };
-    if (draftIdRef.current) {
-      updateJournalDraft(draftIdRef.current, payload);
-    } else {
-      const newId = createJournal({
+      const id = state.createJournal({
         studentId: student.id,
-        ...payload,
+        ...form,
+        hours: context.hours,
         submit: false,
       });
-      draftIdRef.current = newId;
-      setDraftId(newId);
+      draftId.current = id;
+      setActiveId(id);
     }
-    if (!opts.silent) {
-      setSaveState("saved");
-    }
-  };
-
-  const handleSaveDraft = () => {
-    persistDraft();
-    toast.success("Draft saved", {
-      description: "Saved in this browser.",
-    });
-  };
-
-  const handleSubmitClick = () => {
-    const e = validate();
-    setErrors(e);
-    if (Object.keys(e).length > 0) {
-      toast.error("Please complete all required fields before submitting.");
-      return;
-    }
-    setSubmitOpen(true);
-  };
-
-  const handleSubmitConfirm = () => {
-    setSubmitOpen(false);
-    const payload = {
-      date: form.date,
-      hours: hoursNum,
-      tasks: form.tasks.trim(),
-      learnings: form.learnings.trim(),
+    await flushChanges();
+  }, [
+    student,
+    form,
+    context.hours,
+    state.updateJournalDraft,
+    state.createJournal,
+  ]);
+  React.useEffect(() => {
+    if (!edited) return;
+    const timer = setTimeout(() => {
+      void save()
+        .then(() => {
+          setEdited(false);
+          setError("");
+        })
+        .catch((error) =>
+          setError(
+            error instanceof Error
+              ? error.message
+              : "Draft could not be saved.",
+          ),
+        );
+    }, 750);
+    return () => clearTimeout(timer);
+  }, [edited, save]);
+  React.useEffect(() => {
+    const warn = (event: BeforeUnloadEvent) => {
+      if (edited) {
+        event.preventDefault();
+        event.returnValue = "";
+      }
     };
-    if (draftIdRef.current) {
-      updateJournalDraft(draftIdRef.current, payload);
-      submitJournal(draftIdRef.current!);
-    } else {
-      createJournal({
-        studentId: student.id,
-        ...payload,
-        submit: true,
-      });
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [edited]);
+  if (!student) return null;
+  const myJournals = journalsForStudent(state.journals, student.id).sort(
+    (a, b) => b.date.localeCompare(a.date),
+  );
+  const company = getCompany(state.companies, student.companyId),
+    supervisor = getSupervisor(state.supervisors, student.supervisorId);
+  function update(patch: Partial<typeof form>) {
+    setForm((value) => ({ ...value, ...patch }));
+    setEdited(true);
+    setError("");
+  }
+  async function saveAndNotify() {
+    setBusy(true);
+    try {
+      await save();
+      setEdited(false);
+      setError("");
+      toast.success("Draft saved to server");
+    } catch (error) {
+      setError(
+        error instanceof Error ? error.message : "Please try saving again.",
+      );
+    } finally {
+      setBusy(false);
     }
-    toast.success("Journal submitted for approval", {
-      description: "Your supervisor will review it shortly.",
+  }
+  async function submit() {
+    setBusy(true);
+    setConfirm(false);
+    try {
+      await save();
+      state.submitJournal(draftId.current!);
+      await flushChanges();
+      setEdited(false);
+      toast.success("Journal submitted for review");
+      state.navigate("student.journals");
+    } catch (error) {
+      setError(error instanceof Error ? error.message : "Could not submit.");
+    } finally {
+      setBusy(false);
+    }
+  }
+  async function select(journal: Journal) {
+    if (edited) {
+      try {
+        await save();
+      } catch {
+        return;
+      }
+    }
+    state.navigate(
+      ["draft", "rejected"].includes(journal.status)
+        ? "student.journal-new"
+        : "student.journal-view",
+      { journalId: journal.id },
+    );
+  }
+  async function startNew() {
+    if (edited) {
+      try {
+        await save();
+      } catch {
+        return;
+      }
+    }
+    draftId.current = undefined;
+    setActiveId(undefined);
+    setForm({
+      date: nextJournalDate(
+        state.timeLogs,
+        state.journals,
+        student!.id,
+        today,
+        cadence,
+      ),
+      tasks: "",
+      learnings: "",
     });
-    navigate("student.journals");
-  };
-
-  const handleCancel = () => {
-    if (canGoBack) back();
-    else navigate("student.journals");
-  };
-
-  const handleSelectJournal = (j: Journal) => {
-    if (["draft", "rejected"].includes(j.status)) {
-      navigate("student.journal-new", { journalId: j.id });
-    } else {
-      navigate("student.journal-view", { journalId: j.id });
-    }
+    setEdited(false);
     setRailOpen(false);
-  };
-
-  const handleNewJournal = () => {
-    draftIdRef.current = undefined;
-    setDraftId(undefined);
-    setForm({ date: todayISODate(), hours: "", tasks: "", learnings: "" });
-    setErrors({});
-    navigate("student.journal-new");
-    setRailOpen(false);
-  };
-
-  const weekStr = weekLabel(form.date);
-  const docTitle = `Weekly Journal · ${weekStr}`;
-  const docSubtitle = `${formatDate(form.date)} · ${hoursNum}h planned`;
-  const connectedDocUrl =
-    existingJournal?.docUrl || toolsConfig.journalTemplateUrl || undefined;
-
-  // Build the Word export handler — captures the current draft content +
-  // student/school context so the .docx is self-contained.
-  const handleDownloadWord = async () => {
-    const company = getCompany(companies, student.companyId);
-    const supervisor = getSupervisor(supervisors, student.supervisorId);
+    if (state.viewParams.journalId) state.navigate("student.journal-new");
+  }
+  async function download() {
+    const { exportJournalToDocx } = await import("@/lib/docx-export");
     await exportJournalToDocx({
-      studentName: student.name,
-      studentNumber: student.studentNumber,
-      course: student.course,
+      cadenceLabel: cadenceLabels[cadence],
+      studentName: student!.name,
+      studentNumber: student!.studentNumber,
+      course: student!.course,
       companyName: company?.name ?? "",
       supervisorName: supervisor?.name ?? "",
-      weekLabel: weekStr,
+      weekLabel: `${formatDate(context.start)} – ${formatDate(context.end)}`,
       dateLabel: formatDate(form.date),
       tasks: form.tasks,
       learnings: form.learnings,
-      status: existingJournal?.status,
-      schoolName: schoolIdentity.name,
+      status: existing?.status,
+      schoolName: state.schoolIdentity.name,
     });
-  };
-
+  }
+  const saveState =
+    error || state.syncStatus === "error"
+      ? "error"
+      : edited || state.syncStatus === "saving"
+        ? "saving"
+        : activeId
+          ? "saved"
+          : "idle";
   return (
     <>
       <PageHeader
         breadcrumb="Journals"
-        title={editingId ? "Edit Journal" : "Drafting Room"}
-        description="Write your weekly journal. Drafts save in this browser."
+        title={existing ? "Edit Journal" : "Drafting Room"}
+        description="Write your entry. Attendance and account details are filled in for you."
         showBack
         actions={
           <Button
             variant="outline"
-            size="sm"
             className="lg:hidden"
             onClick={() => setRailOpen(true)}
           >
-            <List className="h-4 w-4" /> My Journals
+            <List className="size-4" />
+            My Journals
           </Button>
         }
       />
-
-      {/* Split layout: left rail + right editor */}
-      <div className="flex gap-4">
-        {/* LEFT RAIL — journal list (desktop) */}
-        <aside className="hidden w-72 shrink-0 lg:block">
+      <div className="flex items-start gap-4">
+        <aside className="hidden w-56 shrink-0 lg:block">
           <JournalListRail
             journals={myJournals}
-            activeId={draftId}
-            onSelect={handleSelectJournal}
-            onNew={handleNewJournal}
+            activeId={activeId}
+            onSelect={(journal) => void select(journal)}
+            onNew={() => void startNew()}
           />
         </aside>
-
-        {/* RIGHT — meta bar + embedded editor */}
-        <div className="flex min-w-0 flex-1 flex-col gap-4">
-          {/* Meta bar */}
-          <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <div className="space-y-1.5">
-                <Label htmlFor="jrnl-date" className="text-sm font-medium">
-                  Week date
-                </Label>
+        <div className="grid min-w-0 flex-1 gap-3">
+          <section className="rounded-xl border border-border bg-card p-4">
+            <div className="flex flex-wrap justify-between gap-2 text-sm">
+              <div>
+                <strong>{student.name}</strong>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {student.studentNumber} · {student.course}
+                </p>
+              </div>
+              <div className="text-xs text-muted-foreground">
+                {company?.name ?? "Company pending"}
+                <p className="mt-1">
+                  Supervisor: {supervisor?.name ?? "Unassigned"}
+                </p>
+              </div>
+            </div>
+            <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
+              <div>
+                <Label htmlFor="jrnl-date">Period date</Label>
                 <Input
+                  className="mt-1.5 min-h-11"
                   id="jrnl-date"
                   type="date"
                   value={form.date}
                   max={today}
-                  onChange={(e) => update({ date: e.target.value })}
-                  className={cn("h-11", errors.date && "border-destructive")}
-                  aria-invalid={!!errors.date}
+                  onChange={(event) => update({ date: event.target.value })}
                 />
-                {errors.date ? (
-                  <p className="text-xs text-destructive">{errors.date}</p>
-                ) : (
-                  <p className="text-xs text-muted-foreground">{weekStr}</p>
-                )}
+                <p className="mt-1.5 text-xs text-muted-foreground">
+                  {cadenceLabels[cadence]} · {formatDate(context.start)} –{" "}
+                  {formatDate(context.end)}
+                </p>
               </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="jrnl-hours" className="text-sm font-medium">
-                  Hours
-                </Label>
+              <div>
+                <Label htmlFor="jrnl-hours">Rendered hours</Label>
                 <Input
+                  className="mt-1.5 min-h-11"
                   id="jrnl-hours"
-                  type="number"
-                  min={0}
-                  step={0.5}
-                  value={form.hours}
-                  onChange={(e) => update({ hours: e.target.value })}
-                  className={cn("h-11", errors.hours && "border-destructive")}
-                  aria-invalid={!!errors.hours}
+                  readOnly
+                  value={context.hours}
                 />
-                {errors.hours ? (
-                  <p className="text-xs text-destructive">{errors.hours}</p>
-                ) : (
-                  <p className="text-xs text-muted-foreground">
-                    <Clock className="mr-1 inline h-3 w-3" />
-                    {hoursNum}h planned for this entry
-                  </p>
-                )}
+                <p className="mt-1.5 text-xs text-muted-foreground">
+                  Completed attendance in this period
+                </p>
+              </div>
+              <div className="col-span-2 rounded-lg bg-primary/5 p-3 sm:col-span-1">
+                <p className="text-xs text-muted-foreground">
+                  Cumulative through this period
+                </p>
+                <p className="mt-1 text-xl font-semibold">
+                  {context.cumulativeHours}
+                  <span className="text-sm font-normal text-muted-foreground">
+                    {" "}
+                    / {student.requiredHours}h
+                  </span>
+                </p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Running clocks count after clock-out.
+                </p>
               </div>
             </div>
-            {(errors.tasks || errors.learnings) && (
-              <div className="mt-3 flex items-start gap-2 rounded-lg bg-amber-50 p-2.5 text-xs text-amber-800 dark:bg-amber-950/40 dark:text-amber-300">
-                <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
-                <span>
-                  Please complete the {errors.tasks && "Tasks"}
-                  {errors.tasks && errors.learnings && " and "}
-                  {errors.learnings && "Learnings"} sections in the editor below.
-                </span>
-              </div>
+            {context.hours === 0 && (
+              <p className="mt-3 text-xs text-muted-foreground">
+                No completed attendance for this period yet. Save a draft or
+                choose a period with attendance.
+              </p>
             )}
-          </div>
-
-          {/* Embedded Google Docs editor */}
-          <GoogleDocEditor
-            title={docTitle}
-            subtitle={docSubtitle}
-            docUrl={connectedDocUrl}
+            {existing?.status === "rejected" && (
+              <p className="mt-3 text-sm text-destructive">
+                Revision requested: {existing.rejectionReason}
+              </p>
+            )}
+          </section>
+          {error && (
+            <p
+              role="alert"
+              className="rounded-lg border border-destructive p-3 text-sm text-destructive"
+            >
+              {error}
+            </p>
+          )}
+          <JournalEditor
+            title={`${cadenceLabels[cadence]} Journal`}
+            subtitle={`${formatDate(context.start)} – ${formatDate(context.end)} · ${payload.hours}h rendered`}
+            docUrl={
+              existing?.docUrl ||
+              state.toolsConfig.journalTemplateUrl ||
+              undefined
+            }
             tasks={form.tasks}
             learnings={form.learnings}
-            onChangeTasks={(v) => update({ tasks: v })}
-            onChangeLearnings={(v) => update({ learnings: v })}
+            onChangeTasks={(tasks) => update({ tasks })}
+            onChangeLearnings={(learnings) => update({ learnings })}
             saveState={saveState}
-            onDownloadWord={handleDownloadWord}
-            className="min-h-[560px]"
+            onDownloadWord={download}
           />
         </div>
       </div>
-
-      <ActionBar>
-        <Button variant="ghost" onClick={handleCancel} className="sm:mr-auto">
-          Cancel
+      <ActionBar className="static lg:sticky">
+        <Button
+          variant="ghost"
+          disabled={busy}
+          onClick={async () => {
+            if (edited) {
+              try {
+                await save();
+              } catch {
+                return;
+              }
+            }
+            state.navigate("student.journals");
+          }}
+        >
+          Back to journals
         </Button>
-        <Button variant="outline" onClick={handleSaveDraft}>
-          <Save className="h-4 w-4" /> Save Draft
+        <Button
+          variant="outline"
+          disabled={busy}
+          onClick={() => void saveAndNotify()}
+        >
+          <Save className="size-4" />
+          Save Draft
         </Button>
-        <Button onClick={handleSubmitClick}>
-          <Send className="h-4 w-4" /> Submit for Approval
+        <Button
+          disabled={busy || !form.date || context.hours <= 0}
+          onClick={() => {
+            if (!form.tasks.trim() || !form.learnings.trim()) {
+              setError(
+                "Complete Tasks Performed and Learnings & Reflections before submitting.",
+              );
+              return;
+            }
+            setConfirm(true);
+          }}
+        >
+          <Send className="size-4" />
+          Submit for Approval
         </Button>
       </ActionBar>
-
-      {/* Mobile journal-list drawer */}
-      {railOpen && (
-        <div className="fixed inset-0 z-50 lg:hidden">
-          <div
-            className="absolute inset-0 bg-black/40"
-            onClick={() => setRailOpen(false)}
+      <Sheet open={railOpen} onOpenChange={setRailOpen}>
+        <SheetContent side="left" className="overflow-y-auto px-4">
+          <SheetHeader>
+            <SheetTitle>My Journals</SheetTitle>
+          </SheetHeader>
+          <JournalListRail
+            journals={myJournals}
+            activeId={activeId}
+            onSelect={(journal) => void select(journal)}
+            onNew={() => void startNew()}
           />
-          <div className="absolute inset-y-0 left-0 w-80 max-w-[85vw] overflow-y-auto bg-card p-4 shadow-xl">
-            <div className="mb-3 flex items-center justify-between">
-              <h3 className="font-semibold">My Journals</h3>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8"
-                onClick={() => setRailOpen(false)}
-              >
-                <X className="h-4 w-4" />
-              </Button>
-            </div>
-            <JournalListRail
-              journals={myJournals}
-              activeId={draftId}
-              onSelect={handleSelectJournal}
-              onNew={handleNewJournal}
-            />
-          </div>
-        </div>
-      )}
-
+        </SheetContent>
+      </Sheet>
       <ConfirmDialog
-        open={submitOpen}
-        onOpenChange={setSubmitOpen}
+        open={confirm}
+        onOpenChange={setConfirm}
         title="Submit journal for approval?"
-        description={
-          <div className="space-y-2">
-            <p>
-              Once submitted, you can&apos;t edit this journal until your
-              supervisor reviews it.
-            </p>
-            <div className="flex items-start gap-2 rounded-lg bg-amber-50 p-2.5 text-xs text-amber-800 dark:bg-amber-950/40 dark:text-amber-300">
-              <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
-              <span>
-                Make sure your tasks and learnings are complete and accurate.
-              </span>
-            </div>
-          </div>
-        }
+        description="Your supervisor will review this entry. Submitted journals are locked until a revision is requested."
         confirmLabel="Submit for approval"
-        onConfirm={handleSubmitConfirm}
+        onConfirm={() => void submit()}
       />
     </>
   );
 }
-
-// ── Journal list rail ────────────────────────────────────────────────────
-
 function JournalListRail({
   journals,
   activeId,
@@ -474,7 +438,7 @@ function JournalListRail({
       <div className="mb-1 px-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
         My Journals · {journals.length}
       </div>
-      <div className="max-h-[70vh] flex-1 space-y-1.5 overflow-y-auto pr-1 scroll-area-custom">
+      <div className="max-h-[65vh] flex-1 space-y-1.5 overflow-y-auto pr-1 scroll-area-custom">
         {journals.length === 0 ? (
           <p className="rounded-lg border border-dashed border-border p-4 text-center text-xs text-muted-foreground">
             No journals yet. Click “New Journal” to start.
@@ -488,7 +452,7 @@ function JournalListRail({
               className={cn(
                 "w-full rounded-lg border p-2.5 text-left transition-colors",
                 activeId === j.id
-                  ? "border-teal-300 bg-teal-50 dark:border-teal-800 dark:bg-teal-950/30"
+                  ? "border-primary bg-primary/5"
                   : "border-border bg-card hover:border-border/80 hover:bg-muted/40",
               )}
             >
@@ -511,5 +475,4 @@ function JournalListRail({
     </div>
   );
 }
-
 export default JournalForm;

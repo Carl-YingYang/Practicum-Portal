@@ -1,5 +1,4 @@
 "use client";
-
 import * as React from "react";
 import { useAppStore } from "@/store/use-app-store";
 import {
@@ -44,7 +43,6 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { downloadCsv } from "@/lib/client-pdf";
-
 interface Row {
   id: string;
   name: string;
@@ -61,22 +59,18 @@ interface Row {
   status: "active" | "inactive";
   schoolYear?: string;
 }
-
 export function SupervisorsList() {
   const navigate = useAppStore((s) => s.navigate);
   const supervisors = useAppStore((s) => s.supervisors);
   const companies = useAppStore((s) => s.companies);
   const students = useAppStore((s) => s.students);
-
   const [search, setSearch] = React.useState("");
   const [schoolYearFilter, setSchoolYearFilter] = React.useState<string>("all");
   const [statusFilter, setStatusFilter] = React.useState<string>("all");
-
   const schoolYearOpts = React.useMemo(
     () => schoolYearOptions([[...supervisors], [...students], [...companies]]),
     [supervisors, students, companies],
   );
-
   const rows: Row[] = React.useMemo(() => {
     return supervisors
       .map((sup) => {
@@ -111,13 +105,22 @@ export function SupervisorsList() {
           )
             return false;
         }
-        if (schoolYearFilter !== "all" && (r.schoolYear ?? "") !== schoolYearFilter)
+        if (
+          schoolYearFilter !== "all" &&
+          (r.schoolYear ?? "") !== schoolYearFilter
+        )
           return false;
         if (statusFilter !== "all" && r.status !== statusFilter) return false;
         return true;
       });
-  }, [supervisors, companies, students, search, schoolYearFilter, statusFilter]);
-
+  }, [
+    supervisors,
+    companies,
+    students,
+    search,
+    schoolYearFilter,
+    statusFilter,
+  ]);
   // ---- CSV export of all filtered supervisors with full info ----
   const handleExportCsv = () => {
     if (rows.length === 0) {
@@ -161,7 +164,6 @@ export function SupervisorsList() {
       description: `${rows.length} supervisor${rows.length === 1 ? "" : "s"} exported to ${file}.`,
     });
   };
-
   const columns: Column<Row>[] = [
     {
       key: "name",
@@ -171,8 +173,12 @@ export function SupervisorsList() {
         <div className="flex items-center gap-2.5">
           <Avatar name={r.name} size="sm" />
           <div className="min-w-0">
-            <div className="truncate text-sm font-medium text-foreground">{r.name}</div>
-            <div className="truncate text-xs text-muted-foreground">{r.title}</div>
+            <div className="truncate text-sm font-medium text-foreground">
+              {r.name}
+            </div>
+            <div className="truncate text-xs text-muted-foreground">
+              {r.title}
+            </div>
           </div>
         </div>
       ),
@@ -182,7 +188,9 @@ export function SupervisorsList() {
       header: "Company",
       sortValue: (r) => r.companyName,
       hideOnMobile: true,
-      cell: (r) => <span className="text-sm text-muted-foreground">{r.companyName}</span>,
+      cell: (r) => (
+        <span className="text-sm text-muted-foreground">{r.companyName}</span>
+      ),
     },
     {
       key: "schoolYear",
@@ -255,7 +263,6 @@ export function SupervisorsList() {
       ),
     },
   ];
-
   return (
     <div>
       <PageHeader
@@ -272,9 +279,12 @@ export function SupervisorsList() {
               <Download className="h-4 w-4" />
               Export CSV
             </Button>
-            <Button onClick={() => navigate("coordinator.supervisor-new")} className="w-full sm:w-auto">
+            <Button
+              onClick={() => navigate("coordinator.supervisor-new")}
+              className="w-full sm:w-auto"
+            >
               <Plus className="h-4 w-4" />
-              Add Supervisor
+              Create supervisor account
             </Button>
           </div>
         }
@@ -292,7 +302,10 @@ export function SupervisorsList() {
             />
           </div>
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:flex lg:flex-1 lg:justify-end">
-            <Select value={schoolYearFilter} onValueChange={setSchoolYearFilter}>
+            <Select
+              value={schoolYearFilter}
+              onValueChange={setSchoolYearFilter}
+            >
               <SelectTrigger className="h-11 w-full lg:w-[170px]" size="sm">
                 <SelectValue placeholder="School Year" />
               </SelectTrigger>
@@ -348,7 +361,7 @@ export function SupervisorsList() {
               icon={UserSquare2}
               title="No supervisors found"
               description="Add a company supervisor to start managing interns."
-              actionLabel="Add Supervisor"
+              actionLabel="Create supervisor account"
               onAction={() => navigate("coordinator.supervisor-new")}
               tone="amber"
             />

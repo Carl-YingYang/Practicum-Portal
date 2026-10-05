@@ -1,6 +1,6 @@
 "use client";
-
 import * as React from "react";
+import { flushChanges } from "@/client/portal-client";
 import { useAppStore } from "@/store/use-app-store";
 import { formatDate, getCompany } from "@/lib/selectors";
 import type {
@@ -58,7 +58,6 @@ import {
 import { toast } from "sonner";
 import { exportToCsv } from "@/lib/csv-export";
 import { ImportUsersSheet } from "@/components/portal/coordinator/import-users-sheet";
-
 /**
  * Unified User Management page for the coordinator. Shows every student +
  * supervisor + coordinator in one table with search, role filter, and status
@@ -66,7 +65,6 @@ import { ImportUsersSheet } from "@/components/portal/coordinator/import-users-s
  */
 type UserRole = "student" | "supervisor" | "coordinator";
 type UserStatus = "active" | "inactive";
-
 /**
  * Derive the visible ACCOUNT status for any role record.
  *  - Disabled: coordinator disabled the account, or the record itself is
@@ -86,7 +84,6 @@ function accountStatusOf(rec: {
     return "invited";
   return "active";
 }
-
 /** The effective login password for the credentials export. */
 function effectivePasswordOf(rec: {
   password?: string;
@@ -94,9 +91,8 @@ function effectivePasswordOf(rec: {
   idNumber?: string;
   studentNumber?: string;
 }): string {
-  return rec.mustChangePassword ? rec.password ?? "" : "";
+  return rec.mustChangePassword ? (rec.password ?? "") : "";
 }
-
 interface UnifiedUser {
   id: string;
   /** The role-specific record id used to view/edit (studentId / supervisorId / coordinatorId). */
@@ -115,12 +111,11 @@ interface UnifiedUser {
   tempPassword: string;
   createdAt: string;
 }
-
 function buildUserList(
   students: Student[],
   supervisors: Supervisor[],
   coordinators: Coordinator[],
-  companies: Company[]
+  companies: Company[],
 ): UnifiedUser[] {
   const studentRows: UnifiedUser[] = students.map((s) => {
     const company = getCompany(companies, s.companyId);
@@ -172,7 +167,6 @@ function buildUserList(
   }));
   return [...coordinatorRows, ...supervisorRows, ...studentRows];
 }
-
 export function UserManagement() {
   const navigate = useAppStore((s) => s.navigate);
   const students = useAppStore((s) => s.students);
@@ -180,20 +174,17 @@ export function UserManagement() {
   const coordinators = useAppStore((s) => s.coordinators);
   const companies = useAppStore((s) => s.companies);
   const setAccountStatus = useAppStore((s) => s.setAccountStatus);
-  const resetAccountCredentials = useAppStore(
-    (s) => s.resetAccountCredentials
-  );
+  const resetAccountCredentials = useAppStore((s) => s.resetAccountCredentials);
   const currentUserId = useAppStore((s) => s.currentUser?.id);
-
   const [search, setSearch] = React.useState("");
   const [roleFilter, setRoleFilter] = React.useState<string>("all");
   const [statusFilter, setStatusFilter] = React.useState<string>("all");
   const [statusTarget, setStatusTarget] = React.useState<UnifiedUser | null>(
-    null
+    null,
   );
   const [statusNext, setStatusNext] = React.useState<AccountStatus>("disabled");
   const [resetTarget, setResetTarget] = React.useState<UnifiedUser | null>(
-    null
+    null,
   );
   const [resetCreds, setResetCreds] = React.useState<{
     name: string;
@@ -202,19 +193,17 @@ export function UserManagement() {
     tempPassword: string;
   } | null>(null);
   const [importOpen, setImportOpen] = React.useState(false);
-
-  const filtersActive = !!search || roleFilter !== "all" || statusFilter !== "all";
+  const filtersActive =
+    !!search || roleFilter !== "all" || statusFilter !== "all";
   const clearFilters = () => {
     setSearch("");
     setRoleFilter("all");
     setStatusFilter("all");
   };
-
   const allRows = React.useMemo(
     () => buildUserList(students, supervisors, coordinators, companies),
-    [students, supervisors, coordinators, companies]
+    [students, supervisors, coordinators, companies],
   );
-
   const rows = React.useMemo(() => {
     return allRows.filter((r) => {
       if (search) {
@@ -229,16 +218,21 @@ export function UserManagement() {
         }
       }
       if (roleFilter !== "all" && r.role !== roleFilter) return false;
-      if (statusFilter !== "all" && r.status !== statusFilter) return false;
+      if (statusFilter !== "all" && r.accountStatus !== statusFilter)
+        return false;
       return true;
     });
   }, [allRows, search, roleFilter, statusFilter]);
-
   const totalUsers = allRows.length;
-  const activeCount = allRows.filter((r) => r.accountStatus === "active").length;
-  const invitedCount = allRows.filter((r) => r.accountStatus === "invited").length;
-  const disabledCount = allRows.filter((r) => r.accountStatus === "disabled").length;
-
+  const activeCount = allRows.filter(
+    (r) => r.accountStatus === "active",
+  ).length;
+  const invitedCount = allRows.filter(
+    (r) => r.accountStatus === "invited",
+  ).length;
+  const disabledCount = allRows.filter(
+    (r) => r.accountStatus === "disabled",
+  ).length;
   const handleView = (r: UnifiedUser) => {
     if (r.role === "student") {
       navigate("coordinator.student-view", { studentId: r.recordId });
@@ -249,11 +243,15 @@ export function UserManagement() {
       navigate("coordinator.coordinator-new", { coordinatorId: r.recordId });
     }
   };
-
-  const confirmStatusChange = () => {
+  const confirmStatusChange = async () => {
     if (!statusTarget) return;
     const t = statusTarget;
     setAccountStatus(t.role, t.recordId, statusNext);
+    try {
+      await flushChanges();
+    } catch {
+      return;
+    }
     toast.success(
       statusNext === "disabled"
         ? `${t.name}'s account was disabled`
@@ -263,21 +261,24 @@ export function UserManagement() {
           statusNext === "disabled"
             ? "They can no longer sign in; their records are preserved."
             : "They can sign in again with their existing password.",
-      }
+      },
     );
     setStatusTarget(null);
   };
-
-  const confirmReset = () => {
+  const confirmReset = async () => {
     if (!resetTarget) return;
     const result = resetAccountCredentials(
       resetTarget.role,
-      resetTarget.recordId
+      resetTarget.recordId,
     );
+    try {
+      await flushChanges();
+    } catch {
+      return;
+    }
     setResetTarget(null);
     setResetCreds(result);
   };
-
   const handleExportAll = () => {
     const headers = [
       "Name",
@@ -311,41 +312,6 @@ export function UserManagement() {
       description: `${allRows.length} users exported to CSV.`,
     });
   };
-
-  /** Credentials CSV — includes each account's current login password. */
-  const handleExportCredentials = () => {
-    const headers = [
-      "Name",
-      "Email",
-      "Role",
-      "User ID",
-      "Account Status",
-      "Temporary Password",
-    ];
-    const data = allRows.filter((r) => r.accountStatus === "invited").map((r) => [
-      r.name,
-      r.email,
-      r.role === "student"
-        ? "Student"
-        : r.role === "supervisor"
-          ? "Supervisor"
-          : "Coordinator",
-      r.idNumber || "—",
-      r.accountStatus === "active"
-        ? "Active"
-        : r.accountStatus === "invited"
-          ? "Invited"
-          : "Disabled",
-      r.tempPassword,
-    ]);
-    const stamp = new Date().toISOString().slice(0, 10);
-    exportToCsv(`account-credentials-${stamp}.csv`, headers, data);
-    toast.success("Credentials CSV downloaded", {
-      description:
-        "Includes temporary passwords for invited accounts only.",
-    });
-  };
-
   const columns: Column<UnifiedUser>[] = [
     {
       key: "name",
@@ -371,7 +337,13 @@ export function UserManagement() {
       sortValue: (r) => r.role,
       cell: (r) => (
         <Badge
-          tone={r.role === "student" ? "slate" : r.role === "supervisor" ? "teal" : "amber"}
+          tone={
+            r.role === "student"
+              ? "slate"
+              : r.role === "supervisor"
+                ? "teal"
+                : "amber"
+          }
         >
           {r.role === "student"
             ? "Student"
@@ -387,7 +359,9 @@ export function UserManagement() {
       sortValue: (r) => r.email,
       hideOnMobile: true,
       cell: (r) => (
-        <span className="truncate text-sm text-muted-foreground">{r.email}</span>
+        <span className="truncate text-sm text-muted-foreground">
+          {r.email}
+        </span>
       ),
     },
     {
@@ -444,14 +418,20 @@ export function UserManagement() {
               <MoreHorizontal className="h-4 w-4" />
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()} className="w-60">
+          <DropdownMenuContent
+            align="end"
+            onClick={(e) => e.stopPropagation()}
+            className="w-60"
+          >
             <DropdownMenuItem onClick={() => handleView(r)}>
               <Eye className="h-4 w-4" />
               View
             </DropdownMenuItem>
             <DropdownMenuItem
               onClick={() => setResetTarget(r)}
-              disabled={r.role === "coordinator" && r.recordId === currentUserId}
+              disabled={
+                r.role === "coordinator" && r.recordId === currentUserId
+              }
             >
               <KeyRound className="h-4 w-4" />
               Reset credentials…
@@ -487,7 +467,6 @@ export function UserManagement() {
       ),
     },
   ];
-
   return (
     <div>
       <PageHeader
@@ -497,13 +476,11 @@ export function UserManagement() {
         actions={
           <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
             <Button
-              variant="ghost"
-              onClick={handleExportCredentials}
+              onClick={() => navigate("coordinator.supervisor-new")}
               className="w-full sm:w-auto"
-              aria-label="Download credentials as CSV"
             >
-              <KeyRound className="h-4 w-4" />
-              <span className="sm:hidden lg:inline">Credentials CSV</span>
+              <UserPlus className="h-4 w-4" />
+              Create supervisor account
             </Button>
             <Button
               variant="outline"
@@ -511,7 +488,7 @@ export function UserManagement() {
               className="w-full sm:w-auto"
             >
               <Download className="h-4 w-4" />
-              Export to Excel
+              Export users CSV
             </Button>
             <Button
               variant="outline"
@@ -542,7 +519,9 @@ export function UserManagement() {
                   <GraduationCap className="h-4 w-4 text-muted-foreground" />
                   <div className="flex min-w-0 flex-col">
                     <span className="text-sm font-medium">Add Student</span>
-                    <span className="truncate text-xs text-muted-foreground">Single student account</span>
+                    <span className="truncate text-xs text-muted-foreground">
+                      Single student account
+                    </span>
                   </div>
                 </DropdownMenuItem>
                 <DropdownMenuItem
@@ -552,7 +531,9 @@ export function UserManagement() {
                   <ClipboardCheck className="h-4 w-4 text-muted-foreground" />
                   <div className="flex min-w-0 flex-col">
                     <span className="text-sm font-medium">Add Supervisor</span>
-                    <span className="truncate text-xs text-muted-foreground">Single supervisor account</span>
+                    <span className="truncate text-xs text-muted-foreground">
+                      Single supervisor account
+                    </span>
                   </div>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
@@ -563,7 +544,9 @@ export function UserManagement() {
                   <Layers className="h-4 w-4 text-muted-foreground" />
                   <div className="flex min-w-0 flex-col">
                     <span className="text-sm font-medium">Bulk Create</span>
-                    <span className="truncate text-xs text-muted-foreground">Paste rows + CSV export</span>
+                    <span className="truncate text-xs text-muted-foreground">
+                      Paste rows + CSV export
+                    </span>
                   </div>
                 </DropdownMenuItem>
               </DropdownMenuContent>
@@ -626,18 +609,26 @@ export function UserManagement() {
         {/* Status summary strip */}
         <div className="flex flex-wrap items-center gap-x-4 gap-y-1 border-b border-border/60 px-4 py-2.5 text-xs text-muted-foreground">
           <span className="inline-flex items-center gap-1.5">
-            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" aria-hidden />
+            <span
+              className="h-1.5 w-1.5 rounded-full bg-emerald-500"
+              aria-hidden
+            />
             {activeCount} active
           </span>
           <span className="inline-flex items-center gap-1.5">
-            <span className="h-1.5 w-1.5 rounded-full bg-amber-500" aria-hidden />
+            <span
+              className="h-1.5 w-1.5 rounded-full bg-amber-500"
+              aria-hidden
+            />
             {invitedCount} invited
           </span>
           <span className="inline-flex items-center gap-1.5">
             <span className="h-1.5 w-1.5 rounded-full bg-red-500" aria-hidden />
             {disabledCount} disabled
           </span>
-          <span className="ml-auto hidden sm:inline">No public sign-up — all accounts are provisioned here</span>
+          <span className="ml-auto hidden sm:inline">
+            No public sign-up — all accounts are provisioned here
+          </span>
         </div>
 
         <DataTable
@@ -671,9 +662,7 @@ export function UserManagement() {
                 </span>
               }
               status={<AccountStatusBadge status={r.accountStatus} />}
-              meta={`${r.companyName}${
-                r.idNumber ? ` · ${r.idNumber}` : ""
-              }`}
+              meta={`${r.companyName}${r.idNumber ? ` · ${r.idNumber}` : ""}`}
               leading={<Avatar name={r.name} size="sm" />}
               onClick={() => handleView(r)}
             />
@@ -695,7 +684,9 @@ export function UserManagement() {
         open={!!statusTarget}
         onOpenChange={(o) => !o && setStatusTarget(null)}
         title={
-          statusNext === "disabled" ? "Disable this account?" : "Enable this account?"
+          statusNext === "disabled"
+            ? "Disable this account?"
+            : "Enable this account?"
         }
         description={
           statusTarget

@@ -66,8 +66,7 @@ export function accountUsers(state: {
       email: record.email,
       role,
       ...link,
-      idNumber:
-        record.password === undefined ? (demo?.idNumber ?? idNumber) : idNumber,
+      idNumber: idNumber,
       avatarColor:
         "avatarColor" in record
           ? record.avatarColor

@@ -1,6 +1,6 @@
 "use client";
-
 import * as React from "react";
+import { changePassword } from "@/client/portal-client";
 import { useAppStore } from "@/store/use-app-store";
 import { ROLE_LABELS } from "@/lib/types";
 import { Button } from "@/components/ui/button";
@@ -20,7 +20,6 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-
 /**
  * FirstLoginPasswordChange — focused prototype gate shown after signing in
  * with a one-time temporary (Invited) password. The user sets a personal
@@ -30,13 +29,11 @@ import { cn } from "@/lib/utils";
  * demonstrable end-to-end. It is shaped to map 1:1 onto a future Supabase
  * Auth password update — no fake backend, no exposed secrets.
  */
-
 interface Requirement {
   key: "length" | "uppercase" | "number";
   label: string;
   test: (value: string) => boolean;
 }
-
 const REQUIREMENTS: Requirement[] = [
   { key: "length", label: "At least 8 characters", test: (v) => v.length >= 8 },
   {
@@ -46,12 +43,10 @@ const REQUIREMENTS: Requirement[] = [
   },
   { key: "number", label: "One number (0–9)", test: (v) => /[0-9]/.test(v) },
 ];
-
 export function FirstLoginPasswordChange() {
   const currentUser = useAppStore((s) => s.currentUser);
-  const complete = useAppStore((s) => s.completeFirstLoginPasswordChange);
+  const complete = changePassword;
   const logout = useAppStore((s) => s.logout);
-
   const [temp, setTemp] = React.useState("");
   const [next, setNext] = React.useState("");
   const [confirm, setConfirm] = React.useState("");
@@ -60,26 +55,21 @@ export function FirstLoginPasswordChange() {
   const [showConfirm, setShowConfirm] = React.useState(false);
   const [errors, setErrors] = React.useState<Record<string, string>>({});
   const [submitting, setSubmitting] = React.useState(false);
-
   const tempRef = React.useRef<HTMLInputElement>(null);
   React.useEffect(() => {
     tempRef.current?.focus();
   }, []);
-
   if (!currentUser) return null;
-
   const requirementState = (key: Requirement["key"]) => {
     const req = REQUIREMENTS.find((r) => r.key === key)!;
     return req.test(next);
   };
-
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (submitting) return;
     const nextErrors: Record<string, string> = {};
     if (!temp)
-      nextErrors.temp =
-        "Enter the temporary password from your coordinator.";
+      nextErrors.temp = "Enter the temporary password from your coordinator.";
     if (!next) nextErrors.next = "Choose a new password.";
     else if (!REQUIREMENTS.every((r) => r.test(next)))
       nextErrors.next = "New password doesn't meet all requirements yet.";
@@ -88,34 +78,28 @@ export function FirstLoginPasswordChange() {
       nextErrors.confirm = "Passwords don't match.";
     setErrors(nextErrors);
     if (Object.keys(nextErrors).length > 0) return;
-
     setSubmitting(true);
-    // Prototype: instant mock mutation; a short delay communicates the
-    // future round-trip without pretending to be a real backend.
-    window.setTimeout(() => {
-      const result = complete(temp, next);
-      setSubmitting(false);
-      if (result.ok) {
-        toast.success("Password updated — welcome aboard!", {
-          description:
-            "Your account is now active. Redirecting to your dashboard…",
-        });
-        return;
-      }
-      if (result.reason === "bad-temp") {
-        setErrors({
-          temp: "That temporary password doesn't match. Check the credentials your coordinator gave you.",
-        });
-      } else if (result.reason === "weak-password") {
-        setErrors({ next: "New password must be at least 8 characters." });
-      } else {
-        setErrors({
-          temp: "Something went wrong. Please try signing in again.",
-        });
-      }
-    }, 450);
+    const result = await complete(temp, next);
+    setSubmitting(false);
+    if (result.ok) {
+      toast.success("Password updated — welcome aboard!", {
+        description:
+          "Your account is now active. Redirecting to your dashboard…",
+      });
+      return;
+    }
+    if (result.reason === "bad-temp") {
+      setErrors({
+        temp: "That temporary password doesn't match. Check the credentials your coordinator gave you.",
+      });
+    } else if (result.reason === "weak-password") {
+      setErrors({ next: "New password must be at least 8 characters." });
+    } else {
+      setErrors({
+        temp: "Something went wrong. Please try signing in again.",
+      });
+    }
   };
-
   return (
     <div
       className="flex min-h-screen flex-col bg-background"
@@ -204,10 +188,7 @@ export function FirstLoginPasswordChange() {
                 error={errors.next}
                 autoComplete="new-password"
               />
-              <ul
-                className="mt-2 space-y-1"
-                aria-label="Password requirements"
-              >
+              <ul className="mt-2 space-y-1" aria-label="Password requirements">
                 {REQUIREMENTS.map((r) => {
                   const met = requirementState(r.key);
                   return (
@@ -217,7 +198,7 @@ export function FirstLoginPasswordChange() {
                         "flex items-center gap-1.5 text-xs",
                         met
                           ? "text-emerald-600 dark:text-emerald-400"
-                          : "text-muted-foreground"
+                          : "text-muted-foreground",
                       )}
                     >
                       {met ? (
@@ -227,13 +208,15 @@ export function FirstLoginPasswordChange() {
                           aria-hidden
                         />
                       ) : (
-                        <X className="h-3.5 w-3.5" strokeWidth={2} aria-hidden />
+                        <X
+                          className="h-3.5 w-3.5"
+                          strokeWidth={2}
+                          aria-hidden
+                        />
                       )}
                       <span>{r.label}</span>
                       <span className="sr-only">
-                        {met
-                          ? "requirement met"
-                          : "requirement not met yet"}
+                        {met ? "requirement met" : "requirement not met yet"}
                       </span>
                     </li>
                   );
@@ -277,8 +260,8 @@ export function FirstLoginPasswordChange() {
             <p className="flex items-start gap-2 rounded-md bg-muted/40 px-3 py-2.5 text-xs leading-relaxed text-muted-foreground">
               <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden />
               <span>
-                Prototype note: password changes are simulated in memory for
-                this walkthrough — nothing is sent to a server.
+                Your new password is securely hashed on the server. Keep it
+                private and use it for your next sign-in.
               </span>
             </p>
           </form>
@@ -302,7 +285,6 @@ export function FirstLoginPasswordChange() {
     </div>
   );
 }
-
 function PasswordField({
   id,
   label,
@@ -365,11 +347,7 @@ function PasswordField({
         <p className="text-xs text-muted-foreground">{hint}</p>
       )}
       {error && (
-        <p
-          id={`${id}-error`}
-          className="text-xs text-destructive"
-          role="alert"
-        >
+        <p id={`${id}-error`} className="text-xs text-destructive" role="alert">
           {error}
         </p>
       )}

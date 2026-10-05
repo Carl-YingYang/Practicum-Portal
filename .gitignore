@@ -47,7 +47,7 @@ local-*
 *.log
 dev.log
 dev.out.log
-test
+/test/
 prompt
 
 server.log
@@ -73,3 +73,7 @@ Caddyfile
 /RESEARCH-*.md
 # Examples (reference only, not part of app build)
 /examples/
+
+# Local SQLite databases and private generated test credentials
+prisma/*.db*
+.seed-credentials.json

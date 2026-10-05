@@ -2,19 +2,15 @@
 // Practicum Evaluation Portal — Domain Types
 // Single source of truth for the MVP mock implementation.
 // ============================================================
-
 export type Role = "student" | "supervisor" | "coordinator";
-
 // ============================================================
 // School Entity & Branding
 // Per-school branding (accent, logo, hero images) customized by
 // supervisors. Students/coordinators see their assigned school's
 // branding; supervisors with multi-school interns see the default.
 // ============================================================
-
 /** Editorial accent palette — calm, muted, warm. */
 export type AccentColor = "sage" | "terracotta" | "slate" | "sand" | "clay";
-
 /** A school with its branding configuration. */
 export interface School {
   id: string;
@@ -32,10 +28,8 @@ export interface School {
   /** Card visibility order for the student bento dashboard. */
   visibleCards: string[];
 }
-
 /** Default Practo school ID. */
 export const DEFAULT_SCHOOL_ID = "practo";
-
 /** Default visible cards for a new school. */
 export const DEFAULT_VISIBLE_CARDS: string[] = [
   "time_clock",
@@ -43,29 +37,34 @@ export const DEFAULT_VISIBLE_CARDS: string[] = [
   "timesheet",
   "evaluations",
 ];
-
 /** Accent → hex color map (for CSS custom properties). */
-export const ACCENT_HEX: Record<AccentColor, { base: string; soft: string }> = {
+export const ACCENT_HEX: Record<
+  AccentColor,
+  {
+    base: string;
+    soft: string;
+  }
+> = {
   sage: { base: "#5f8b7a", soft: "#e8f0ec" },
   terracotta: { base: "#c47a5a", soft: "#f5e8e0" },
   slate: { base: "#64748b", soft: "#e2e8f0" },
   sand: { base: "#b89968", soft: "#f5efe0" },
   clay: { base: "#a67b6b", soft: "#f0e6e0" },
 };
-
-export const ACCENT_OPTIONS: { value: AccentColor; label: string }[] = [
+export const ACCENT_OPTIONS: {
+  value: AccentColor;
+  label: string;
+}[] = [
   { value: "sage", label: "Sage" },
   { value: "terracotta", label: "Terracotta" },
   { value: "slate", label: "Slate" },
   { value: "sand", label: "Sand" },
   { value: "clay", label: "Clay" },
 ];
-
 // ============================================================
 // School Identity (legacy — still used by the school-identity-card
 // component and coordinator settings. Will be migrated to School.)
 // ============================================================
-
 /** A built-in theme preset key, or "custom" for coordinator-picked colors. */
 export type SchoolThemePreset =
   | "azure-blue"
@@ -75,8 +74,8 @@ export type SchoolThemePreset =
   | "royal-navy"
   | "burnt-orange"
   | "custom";
-
 export interface SchoolIdentity {
+  journalCadence?: "daily" | "weekly" | "twice-weekly";
   /** Full institution name, e.g. "Your University Name". */
   name: string;
   /** Short abbreviation shown in collapsed sidebar, e.g. "ABC". */
@@ -112,7 +111,6 @@ export interface SchoolIdentity {
     evaluations: boolean;
   };
 }
-
 export interface User {
   id: string;
   name: string;
@@ -122,12 +120,7 @@ export interface User {
   studentId?: string;
   supervisorId?: string;
   coordinatorId?: string;
-  /**
-   * User-facing login ID. Used as the password on the login screen
-   * (email = username, idNumber = password). For students this is their
-   * studentNumber; for supervisors/coordinators it's an assigned employee
-   * ID; for seed demo accounts it's a readable slug.
-   */
+  /** Public student/employee identifier; it is not a password. */
   idNumber?: string;
   /** Account lifecycle snapshot for the signed-in user (undefined = active). */
   accountStatus?: AccountStatus;
@@ -136,9 +129,7 @@ export interface User {
   /** initials avatar background */
   avatarColor: string;
 }
-
 export type StudentStatus = "active" | "inactive";
-
 /**
  * Prototype account lifecycle (controlled provisioning — no public
  * self-registration). Seeds are implicitly "active".
@@ -148,35 +139,32 @@ export type StudentStatus = "active" | "inactive";
  *  - disabled: cannot sign in; records are preserved.
  */
 export type AccountStatus = "invited" | "active" | "disabled";
-
 export const ACCOUNT_STATUS_LABELS: Record<AccountStatus, string> = {
   invited: "Invited",
   active: "Active",
   disabled: "Disabled",
 };
-
 /**
- * Mock-only account credentials attached to each role record.
- * The prototype keeps these in memory (never sent to a server); they map
- * 1:1 onto a future Supabase Auth rollout.
+ * Account lifecycle fields. A newly generated temporary password exists only
+ * during the provisioning command; saved profiles and API snapshots omit it.
  */
 export interface AccountCredentials {
   /** Account lifecycle. Legacy/seed records omit it, which means "active". */
   accountStatus?: AccountStatus;
   /** When true, the next sign-in is routed to the first-login password change. */
   mustChangePassword?: boolean;
-  /**
-   * Current effective password. When undefined, the User ID (idNumber /
-   * studentNumber) remains the password — the original prototype behaviour.
-   */
+  /** Transient temporary password during provisioning; never saved in profiles. */
   password?: string;
 }
-
-/** Result of the mock first-login password change. */
+/** Result of the server first-login password change. */
 export type FirstLoginPasswordResult =
-  | { ok: true }
-  | { ok: false; reason: "no-session" | "bad-temp" | "weak-password" };
-
+  | {
+      ok: true;
+    }
+  | {
+      ok: false;
+      reason: "no-session" | "bad-temp" | "weak-password";
+    };
 /** One account summary row for the credentials CSV export. */
 export interface CredentialCsvRow {
   name: string;
@@ -186,7 +174,6 @@ export interface CredentialCsvRow {
   status: AccountStatus;
   tempPassword: string;
 }
-
 /** Department enum — shared between Student and Supervisor for matching. */
 export type Department =
   | "Engineering"
@@ -195,7 +182,6 @@ export type Department =
   | "Marketing"
   | "Operations"
   | "Other";
-
 export const DEPARTMENTS: Department[] = [
   "Engineering",
   "QA",
@@ -204,7 +190,6 @@ export const DEPARTMENTS: Department[] = [
   "Operations",
   "Other",
 ];
-
 export const DEPARTMENT_LABELS: Record<Department, string> = {
   Engineering: "Engineering",
   QA: "QA",
@@ -213,15 +198,12 @@ export const DEPARTMENT_LABELS: Record<Department, string> = {
   Operations: "Operations",
   Other: "Other",
 };
-
 export type WorkMode = "onsite" | "hybrid" | "remote";
-
 export const WORK_MODE_LABELS: Record<WorkMode, string> = {
   onsite: "Onsite",
   hybrid: "Hybrid",
   remote: "Remote",
 };
-
 export interface Student extends AccountCredentials {
   id: string;
   studentNumber: string;
@@ -255,7 +237,6 @@ export interface Student extends AccountCredentials {
   schoolId: string;
   createdAt: string;
 }
-
 export interface Company {
   id: string;
   name: string;
@@ -284,9 +265,7 @@ export interface Company {
    */
   schoolYear?: string;
 }
-
 export type SupervisorStatus = "active" | "inactive";
-
 export interface Supervisor extends AccountCredentials {
   id: string;
   name: string;
@@ -300,7 +279,7 @@ export interface Supervisor extends AccountCredentials {
   /** Max interns they will take. */
   capacity: number;
   /**
-   * User-facing login ID (used as password). Auto-generated like "EMP-001"
+   * Public employee identifier. Auto-generated like "EMP-001"
    * if not provided. Displayed in the coordinator's user-management list
    * and shared with the supervisor as their login credential.
    */
@@ -316,9 +295,7 @@ export interface Supervisor extends AccountCredentials {
   schoolYear?: string;
   createdAt: string;
 }
-
 export type CoordinatorStatus = "active" | "inactive";
-
 /** Academic department options for coordinators (university-side). */
 export const COORDINATOR_DEPARTMENTS: string[] = [
   "Computer Studies",
@@ -329,7 +306,6 @@ export const COORDINATOR_DEPARTMENTS: string[] = [
   "Accountancy",
   "Other",
 ];
-
 /** Coordinator — university staff who manage the practicum program. */
 export interface Coordinator extends AccountCredentials {
   id: string;
@@ -341,7 +317,7 @@ export interface Coordinator extends AccountCredentials {
   department: string;
   status: CoordinatorStatus;
   /**
-   * User-facing login ID (used as password). Auto-generated like "COORD-001"
+   * Public employee identifier. Auto-generated like "COORD-001"
    * if not provided. Coordinators also self-register and may pick their own.
    */
   idNumber?: string;
@@ -351,9 +327,7 @@ export interface Coordinator extends AccountCredentials {
   schoolId: string;
   createdAt: string;
 }
-
 export type EvaluationStatus = "draft" | "submitted";
-
 export interface Evaluation {
   id: string;
   studentId: string;
@@ -371,10 +345,9 @@ export interface Evaluation {
   submittedAt: string | null;
   createdAt: string;
 }
-
 export type JournalStatus = "draft" | "pending" | "approved" | "rejected";
-
 export interface Journal {
+  cadence?: "daily" | "weekly" | "twice-weekly";
   id: string;
   studentId: string;
   date: string;
@@ -390,11 +363,9 @@ export interface Journal {
   /** v5 link-based model: Google Docs URL for this week's journal. */
   docUrl?: string;
 }
-
 // ------------------------------------------------------------
 // v5 — Free-first tool integration (Phase 1)
 // ------------------------------------------------------------
-
 /** Day-of-week for weekly journal due dates. */
 export type JournalDueDay =
   | "monday"
@@ -404,10 +375,9 @@ export type JournalDueDay =
   | "friday"
   | "saturday"
   | "sunday";
-
 /**
  * Per-cohort external tool configuration. Stored in the Zustand store and
- * persisted to localStorage key `pp:cohort-tools`. All URL fields are
+ * saved in the school database aggregate. All URL fields are
  * optional (empty string = not connected). The portal works in
  * "disconnected" mode — the banner just shows 0/4.
  */
@@ -422,14 +392,11 @@ export interface ToolsConfig {
   journalDueDay: JournalDueDay;
   requiredHours: number;
 }
-
 /** Which of the 4 external tools are connected (derived from ToolsConfig). */
 export type ToolKey = "drive" | "journalTemplate" | "form" | "jibble";
-
 // ============================================================
 // Subscription & billing (pay-per-hour)
 // ============================================================
-
 /**
  * Subscription tier the school is on. Billing is **pay-per-hour**: the school is
  * charged a configurable `hourlyRatePhp` for every intern-hour. Each student's
@@ -441,9 +408,12 @@ export type ToolKey = "drive" | "journalTemplate" | "form" | "jibble";
  */
 export type PlanTier = "starter" | "growth" | "enterprise";
 export type BillingCycle = "monthly" | "per-term" | "annual";
-export type SubscriptionStatus = "trialing" | "active" | "past_due" | "canceled";
+export type SubscriptionStatus =
+  | "trialing"
+  | "active"
+  | "past_due"
+  | "canceled";
 export type PaymentMethod = "card" | "bank" | "invoice";
-
 export interface SubscriptionPlan {
   tier: PlanTier;
   label: string;
@@ -455,7 +425,6 @@ export interface SubscriptionPlan {
   features: string[];
   accent: "teal" | "amber" | "emerald" | "slate" | "red";
 }
-
 export interface SubscriptionInvoice {
   id: string;
   /** ISO date issued. */
@@ -466,7 +435,6 @@ export interface SubscriptionInvoice {
   amountPhp: number;
   status: "paid" | "pending" | "failed";
 }
-
 export interface Subscription {
   planTier: PlanTier;
   status: SubscriptionStatus;
@@ -484,7 +452,6 @@ export interface Subscription {
   renewsAt: string;
   invoices: SubscriptionInvoice[];
 }
-
 /** Derived billing metrics computed from the subscription + active students. */
 export interface SubscriptionMetrics {
   /** Σ active students' requiredHours — the committed hour load for the term. */
@@ -504,7 +471,6 @@ export interface SubscriptionMetrics {
   /** Count of active students driving the commitment. */
   activeStudents: number;
 }
-
 /**
  * A clock-in / clock-out time-tracking session for ANY user (student,
  * supervisor, or coordinator). While `clockOutAt` is null the session is
@@ -521,13 +487,12 @@ export interface TimeLog {
   id: string;
   userId: string;
   role: Role;
-  clockInAt: string;          // ISO timestamp
-  clockOutAt: string | null;  // ISO timestamp; null = active session
-  durationMs: number | null;  // finalised on clock-out
+  clockInAt: string; // ISO timestamp
+  clockOutAt: string | null; // ISO timestamp; null = active session
+  durationMs: number | null; // finalised on clock-out
   note?: string;
   createdAt: string;
 }
-
 export type ActivityType =
   | "coordinator_action"
   | "evaluation_submitted"
@@ -539,7 +504,6 @@ export type ActivityType =
   | "supervisor_created"
   | "time_clock_in"
   | "time_clock_out";
-
 export interface ActivityLog {
   id: string;
   type: ActivityType;
@@ -547,12 +511,10 @@ export interface ActivityLog {
   actorId: string;
   timestamp: string;
 }
-
 // ============================================================
 // Custom form documents — coordinator-authored templates that
 // supervisors can fill in / view. Block-based, Google-Docs-style.
 // ============================================================
-
 export type FormBlockType =
   | "heading"
   | "paragraph"
@@ -562,7 +524,6 @@ export type FormBlockType =
   | "fill-in"
   | "rating-table"
   | "signature";
-
 export interface FormRatingCriterion {
   id: string;
   label: string;
@@ -572,7 +533,6 @@ export interface FormRatingCriterion {
    */
   max?: string;
 }
-
 export interface FormBlock {
   required?: boolean;
   id: string;
@@ -600,16 +560,13 @@ export interface FormBlock {
   /** signature: caption under the line (e.g. "Signature over Printed Name") */
   caption?: string;
 }
-
 export type FormStatus = "draft" | "published" | "archived";
-
 export type FormCategory =
   | "evaluation"
   | "journal"
   | "ojt"
   | "program"
   | "other";
-
 export interface FormDocument {
   id: string;
   title: string;
@@ -624,7 +581,6 @@ export interface FormDocument {
   /** monotonically increasing version, bumped on each publish */
   version: number;
 }
-
 export const FORM_CATEGORY_LABELS: Record<FormCategory, string> = {
   evaluation: "Performance Evaluation",
   journal: "Practicum Journal",
@@ -632,13 +588,11 @@ export const FORM_CATEGORY_LABELS: Record<FormCategory, string> = {
   program: "Program Evaluation",
   other: "Other",
 };
-
 export const FORM_STATUS_LABELS: Record<FormStatus, string> = {
   draft: "Draft",
   published: "Published",
   archived: "Archived",
 };
-
 // ============================================================
 // Form assignments & submissions — the filling / review layer.
 // A coordinator assigns a published form to an audience
@@ -647,12 +601,10 @@ export const FORM_STATUS_LABELS: Record<FormStatus, string> = {
 // forms). The coordinator reviews submissions (approve / request
 // revision).
 // ============================================================
-
 export type FormAssignmentTarget =
   | "all_supervisors"
   | "all_students"
   | "specific_users";
-
 export interface FormAssignment {
   id: string;
   formId: string;
@@ -663,7 +615,6 @@ export interface FormAssignment {
   createdBy: string;
   createdAt: string;
 }
-
 export type FormSubmissionStatus =
   /** virtual — no submission exists yet (used in inbox rows only) */
   | "not_started"
@@ -677,9 +628,7 @@ export type FormSubmissionStatus =
   | "approved"
   /** coordinator sent back for revision */
   | "needs_revision";
-
 export type FormFieldValue = string | Record<string, string>;
-
 export interface FormSubmission {
   id: string;
   formId: string;
@@ -703,8 +652,10 @@ export interface FormSubmission {
   createdAt: string;
   updatedAt: string;
 }
-
-export const FORM_SUBMISSION_STATUS_LABELS: Record<FormSubmissionStatus, string> = {
+export const FORM_SUBMISSION_STATUS_LABELS: Record<
+  FormSubmissionStatus,
+  string
+> = {
   not_started: "Not started",
   in_progress: "In progress",
   submitted: "Submitted",
@@ -712,11 +663,9 @@ export const FORM_SUBMISSION_STATUS_LABELS: Record<FormSubmissionStatus, string>
   approved: "Approved",
   needs_revision: "Needs revision",
 };
-
 // ============================================================
 // Navigation & view routing
 // ============================================================
-
 export type ViewKey =
   // public
   | "login"
@@ -772,7 +721,6 @@ export type ViewKey =
   | "coordinator.settings-tools"
   | "coordinator.subscription"
   | "coordinator.profile";
-
 export interface NavItem {
   key: string;
   label: string;
@@ -781,14 +729,10 @@ export interface NavItem {
   view: ViewKey;
   icon: string; // lucide icon name
   /** optional dynamic badge selector key */
-  badgeKey?:
-    | "pendingEvaluations"
-    | "pendingJournals"
-    | "unassignedStudents";
+  badgeKey?: "pendingEvaluations" | "pendingJournals" | "unassignedStudents";
   /** Optional section label for grouping in the sidebar (e.g. "Overview", "People"). */
   section?: string;
 }
-
 export interface ViewParams {
   studentId?: string;
   supervisorId?: string;
@@ -800,11 +744,9 @@ export interface ViewParams {
   preselectStudentId?: string;
   tab?: "forms" | "submissions" | "assignments";
 }
-
 // ============================================================
 // Helpers
 // ============================================================
-
 export const RATING_CRITERIA = [
   {
     key: "qualityOfWork" as const,
@@ -822,7 +764,6 @@ export const RATING_CRITERIA = [
     hint: "Reliability, punctuality, and follow-through.",
   },
 ];
-
 export const RATING_ANCHORS: Record<number, string> = {
   1: "Poor",
   2: "Below Expectations",
@@ -830,7 +771,6 @@ export const RATING_ANCHORS: Record<number, string> = {
   4: "Exceeds",
   5: "Outstanding",
 };
-
 export const ROLE_LABELS: Record<Role, string> = {
   student: "Student",
   supervisor: "Company Supervisor",

@@ -1,5 +1,4 @@
 "use client";
-
 import * as React from "react";
 import { PageHeader } from "@/components/portal/layout/page-header";
 import { SectionCard } from "@/components/portal/shared/section-card";
@@ -17,25 +16,23 @@ import type { Journal, JournalStatus } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { ChevronRight, NotebookText, Plus } from "lucide-react";
-
 type FilterKey = "all" | JournalStatus;
-
-const filterChips: { key: FilterKey; label: string }[] = [
+const filterChips: {
+  key: FilterKey;
+  label: string;
+}[] = [
   { key: "all", label: "All" },
   { key: "draft", label: "Draft" },
   { key: "pending", label: "Pending" },
   { key: "approved", label: "Approved" },
   { key: "rejected", label: "Rejected" },
 ];
-
 export function JournalsList() {
   const currentUser = useAppStore((s) => s.currentUser);
   const students = useAppStore((s) => s.students);
   const journals = useAppStore((s) => s.journals);
   const navigate = useAppStore((s) => s.navigate);
-
   const [filter, setFilter] = React.useState<FilterKey>("all");
-
   const student = getStudent(students, currentUser?.studentId);
   if (!student) {
     return (
@@ -46,13 +43,11 @@ export function JournalsList() {
       />
     );
   }
-
   const allJournals = journalsForStudent(journals, student.id);
   const filtered =
     filter === "all"
       ? allJournals
       : allJournals.filter((j) => j.status === filter);
-
   const counts: Record<FilterKey, number> = {
     all: allJournals.length,
     draft: allJournals.filter((j) => j.status === "draft").length,
@@ -60,7 +55,6 @@ export function JournalsList() {
     approved: allJournals.filter((j) => j.status === "approved").length,
     rejected: allJournals.filter((j) => j.status === "rejected").length,
   };
-
   const columns: Column<Journal>[] = [
     {
       key: "date",
@@ -71,7 +65,9 @@ export function JournalsList() {
     {
       key: "week",
       header: "Week",
-      cell: (j) => <span className="text-muted-foreground">{weekLabel(j.date)}</span>,
+      cell: (j) => (
+        <span className="text-muted-foreground">{weekLabel(j.date)}</span>
+      ),
       sortValue: (j) => j.date,
       hideOnMobile: true,
     },
@@ -105,12 +101,11 @@ export function JournalsList() {
       ),
     },
   ];
-
   return (
     <>
       <PageHeader
         breadcrumb="Journals"
-        description="Track and submit your weekly practicum journals."
+        description="Track and submit your practicum journals."
         actions={
           <Button onClick={() => navigate("student.journal-new")}>
             <Plus className="h-4 w-4" /> New Journal
@@ -132,7 +127,7 @@ export function JournalsList() {
                   "inline-flex h-9 items-center gap-1.5 rounded-full border px-3.5 text-sm font-medium transition-colors",
                   active
                     ? "border-primary bg-primary text-primary-foreground shadow-sm"
-                    : "border-border bg-background text-muted-foreground hover:bg-accent hover:text-foreground"
+                    : "border-border bg-background text-muted-foreground hover:bg-accent hover:text-foreground",
                 )}
                 aria-pressed={active}
               >
@@ -142,7 +137,7 @@ export function JournalsList() {
                     "rounded-full px-1.5 text-xs tabular-nums",
                     active
                       ? "bg-primary-foreground/20 text-primary-foreground"
-                      : "bg-muted text-muted-foreground"
+                      : "bg-muted text-muted-foreground",
                   )}
                 >
                   {counts[chip.key]}
@@ -195,7 +190,7 @@ export function JournalsList() {
                 <EmptyState
                   icon={NotebookText}
                   title="No journals yet"
-                  description="Submit your first weekly journal to start tracking your practicum hours."
+                  description="Write your first journal using your completed attendance hours."
                   actionLabel="New Journal"
                   onAction={() => navigate("student.journal-new")}
                 />
@@ -213,5 +208,4 @@ export function JournalsList() {
     </>
   );
 }
-
 export default JournalsList;

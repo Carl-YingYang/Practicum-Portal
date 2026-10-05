@@ -1,5 +1,5 @@
 "use client";
-
+import { flushChanges } from "@/client/portal-client";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Check,
@@ -34,15 +34,16 @@ import {
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { RATING_CRITERIA, RATING_ANCHORS } from "@/lib/types";
-
-
 const MAX_COMMENT = 500;
-
 type RatingKey = "qualityOfWork" | "jobKnowledge" | "dependability";
 type Ratings = Record<RatingKey, number>;
 type Comments = Record<"strengths" | "weaknesses" | "recommendations", string>;
-
-const COMMENT_FIELDS: { key: keyof Comments; label: string; hint: string; placeholder: string }[] = [
+const COMMENT_FIELDS: {
+  key: keyof Comments;
+  label: string;
+  hint: string;
+  placeholder: string;
+}[] = [
   {
     key: "strengths",
     label: "Strengths",
@@ -62,7 +63,6 @@ const COMMENT_FIELDS: { key: keyof Comments; label: string; hint: string; placeh
     placeholder: "Share recommendations for the intern…",
   },
 ];
-
 export function EvaluationForm() {
   const viewParams = useAppStore((s) => s.viewParams);
   const currentUser = useAppStore((s) => s.currentUser);
@@ -73,25 +73,24 @@ export function EvaluationForm() {
   const back = useAppStore((s) => s.back);
   const canGoBack = useAppStore((s) => s.history.length > 0);
   const saveEvaluation = useAppStore((s) => s.saveEvaluation);
-
   const toolsConfig = useAppStore((s) => s.toolsConfig);
   const supervisorId = currentUser?.supervisorId ?? "";
-
   // Resolve the editing draft (if any) and the target student.
   const editingDraft = useMemo(() => {
     if (!viewParams.evaluationId) return undefined;
     const e = evaluations.find((x) => x.id === viewParams.evaluationId);
     return e && e.status === "draft" ? e : undefined;
   }, [viewParams.evaluationId, evaluations]);
-
   const targetStudentId =
-    editingDraft?.studentId ?? viewParams.preselectStudentId ?? viewParams.studentId;
+    editingDraft?.studentId ??
+    viewParams.preselectStudentId ??
+    viewParams.studentId;
   const student = getStudent(students, targetStudentId);
-  const company = student ? getCompany(companies, student.companyId) : undefined;
-
+  const company = student
+    ? getCompany(companies, student.companyId)
+    : undefined;
   const TERM = editingDraft?.term ?? configuredTerm(toolsConfig);
   const isEditing = !!editingDraft;
-
   // ----- Local form state -----
   const [ratings, setRatings] = useState<Ratings>({
     qualityOfWork: editingDraft?.qualityOfWork ?? 0,
@@ -103,24 +102,31 @@ export function EvaluationForm() {
     weaknesses: editingDraft?.weaknesses ?? "",
     recommendations: editingDraft?.recommendations ?? "",
   });
-
-  const [savedId, setSavedId] = useState<string | null>(editingDraft?.id ?? null);
+  const [savedId, setSavedId] = useState<string | null>(
+    editingDraft?.id ?? null,
+  );
   const [lastSavedAt, setLastSavedAt] = useState<Date | null>(
-    editingDraft ? new Date(editingDraft.createdAt) : null
+    editingDraft ? new Date(editingDraft.createdAt) : null,
   );
-  const [savedIndicator, setSavedIndicator] = useState<"idle" | "saving" | "saved">(
-    editingDraft ? "saved" : "idle"
-  );
-
+  const [savedIndicator, setSavedIndicator] = useState<
+    "idle" | "saving" | "saved"
+  >(editingDraft ? "saved" : "idle");
   const [reviewOpen, setReviewOpen] = useState(false);
   const [cancelOpen, setCancelOpen] = useState(false);
-
   const draftIdRef = useRef<string | null>(editingDraft?.id ?? null);
   const ratingsRef = useRef(ratings);
   const commentsRef = useRef(comments);
   function persistChange(nextRatings: Ratings, nextComments: Comments) {
     if (!student || student.supervisorId !== supervisorId) return;
-    const id = saveEvaluation({ id: draftIdRef.current ?? undefined, studentId: student.id, supervisorId, term: TERM, ...nextRatings, ...nextComments, submit: false });
+    const id = saveEvaluation({
+      id: draftIdRef.current ?? undefined,
+      studentId: student.id,
+      supervisorId,
+      term: TERM,
+      ...nextRatings,
+      ...nextComments,
+      submit: false,
+    });
     draftIdRef.current = id;
     setSavedId(id);
     setLastSavedAt(new Date());
@@ -136,13 +142,13 @@ export function EvaluationForm() {
     setComments(commentsRef.current);
     persistChange(ratingsRef.current, commentsRef.current);
   };
-
   const allRated =
-    ratings.qualityOfWork > 0 && ratings.jobKnowledge > 0 && ratings.dependability > 0;
+    ratings.qualityOfWork > 0 &&
+    ratings.jobKnowledge > 0 &&
+    ratings.dependability > 0;
   const liveAverage = allRated
     ? (ratings.qualityOfWork + ratings.jobKnowledge + ratings.dependability) / 3
     : 0;
-
   // Dirty check (compares against the originally loaded draft).
   const isDirty = useMemo(() => {
     if (editingDraft) {
@@ -164,9 +170,8 @@ export function EvaluationForm() {
       comments.recommendations.trim() !== ""
     );
   }, [editingDraft, ratings, comments]);
-
   // ----- Actions -----
-  const handleSaveDraft = () => {
+  const handleSaveDraft = async () => {
     if (!student || student.supervisorId !== supervisorId) return;
     const id = saveEvaluation({
       id: draftIdRef.current ?? undefined,
@@ -185,12 +190,16 @@ export function EvaluationForm() {
     setSavedId(id);
     setLastSavedAt(new Date());
     setSavedIndicator("saved");
+    try {
+      await flushChanges();
+    } catch {
+      return;
+    }
     toast.success("Draft saved", {
       description: "You can return to this evaluation later.",
     });
   };
-
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!student || student.supervisorId !== supervisorId || !allRated) return;
     const id = saveEvaluation({
       id: draftIdRef.current ?? undefined,
@@ -206,12 +215,16 @@ export function EvaluationForm() {
       submit: true,
     });
     setReviewOpen(false);
+    try {
+      await flushChanges();
+    } catch {
+      return;
+    }
     toast.success("Evaluation submitted", {
       description: "The evaluation is now locked and visible to the intern.",
     });
     navigate("supervisor.evaluation-view", { evaluationId: id });
   };
-
   const handleCancelClick = () => {
     if (isDirty) {
       setCancelOpen(true);
@@ -221,7 +234,6 @@ export function EvaluationForm() {
       navigate("supervisor.interns");
     }
   };
-
   if (!student) {
     return (
       <div>
@@ -242,7 +254,6 @@ export function EvaluationForm() {
       </div>
     );
   }
-
   return (
     <div>
       <PageHeader
@@ -293,7 +304,8 @@ export function EvaluationForm() {
                 Criteria
               </h2>
               <p className="mt-0.5 text-xs text-muted-foreground">
-                Rate each criterion on a 1–5 scale. Press keys 1–5 to rate the focused criterion.
+                Rate each criterion on a 1–5 scale. Press keys 1–5 to rate the
+                focused criterion.
               </p>
             </div>
             {RATING_CRITERIA.map((c, i) => (
@@ -350,12 +362,12 @@ export function EvaluationForm() {
         <span
           className={cn(
             "hidden text-xs sm:mr-auto sm:block",
-            allRated ? "text-muted-foreground" : "text-amber-700 dark:text-amber-300"
+            allRated
+              ? "text-muted-foreground"
+              : "text-amber-700 dark:text-amber-300",
           )}
         >
-          {allRated
-            ? "Ready to review"
-            : "Rate all 3 criteria to continue"}
+          {allRated ? "Ready to review" : "Rate all 3 criteria to continue"}
         </span>
         <Button variant="ghost" onClick={handleCancelClick}>
           Cancel
@@ -497,11 +509,9 @@ export function EvaluationForm() {
     </div>
   );
 }
-
 // ============================================================
 // Sub-components
 // ============================================================
-
 function CommentField({
   label,
   hint,
@@ -528,8 +538,8 @@ function CommentField({
             value.length > MAX_COMMENT
               ? "text-red-600"
               : value.length >= 30
-              ? "text-muted-foreground"
-              : "text-muted-foreground"
+                ? "text-muted-foreground"
+                : "text-muted-foreground",
           )}
         >
           {value.length}/{MAX_COMMENT}
@@ -546,7 +556,6 @@ function CommentField({
     </div>
   );
 }
-
 function SummaryCard({
   ratings,
   comments,
@@ -565,9 +574,8 @@ function SummaryCard({
   lastSavedAt: Date | null;
 }) {
   const totalCommentsFilled = COMMENT_FIELDS.filter(
-    (f) => comments[f.key].trim() !== ""
+    (f) => comments[f.key].trim() !== "",
   ).length;
-
   return (
     <SectionCard title="Live summary">
       <div className="space-y-4">
@@ -579,7 +587,9 @@ function SummaryCard({
           {allRated ? (
             <p className="mt-1 text-4xl font-bold tabular-nums text-foreground">
               {liveAverage.toFixed(2)}
-              <span className="text-lg font-medium text-muted-foreground">/5</span>
+              <span className="text-lg font-medium text-muted-foreground">
+                /5
+              </span>
             </p>
           ) : (
             <p className="mt-1 text-4xl font-bold text-muted-foreground">—</p>
@@ -602,7 +612,9 @@ function SummaryCard({
               <span
                 className={cn(
                   "font-semibold tabular-nums",
-                  ratings[c.key] > 0 ? "text-foreground" : "text-muted-foreground"
+                  ratings[c.key] > 0
+                    ? "text-foreground"
+                    : "text-muted-foreground",
                 )}
               >
                 {ratings[c.key] > 0 ? `${ratings[c.key]}/5` : "—"}
@@ -633,7 +645,6 @@ function SummaryCard({
     </SectionCard>
   );
 }
-
 function SaveIndicator({
   savedId,
   savedIndicator,
@@ -651,13 +662,16 @@ function SaveIndicator({
         Draft saved
         {lastSavedAt && (
           <span className="font-normal text-muted-foreground">
-            · {lastSavedAt.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}
+            ·{" "}
+            {lastSavedAt.toLocaleTimeString("en-US", {
+              hour: "numeric",
+              minute: "2-digit",
+            })}
           </span>
         )}
       </p>
     );
   }
-
   // Saving… (autosave simulation)
   if (savedIndicator === "saving") {
     return (
@@ -667,7 +681,6 @@ function SaveIndicator({
       </p>
     );
   }
-
   // Autosave settled but no draft saved yet.
   if (savedIndicator === "saved") {
     return (
@@ -677,7 +690,6 @@ function SaveIndicator({
       </p>
     );
   }
-
   // Idle (initial state, no edits yet).
   return (
     <p className="flex items-center gap-1.5 text-xs text-muted-foreground">

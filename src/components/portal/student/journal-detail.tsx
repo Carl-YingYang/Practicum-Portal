@@ -1,5 +1,4 @@
 "use client";
-
 import * as React from "react";
 import { PageHeader } from "@/components/portal/layout/page-header";
 import { SectionCard } from "@/components/portal/shared/section-card";
@@ -27,9 +26,9 @@ import {
   FileType2,
   Share2,
 } from "lucide-react";
-import { exportJournalToDocx } from "@/lib/docx-export";
+import { flushChanges } from "@/client/portal-client";
+import { cadenceLabels, journalPeriod } from "@/domain/journal-period";
 import { downloadPdfReport } from "@/lib/client-pdf";
-
 export function JournalDetail() {
   const currentUser = useAppStore((s) => s.currentUser);
   const students = useAppStore((s) => s.students);
@@ -40,15 +39,11 @@ export function JournalDetail() {
   const viewParams = useAppStore((s) => s.viewParams);
   const navigate = useAppStore((s) => s.navigate);
   const submitJournal = useAppStore((s) => s.submitJournal);
-
   const [submitOpen, setSubmitOpen] = React.useState(false);
   const [downloading, setDownloading] = React.useState(false);
-
   const student = getStudent(students, currentUser?.studentId);
   const journal = getJournal(journals, viewParams.journalId);
-
   if (!student) return null;
-
   if (!journal || journal.studentId !== student.id) {
     return (
       <>
@@ -63,26 +58,30 @@ export function JournalDetail() {
       </>
     );
   }
-
   const company = getCompany(companies, student.companyId);
   const reviewer = getSupervisor(supervisors, journal.reviewedBy);
   const supervisor = getSupervisor(supervisors, student.supervisorId);
   const isDraft = journal.status === "draft";
   const isRejected = journal.status === "rejected";
-
-  const handleSubmitConfirm = () => {
+  const handleSubmitConfirm = async () => {
     setSubmitOpen(false);
     submitJournal(journal.id);
+    try {
+      await flushChanges();
+    } catch {
+      return;
+    }
     toast.success("Journal submitted for approval", {
       description: "Your supervisor will review it shortly.",
     });
     navigate("student.journals");
   };
-
   const handleDownloadWord = async () => {
     setDownloading(true);
     try {
+      const { exportJournalToDocx } = await import("@/lib/docx-export");
       await exportJournalToDocx({
+        cadenceLabel: cadenceLabels[journal.cadence ?? "weekly"],
         studentName: student.name,
         studentNumber: student.studentNumber,
         course: student.course,
@@ -103,7 +102,6 @@ export function JournalDetail() {
       setDownloading(false);
     }
   };
-
   const handleDownloadPdf = () => {
     try {
       const filename = `journal-${formatDate(journal.date).replace(/\s+/g, "-").toLowerCase()}.pdf`;
@@ -124,24 +122,35 @@ export function JournalDetail() {
         sections: [
           {
             heading: "Tasks Performed",
-            paragraphs: [
-              { text: journal.tasks || "Not provided." },
-            ],
+            paragraphs: [{ text: journal.tasks || "Not provided." }],
           },
           {
             heading: "Learnings & Reflections",
-            paragraphs: [
-              { text: journal.learnings || "Not provided." },
-            ],
+            paragraphs: [{ text: journal.learnings || "Not provided." }],
           },
           {
             heading: "Review Information",
             keyValue: [
-              { label: "Submitted On", value: journal.submittedAt ? formatDate(journal.submittedAt) : "—" },
+              {
+                label: "Submitted On",
+                value: journal.submittedAt
+                  ? formatDate(journal.submittedAt)
+                  : "—",
+              },
               { label: "Reviewed By", value: reviewer?.name ?? "—" },
-              { label: "Reviewed On", value: journal.reviewedAt ? formatDate(journal.reviewedAt) : "—" },
+              {
+                label: "Reviewed On",
+                value: journal.reviewedAt
+                  ? formatDate(journal.reviewedAt)
+                  : "—",
+              },
               ...(journal.rejectionReason
-                ? [{ label: "Rejection Reason", value: journal.rejectionReason }]
+                ? [
+                    {
+                      label: "Rejection Reason",
+                      value: journal.rejectionReason,
+                    },
+                  ]
                 : []),
             ],
           },
@@ -155,7 +164,6 @@ export function JournalDetail() {
       toast.error("Couldn't generate the PDF.");
     }
   };
-
   const handleShare = async () => {
     const shareUrl = "";
     const shareText = `Weekly Practicum Journal — ${formatDate(journal.date)} (${weekLabel(journal.date)}) · ${student.name} · ${journal.hours}h · Status: ${journal.status}`;
@@ -170,7 +178,8 @@ export function JournalDetail() {
       } else if (typeof navigator !== "undefined" && navigator.clipboard) {
         await navigator.clipboard.writeText(`${shareText}\n${shareUrl}`);
         toast.success("Journal summary copied", {
-          description: "This shares a text summary. The full record stays in this browser.",
+          description:
+            "This shares a text summary. The full record is saved in Practo.",
         });
       } else {
         // Last-resort fallback
@@ -189,7 +198,6 @@ export function JournalDetail() {
       toast.error("Couldn't share this journal.");
     }
   };
-
   return (
     <>
       <PageHeader
@@ -226,10 +234,7 @@ export function JournalDetail() {
                 <Printer className="h-4 w-4" />
                 Print
               </Button>
-              <Button
-                variant="outline"
-                onClick={handleShare}
-              >
+              <Button variant="outline" onClick={handleShare}>
                 <Share2 className="h-4 w-4" />
                 Share
               </Button>
@@ -257,7 +262,9 @@ export function JournalDetail() {
                 size="sm"
                 variant="outline"
                 className="mt-3"
-                onClick={() => navigate("student.journal-new", { journalId: journal.id })}
+                onClick={() =>
+                  navigate("student.journal-new", { journalId: journal.id })
+                }
               >
                 Revise journal
               </Button>
@@ -300,7 +307,9 @@ export function JournalDetail() {
               </h3>
               <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-foreground/90">
                 {journal.tasks || (
-                  <span className="italic text-muted-foreground">Not provided.</span>
+                  <span className="italic text-muted-foreground">
+                    Not provided.
+                  </span>
                 )}
               </p>
             </div>
@@ -310,7 +319,9 @@ export function JournalDetail() {
               </h3>
               <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-foreground/90">
                 {journal.learnings || (
-                  <span className="italic text-muted-foreground">Not provided.</span>
+                  <span className="italic text-muted-foreground">
+                    Not provided.
+                  </span>
                 )}
               </p>
             </div>
@@ -378,7 +389,6 @@ export function JournalDetail() {
     </>
   );
 }
-
 /**
  * Print-styled journal document — shared between the detail view PDF export
  * and (potentially) other consumers. Renders plain black-on-white content
@@ -395,7 +405,6 @@ export interface JournalDocumentProps {
   learnings: string;
   status: string;
 }
-
 export function JournalDocument({
   studentName,
   studentNumber,
@@ -411,9 +420,7 @@ export function JournalDocument({
     <div className="space-y-6 text-black">
       <div className="border-b border-slate-300 pb-4">
         <h1 className="text-xl font-bold">Weekly Practicum Journal</h1>
-        <p className="text-xs text-slate-600">
-          Practicum Evaluation Portal
-        </p>
+        <p className="text-xs text-slate-600">Practicum Evaluation Portal</p>
       </div>
 
       <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
@@ -486,5 +493,4 @@ export function JournalDocument({
     </div>
   );
 }
-
 export default JournalDetail;

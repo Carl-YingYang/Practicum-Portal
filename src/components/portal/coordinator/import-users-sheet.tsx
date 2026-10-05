@@ -1,4 +1,5 @@
 "use client";
+import { flushChanges } from "@/client/portal-client";
 import { accountUsers } from "@/lib/prototype";
 
 import * as React from "react";
@@ -157,7 +158,10 @@ async function parseFile(file: File): Promise<ParsedRow[]> {
   if (rows.length < 2) return [];
   // Normalize header keys (case-insensitive, strip spaces).
   const header = (rows[0] as string[]).map((h) =>
-    String(h ?? "").trim().toLowerCase().replace(/\s+/g, "")
+    String(h ?? "")
+      .trim()
+      .toLowerCase()
+      .replace(/\s+/g, ""),
   );
   const idx = (key: string) => header.indexOf(key);
   const get = (row: string[], key: string) => {
@@ -173,8 +177,8 @@ async function parseFile(file: File): Promise<ParsedRow[]> {
       roleRaw === "student" || roleRaw === "s"
         ? "student"
         : roleRaw === "supervisor" || roleRaw === "sup"
-        ? "supervisor"
-        : null;
+          ? "supervisor"
+          : null;
     out.push({
       rowIndex: r + 1,
       role,
@@ -203,16 +207,16 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 function validateRows(
   rows: ParsedRow[],
   existingStudents: Student[],
-  existingSupervisors: Supervisor[]
+  existingSupervisors: Supervisor[],
 ): ParsedRow[] {
   const studentEmails = new Set(
-    existingStudents.map((s) => s.email.toLowerCase())
+    existingStudents.map((s) => s.email.toLowerCase()),
   );
   const supervisorEmails = new Set(
-    existingSupervisors.map((s) => s.email.toLowerCase())
+    existingSupervisors.map((s) => s.email.toLowerCase()),
   );
   const studentNumbers = new Set(
-    existingStudents.map((s) => s.studentNumber.toLowerCase())
+    existingStudents.map((s) => s.studentNumber.toLowerCase()),
   );
   // Track emails/numbers seen within this batch too.
   const batchEmails = new Set<string>();
@@ -263,28 +267,24 @@ function validateRows(
 
 function matchCompany(
   name: string,
-  companies: { id: string; name: string }[]
+  companies: { id: string; name: string }[],
 ): string | null {
   if (!name.trim()) return null;
   const lower = name.toLowerCase();
   const found = companies.find((c) => c.name.toLowerCase() === lower);
   if (found) return found.id;
   // Partial match fallback.
-  const partial = companies.find((c) =>
-    c.name.toLowerCase().includes(lower)
-  );
+  const partial = companies.find((c) => c.name.toLowerCase().includes(lower));
   return partial?.id ?? null;
 }
 
 function matchSupervisor(
   ref: string,
-  supervisors: Supervisor[]
+  supervisors: Supervisor[],
 ): string | null {
   if (!ref.trim()) return null;
   const lower = ref.toLowerCase();
-  const byEmail = supervisors.find(
-    (s) => s.email.toLowerCase() === lower
-  );
+  const byEmail = supervisors.find((s) => s.email.toLowerCase() === lower);
   if (byEmail) return byEmail.id;
   const byName = supervisors.find((s) => s.name.toLowerCase() === lower);
   if (byName) return byName.id;
@@ -329,7 +329,7 @@ function exportResults(records: CreatedRecord[]) {
   const out = XLSX.write(wb, { bookType: "xlsx", type: "array" });
   saveAs(
     new Blob([out], { type: "application/octet-stream" }),
-    `imported-users-${new Date().toISOString().slice(0, 10)}.xlsx`
+    `imported-users-${new Date().toISOString().slice(0, 10)}.xlsx`,
   );
   toast.success("Results exported", {
     description: `${records.length} account${records.length === 1 ? "" : "s"} saved to Excel.`,
@@ -340,7 +340,10 @@ function exportResults(records: CreatedRecord[]) {
 // Component
 // ============================================================
 
-export function ImportUsersSheet({ open, onOpenChange }: ImportUsersSheetProps) {
+export function ImportUsersSheet({
+  open,
+  onOpenChange,
+}: ImportUsersSheetProps) {
   const students = useAppStore((s) => s.students);
   const supervisors = useAppStore((s) => s.supervisors);
   const companies = useAppStore((s) => s.companies);
@@ -349,7 +352,7 @@ export function ImportUsersSheet({ open, onOpenChange }: ImportUsersSheetProps) 
   const createSupervisor = useAppStore((s) => s.createSupervisor);
 
   const [phase, setPhase] = React.useState<"input" | "creating" | "results">(
-    "input"
+    "input",
   );
   const [rows, setRows] = React.useState<ParsedRow[]>([]);
   const [fileName, setFileName] = React.useState<string>("");
@@ -376,7 +379,9 @@ export function ImportUsersSheet({ open, onOpenChange }: ImportUsersSheetProps) 
   const validRows = rows.filter((r) => r.status === "valid");
   const invalidRows = rows.filter((r) => r.status === "invalid");
   const studentCount = validRows.filter((r) => r.role === "student").length;
-  const supervisorCount = validRows.filter((r) => r.role === "supervisor").length;
+  const supervisorCount = validRows.filter(
+    (r) => r.role === "supervisor",
+  ).length;
 
   const handleFile = async (file: File) => {
     setError("");
@@ -388,15 +393,33 @@ export function ImportUsersSheet({ open, onOpenChange }: ImportUsersSheetProps) 
         setRows([]);
         return;
       }
-      const existing = new Set(accountUsers(useAppStore.getState()).map((u) => u.email.trim().toLowerCase()));
-      const validated = validateRows(parsed, students, supervisors).map((row) => existing.has(row.email.trim().toLowerCase()) ? { ...row, status: "invalid" as const, errors: [...row.errors, "Email already belongs to an account"] } : row);
+      const existing = new Set(
+        accountUsers(useAppStore.getState()).map((u) =>
+          u.email.trim().toLowerCase(),
+        ),
+      );
+      const validated = validateRows(parsed, students, supervisors).map(
+        (row) =>
+          existing.has(row.email.trim().toLowerCase())
+            ? {
+                ...row,
+                status: "invalid" as const,
+                errors: [...row.errors, "Email already belongs to an account"],
+              }
+            : row,
+      );
       setRows(validated);
-      toast.success(`Parsed ${validated.length} row${validated.length === 1 ? "" : "s"}`, {
-        description: `${validated.filter((r) => r.status === "valid").length} valid, ${validated.filter((r) => r.status === "invalid").length} need attention`,
-      });
+      toast.success(
+        `Parsed ${validated.length} row${validated.length === 1 ? "" : "s"}`,
+        {
+          description: `${validated.filter((r) => r.status === "valid").length} valid, ${validated.filter((r) => r.status === "invalid").length} need attention`,
+        },
+      );
     } catch (e) {
       console.error(e);
-      setError("Could not read the file. Make sure it's a valid .xlsx or .csv.");
+      setError(
+        "Could not read the file. Make sure it's a valid .xlsx or .csv.",
+      );
       setRows([]);
     }
   };
@@ -415,12 +438,22 @@ export function ImportUsersSheet({ open, onOpenChange }: ImportUsersSheetProps) 
     if (f) void handleFile(f);
   };
 
-  const handleCreate = () => {
-    const existingEmails = new Set(accountUsers(useAppStore.getState()).map((u) => u.email.trim().toLowerCase()));
-    if (validRows.some((r) => existingEmails.has(r.email.trim().toLowerCase()))) { toast.error("An account was added after the preview. Upload again to revalidate."); return; }
+  const handleCreate = async () => {
+    const existingEmails = new Set(
+      accountUsers(useAppStore.getState()).map((u) =>
+        u.email.trim().toLowerCase(),
+      ),
+    );
+    if (
+      validRows.some((r) => existingEmails.has(r.email.trim().toLowerCase()))
+    ) {
+      toast.error(
+        "An account was added after the preview. Upload again to revalidate.",
+      );
+      return;
+    }
     setPhase("creating");
-    // Defer to next tick so the loading state paints before the (synchronous) work.
-    setTimeout(() => {
+    try {
       const results: CreatedRecord[] = [];
       // First pass: create supervisors so we can match them by name when
       // creating students in the second pass.
@@ -428,7 +461,10 @@ export function ImportUsersSheet({ open, onOpenChange }: ImportUsersSheetProps) 
       for (const row of validRows) {
         if (row.role !== "supervisor") continue;
         const companyId =
-          matchCompany(row.companyName, companies) ?? (row.companyName.trim() ? upsertCompany({ name: row.companyName }) : "");
+          matchCompany(row.companyName, companies) ??
+          (row.companyName.trim()
+            ? upsertCompany({ name: row.companyName })
+            : "");
         const result = createSupervisor({
           name: row.name,
           email: row.email,
@@ -438,9 +474,9 @@ export function ImportUsersSheet({ open, onOpenChange }: ImportUsersSheetProps) 
           capacity: 5,
         });
         // Read back the freshly-created supervisor to capture the auto-generated idNumber.
-        const created2 = useAppStore.getState().supervisors.find(
-          (s) => s.id === result.supervisorId
-        );
+        const created2 = useAppStore
+          .getState()
+          .supervisors.find((s) => s.id === result.supervisorId);
         updatedSupervisors.push(created2!);
         results.push({
           name: row.name,
@@ -456,8 +492,14 @@ export function ImportUsersSheet({ open, onOpenChange }: ImportUsersSheetProps) 
       for (const row of validRows) {
         if (row.role !== "student") continue;
         const companyId =
-          matchCompany(row.companyName, companies) ?? (row.companyName.trim() ? upsertCompany({ name: row.companyName }) : "");
-        const supervisorId = matchSupervisor(row.supervisorRef, updatedSupervisors);
+          matchCompany(row.companyName, companies) ??
+          (row.companyName.trim()
+            ? upsertCompany({ name: row.companyName })
+            : "");
+        const supervisorId = matchSupervisor(
+          row.supervisorRef,
+          updatedSupervisors,
+        );
         const result = createStudent({
           studentNumber: row.studentNumber,
           name: row.name,
@@ -469,7 +511,9 @@ export function ImportUsersSheet({ open, onOpenChange }: ImportUsersSheetProps) 
           position: "Intern",
           department: "Other",
         });
-        const assignedId = useAppStore.getState().students.find((s) => s.id === result.studentId)?.supervisorId;
+        const assignedId = useAppStore
+          .getState()
+          .students.find((s) => s.id === result.studentId)?.supervisorId;
         const sup = assignedId
           ? updatedSupervisors.find((s) => s.id === assignedId)
           : null;
@@ -483,12 +527,23 @@ export function ImportUsersSheet({ open, onOpenChange }: ImportUsersSheetProps) 
           supervisorAssigned: sup?.name ?? null,
         });
       }
+      await flushChanges();
       setCreated(results);
       setPhase("results");
-      toast.success(`Imported ${results.length} user${results.length === 1 ? "" : "s"}`, {
-        description: "Passwords are shown once — export them now to share.",
-      });
-    }, 50);
+      toast.success(
+        `Imported ${results.length} user${results.length === 1 ? "" : "s"}`,
+        {
+          description: "Passwords are shown once — export them now to share.",
+        },
+      );
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Import could not be completed.",
+      );
+      setPhase("input");
+    }
   };
 
   const handleReset = () => {
@@ -515,11 +570,17 @@ export function ImportUsersSheet({ open, onOpenChange }: ImportUsersSheetProps) 
         phase === "input" && rows.length > 0 ? (
           <div className="flex flex-wrap items-center justify-between gap-2">
             <p className="text-xs text-muted-foreground">
-              <span className="font-semibold text-foreground">{validRows.length}</span> ready
+              <span className="font-semibold text-foreground">
+                {validRows.length}
+              </span>{" "}
+              ready
               {invalidRows.length > 0 && (
                 <>
                   {" · "}
-                  <span className="font-semibold text-destructive">{invalidRows.length}</span> invalid
+                  <span className="font-semibold text-destructive">
+                    {invalidRows.length}
+                  </span>{" "}
+                  invalid
                 </>
               )}
             </p>
@@ -534,15 +595,20 @@ export function ImportUsersSheet({ open, onOpenChange }: ImportUsersSheetProps) 
                 disabled={validRows.length === 0}
               >
                 <CheckCircle2 className="h-3.5 w-3.5" />
-                Create {validRows.length} user{validRows.length === 1 ? "" : "s"}
+                Create {validRows.length} user
+                {validRows.length === 1 ? "" : "s"}
               </Button>
             </div>
           </div>
         ) : phase === "results" ? (
           <div className="flex flex-wrap items-center justify-between gap-2">
             <p className="text-xs text-muted-foreground">
-              <span className="font-semibold text-emerald-600">{created.length}</span> account
-              {created.length === 1 ? "" : "s"} created. Export the passwords now — they won&apos;t be shown again.
+              <span className="font-semibold text-emerald-600">
+                {created.length}
+              </span>{" "}
+              account
+              {created.length === 1 ? "" : "s"} created. Export the passwords
+              now — they won&apos;t be shown again.
             </p>
             <div className="flex items-center gap-2">
               <Button variant="outline" size="sm" onClick={handleReset}>
@@ -563,7 +629,8 @@ export function ImportUsersSheet({ open, onOpenChange }: ImportUsersSheetProps) 
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
           <p className="text-sm font-medium">Creating accounts…</p>
           <p className="text-xs text-muted-foreground">
-            Importing {validRows.length} user{validRows.length === 1 ? "" : "s"} into the portal.
+            Importing {validRows.length} user{validRows.length === 1 ? "" : "s"}{" "}
+            into the portal.
           </p>
         </div>
       ) : phase === "results" ? (
@@ -573,7 +640,9 @@ export function ImportUsersSheet({ open, onOpenChange }: ImportUsersSheetProps) 
         <div className="space-y-5">
           <div className="flex items-center justify-between rounded-lg border border-dashed border-border/80 bg-muted/20 p-3">
             <div className="min-w-0">
-              <p className="text-sm font-semibold">Step 1 · Download the template</p>
+              <p className="text-sm font-semibold">
+                Step 1 · Download the template
+              </p>
               <p className="text-xs text-muted-foreground">
                 Get the .xlsx with the right columns + a sample row.
               </p>
@@ -663,17 +732,24 @@ export function ImportUsersSheet({ open, onOpenChange }: ImportUsersSheetProps) 
             </div>
             <ul className="mt-3 space-y-1 text-xs text-muted-foreground">
               <li>
-                • <span className="font-medium text-foreground">Role</span> must be{" "}
-                <code className="rounded bg-muted px-1">student</code> or{" "}
+                • <span className="font-medium text-foreground">Role</span> must
+                be <code className="rounded bg-muted px-1">student</code> or{" "}
                 <code className="rounded bg-muted px-1">supervisor</code>.
               </li>
               <li>
-                • <span className="font-medium text-foreground">Supervisor</span> (students only) — name or email of an existing supervisor. Matched case-insensitively.
+                •{" "}
+                <span className="font-medium text-foreground">Supervisor</span>{" "}
+                (students only) — name or email of an existing supervisor.
+                Matched case-insensitively.
               </li>
               <li>
                 • New accounts start as{" "}
-                <span className="font-medium text-foreground">Invited</span>: they sign in with the{" "}
-                <span className="font-medium text-foreground">one-time temporary password</span> shown in the results, then set a personal password.
+                <span className="font-medium text-foreground">Invited</span>:
+                they sign in with the{" "}
+                <span className="font-medium text-foreground">
+                  one-time temporary password
+                </span>{" "}
+                shown in the results, then set a personal password.
               </li>
             </ul>
           </div>
@@ -685,7 +761,9 @@ export function ImportUsersSheet({ open, onOpenChange }: ImportUsersSheetProps) 
             <div className="flex items-center gap-2 text-sm">
               <FileSpreadsheet className="h-4 w-4 text-muted-foreground" />
               <span className="font-medium">{fileName}</span>
-              <span className="text-muted-foreground">· {rows.length} row{rows.length === 1 ? "" : "s"}</span>
+              <span className="text-muted-foreground">
+                · {rows.length} row{rows.length === 1 ? "" : "s"}
+              </span>
             </div>
             <Button variant="ghost" size="sm" onClick={handleReset}>
               <RotateCcw className="h-3.5 w-3.5" />
@@ -746,9 +824,13 @@ export function ImportUsersSheet({ open, onOpenChange }: ImportUsersSheetProps) 
                       )}
                     </td>
                     <td className="px-2.5 py-2">
-                      <span className="text-xs capitalize">{row.role ?? "—"}</span>
+                      <span className="text-xs capitalize">
+                        {row.role ?? "—"}
+                      </span>
                     </td>
-                    <td className="px-2.5 py-2 font-medium">{row.name || "—"}</td>
+                    <td className="px-2.5 py-2 font-medium">
+                      {row.name || "—"}
+                    </td>
                     <td className="px-2.5 py-2 text-xs text-muted-foreground">
                       {row.email || "—"}
                     </td>
@@ -817,7 +899,9 @@ function ResultsView({ records }: { records: CreatedRecord[] }) {
             {records.map((r, i) => (
               <tr key={i} className="hover:bg-muted/30">
                 <td className="px-3 py-2 font-medium">{r.name}</td>
-                <td className="px-3 py-2 text-xs text-muted-foreground">{r.email}</td>
+                <td className="px-3 py-2 text-xs text-muted-foreground">
+                  {r.email}
+                </td>
                 <td className="px-3 py-2 text-xs capitalize">{r.role}</td>
                 <td className="px-3 py-2 font-mono text-xs font-semibold text-foreground">
                   {r.idNumber}
