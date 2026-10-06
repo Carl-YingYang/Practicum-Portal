@@ -17,7 +17,7 @@ export function LoginScreen() {
   const [hero, setHero] = useState(1);
   const users = useAppStore((s) => s.demoAccounts);
   const serverError = useAppStore((s) => s.syncError);
-  const { setTheme } = useTheme();
+  const { resolvedTheme, setTheme } = useTheme();
   useEffect(() => {
     const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
     let timer: ReturnType<typeof setInterval> | undefined;
@@ -72,26 +72,22 @@ export function LoginScreen() {
             Practicum / Management
           </span>
           <Button
+            type="button"
             variant="ghost"
             size="icon"
-            className="size-11"
-            aria-label="Use light theme"
-            onClick={() => setTheme("light")}
+            className="size-11 rounded-full text-muted-foreground hover:text-foreground"
+            aria-label="Toggle color theme"
+            title="Switch light / dark theme"
+            onClick={() =>
+              setTheme(resolvedTheme === "dark" ? "light" : "dark")
+            }
           >
-            <Sun className="size-4" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="size-11"
-            aria-label="Use dark theme"
-            onClick={() => setTheme("dark")}
-          >
-            <Moon className="size-4" />
+            <Moon className="size-4 dark:hidden" />
+            <Sun className="hidden size-4 dark:block" />
           </Button>
         </div>
       </header>
-      <div className="relative mx-auto grid min-h-[calc(100svh-64px)] max-w-[1400px] lg:grid-cols-2">
+      <div className="relative grid min-h-[calc(100svh-64px)] w-full lg:grid-cols-2">
         <div
           className="pointer-events-none absolute inset-0 overflow-hidden lg:right-1/2"
           aria-hidden="true"
@@ -106,7 +102,7 @@ export function LoginScreen() {
               preload={number === 1}
               data-login-hero={number}
               data-active={hero === number}
-              className={`object-contain transition-opacity duration-1000 ease-in-out motion-reduce:transition-none ${hero === number ? "opacity-[.14] dark:opacity-[.10]" : "opacity-0"}`}
+              className={`object-cover object-center transition-opacity duration-1000 ease-in-out motion-reduce:transition-none ${hero === number ? "opacity-[.35] dark:opacity-[.25]" : "opacity-0"}`}
             />
           ))}
           <div className="absolute inset-0 bg-gradient-to-t from-background/95 via-background/60 to-background/30" />
