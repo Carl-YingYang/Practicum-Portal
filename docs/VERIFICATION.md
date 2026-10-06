@@ -1,4 +1,6 @@
-# Verification — connected platform, October 5, 2026
+# Verification — connected platform
+
+The latest October 6 results are in [Responsive and workflow polish](RESPONSIVE_POLISH.md#verification). The sections below record earlier passes.
 
 The writing/workflow follow-up starts from `b31510c`. The connected-platform pass starts from `d8d6a7e`; the login follow-up starts from `0ecc986` on `practo/testing-platform`. Commands run against Node 24, the installed Next.js 16.3.8/React 19 application, Prisma 6 with SQLite, and Chromium through Playwright. Only the testing branch is published.
 

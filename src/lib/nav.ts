@@ -113,7 +113,7 @@ export const roleHomeView: Record<Role, ViewKey> = {
 export const viewTitles: Record<ViewKey, string> = {
   login: "Sign in",
   "student.dashboard": "Dashboard",
-  "student.journals": "Weekly Journals",
+  "student.journals": "My Journals",
   "student.journal-new": "New Journal",
   "student.journal-view": "Journal",
   "student.evaluations": "My Evaluations",
@@ -162,6 +162,27 @@ export const viewTitles: Record<ViewKey, string> = {
   "coordinator.subscription": "Billing & Usage Summary",
   "coordinator.profile": "My Profile",
 };
+
+const navChildren: Partial<Record<ViewKey, readonly ViewKey[]>> = {
+  "student.journals": ["student.journal-new", "student.journal-view"],
+  "student.forms": ["student.form-view"],
+  "student.evaluations": ["student.evaluation-view"],
+  "supervisor.interns": ["supervisor.intern-view", "supervisor.time-monitor"],
+  "supervisor.journals": ["supervisor.journal-review"],
+  "supervisor.forms": ["supervisor.form-view"],
+  "supervisor.evaluations": ["supervisor.evaluation-new", "supervisor.evaluation-view"],
+  "coordinator.students": ["coordinator.student-new", "coordinator.student-view"],
+  "coordinator.supervisors": ["coordinator.supervisor-new", "coordinator.supervisor-view"],
+  "coordinator.journals": ["coordinator.journal-view"],
+  "coordinator.forms": ["coordinator.form-editor"],
+  "coordinator.evaluations": ["coordinator.evaluation-view"],
+  "coordinator.user-management": ["coordinator.coordinator-new", "coordinator.bulk-create"],
+};
+
+/** List and detail/editor routes share one consistent navigation highlight. */
+export function isNavViewActive(view: ViewKey, target: ViewKey): boolean {
+  return view === target || Boolean(navChildren[target]?.includes(view));
+}
 
 export const roleBreadcrumbs: Record<Role, string> = {
   student: "Student",

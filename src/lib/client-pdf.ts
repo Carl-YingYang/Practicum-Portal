@@ -1,4 +1,3 @@
-import { toast } from "sonner";
 import { escapeCell } from "./csv-export";
 export interface PdfTableSpec {
   head: string[];
@@ -35,13 +34,9 @@ export interface PdfReportSpec {
 
 /** Normalise a filename to always end in .pdf */
 /** Load PDF libraries only when a report is requested. */
-export function downloadPdfReport(spec: PdfReportSpec): string {
-  void import("./pdf-renderer")
-    .then((module) => module.downloadPdfReport(spec))
-    .catch(() => toast.error("Could not generate the PDF. Please try again."));
-  return spec.filename.toLowerCase().endsWith(".pdf")
-    ? spec.filename
-    : `${spec.filename}.pdf`;
+export async function downloadPdfReport(spec: PdfReportSpec): Promise<string> {
+  const renderer = await import("./pdf-renderer");
+  return renderer.downloadPdfReport(spec);
 }
 
 export function downloadCsv(

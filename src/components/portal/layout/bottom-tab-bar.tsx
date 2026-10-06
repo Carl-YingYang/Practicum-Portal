@@ -3,7 +3,7 @@
 import * as React from "react";
 import { cn } from "@/lib/utils";
 import { useAppStore } from "@/store/use-app-store";
-import { bottomTabs, getNavIcon } from "@/lib/nav";
+import { bottomTabs, getNavIcon, isNavViewActive } from "@/lib/nav";
 import type { Role } from "@/lib/types";
 
 /**
@@ -74,8 +74,7 @@ export function BottomTabBar() {
           const Icon = getNavIcon(tab.icon);
           // Active when the current view IS the tab's view, OR is a sub-view
           // of it (e.g. student.journal-new highlights the Journals tab).
-          const tabPrefix = tab.view.split(".").slice(0, 2).join(".");
-          const isActive = view === tab.view || view.startsWith(tabPrefix + ".");
+          const isActive = isNavViewActive(view, tab.view);
           const badge = badgeFor(tab.badgeKey);
           return (
             <li key={tab.key} className="flex min-w-0">

@@ -25,6 +25,7 @@ import {
 import { useTheme } from "next-themes";
 import { ROLE_LABELS } from "@/lib/types";
 import { NotificationsDropdown } from "./notifications-dropdown";
+import { PractoBrand } from "@/components/portal/shared/practo-brand";
 interface PageActionsProps {
   onOpenTestingScenarios?: () => void;
   onOpenMobileNav: () => void;
@@ -48,11 +49,9 @@ export function PageActions({
   React.useEffect(() => setMounted(true), []);
   const role = currentUser?.role;
   return (
-    <div className="sticky top-0 z-30 flex min-h-16 items-center justify-between gap-2 border-b border-border bg-background px-4 sm:px-6 lg:px-8">
-      <p className="text-[10px] font-semibold uppercase tracking-[.2em] text-muted-foreground">
-        Practo <span className="hidden sm:inline">/ Workspace</span>
-      </p>
-      <div className="flex items-center gap-0.5 py-2">
+    <header data-workspace-header className="sticky top-0 z-30 flex h-16 shrink-0 items-center justify-between gap-2 border-b border-border bg-background px-4 sm:px-6 lg:px-8">
+      <PractoBrand small className="text-[10px] font-semibold tracking-[.1em] text-muted-foreground" />
+      <div className="flex min-w-0 shrink-0 items-center gap-0.5 py-2">
         {/* Mobile: hamburger — opens the drawer */}
         <Button
           variant="ghost"
@@ -60,6 +59,7 @@ export function PageActions({
           className="size-11 shrink-0 text-foreground hover:bg-muted lg:hidden"
           onClick={onOpenMobileNav}
           aria-label="Open navigation"
+          data-mobile-navigation-trigger
         >
           <Menu className="h-[17px] w-[17px]" strokeWidth={2.2} />
         </Button>
@@ -112,7 +112,8 @@ export function PageActions({
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button
-                className="flex h-11 min-w-11 items-center gap-1.5 rounded-full py-0.5 pl-0.5 pr-2 transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+                type="button"
+                className="inline-flex size-11 shrink-0 items-center justify-center rounded-full transition-colors hover:bg-muted data-[state=open]:bg-muted md:w-auto md:max-w-56 md:gap-2 md:px-2"
                 aria-label="Open profile menu"
               >
                 <Avatar
@@ -209,6 +210,6 @@ export function PageActions({
           </DropdownMenu>
         )}
       </div>
-    </div>
+    </header>
   );
 }

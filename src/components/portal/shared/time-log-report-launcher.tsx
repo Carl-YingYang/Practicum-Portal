@@ -139,7 +139,7 @@ export function TimeLogReportLauncher({
     RANGE_OPTIONS.find((o) => o.key === range)?.label ?? "All time";
 
   // ---------- Real PDF download builder ----------
-  const buildTimeLogPdf = () => {
+  const buildTimeLogPdf = async () => {
     // Helper: Monday-of-the-week key for a session date.
     const weekOf = (iso: string) => {
       const d = new Date(iso);
@@ -158,7 +158,7 @@ export function TimeLogReportLauncher({
       title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") ||
       "time-log-report";
 
-    downloadPdfReport({
+    await downloadPdfReport({
       filename: `${safeFilename}-${range}`,
       title,
       subtitle: `${subtitle ? subtitle + " · " : ""}${rangeLabel} · ${filteredSessions} session${

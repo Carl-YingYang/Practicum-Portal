@@ -15,9 +15,8 @@ import {
   Timer,
   NotebookText,
 } from "lucide-react";
-// New editorial bento dashboard (Active state). Aliased to avoid an
-// export-name collision with this file's own `StudentDashboard` gate.
-import { StudentDashboard as BentoDashboard } from "./StudentDashboard";
+// Keep assignment gating separate from the active dashboard layout.
+import { ActiveStudentDashboard } from "./active-student-dashboard";
 
 /**
  * ============================================================================
@@ -32,8 +31,7 @@ import { StudentDashboard as BentoDashboard } from "./StudentDashboard";
  *   • ACTIVE   (supervisorId != null) → Theme-driven Bento dashboard
  *     (slideshow + time clock + drafting room + timesheet + evaluations).
  *
- * The `isDeployed` mock toggle below lets you force either view for testing
- * without a real backend. Flip to `false` to preview the LockedWorkspace.
+ * Deployment is derived from the server-backed student assignment.
  * ============================================================================
  */
 
@@ -84,7 +82,7 @@ export function StudentDashboard() {
   // Branch on deployment state — real derivation from supervisor assignment.
   const isDeployed = Boolean(student?.supervisorId);
   return isDeployed ? (
-    <BentoDashboard />
+    <ActiveStudentDashboard />
   ) : (
     <LockedWorkspace student={student} firstName={firstName} />
   );

@@ -24,10 +24,10 @@ const PAGE_H = 841.89;
 const MARGIN = 40;
 const CONTENT_W = PAGE_W - MARGIN * 2;
 
-// Brand palette (kept consistent with the app's teal accent).
+// Neutral report palette remains legible when printed.
 const BRAND = {
-  primary: "#202020" as const, // teal-700
-  primaryLight: "#efefec" as const, // teal-100
+  primary: "#202020" as const,
+  primaryLight: "#efefec" as const,
   ink: "#0f172a" as const, // slate-900
   inkSoft: "#475569" as const, // slate-600
   inkMuted: "#94a3b8" as const, // slate-400
@@ -92,7 +92,7 @@ export function downloadPdfReport(spec: PdfReportSpec): string {
     doc.setFont("helvetica", "bold");
     doc.setFontSize(9);
     doc.setTextColor(BRAND.inkSoft);
-    doc.text(spec.title, MARGIN, MARGIN - 12);
+    doc.text(doc.splitTextToSize(spec.title, CONTENT_W - 65)[0], MARGIN, MARGIN - 12);
     doc.setFont("helvetica", "normal");
     doc.text(`Page ${data.pageNumber}`, PAGE_W - MARGIN, MARGIN - 12, {
       align: "right",
@@ -107,8 +107,9 @@ export function downloadPdfReport(spec: PdfReportSpec): string {
   doc.setFont("helvetica", "bold");
   doc.setFontSize(18);
   doc.setTextColor(BRAND.ink);
-  doc.text(spec.title, MARGIN, y + 14);
-  y += 22;
+  const titleLines = doc.splitTextToSize(spec.title, CONTENT_W);
+  doc.text(titleLines, MARGIN, y + 14);
+  y += titleLines.length * 21;
 
   if (spec.subtitle) {
     doc.setFont("helvetica", "normal");
@@ -123,7 +124,7 @@ export function downloadPdfReport(spec: PdfReportSpec): string {
   doc.setFontSize(8);
   doc.setTextColor(BRAND.inkMuted);
   doc.text(
-    `Practicum Evaluation Portal · Generated ${generated}`,
+    `Practo · Generated ${generated}`,
     MARGIN,
     y + 10,
   );
@@ -134,25 +135,22 @@ export function downloadPdfReport(spec: PdfReportSpec): string {
   doc.line(MARGIN, y, PAGE_W - MARGIN, y);
   y += 12;
 
-  // ---------- Summary stats strip ----------
-  if (spec.meta && spec.meta.length > 0) {
-    const cardW = CONTENT_W / spec.meta.length;
-    const cardH = 38;
-    spec.meta.forEach((m, i) => {
-      const x = MARGIN + i * cardW;
-      doc.setFillColor(BRAND.zebra);
-      doc.roundedRect(x + 2, y, cardW - 4, cardH, 4, 4, "F");
-      doc.setFont("helvetica", "normal");
-      doc.setFontSize(7);
-      doc.setTextColor(BRAND.inkMuted);
-      doc.text(m.label.toUpperCase(), x + 8, y + 12);
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(12);
-      doc.setTextColor(BRAND.ink);
-      doc.text(String(m.value), x + 8, y + 28);
+  // Wrapped details table replaces crowded one-line metadata cards.
+  const drawDetails = (entries: { label: string; value: string }[]) => {
+    autoTable(doc, {
+      body: entries.map((entry) => [entry.label, entry.value]),
+      startY: y,
+      margin: { left: MARGIN, right: MARGIN, top: MARGIN, bottom: MARGIN },
+      theme: "striped",
+      styles: { font: "helvetica", fontSize: 9, cellPadding: 5, overflow: "linebreak", textColor: BRAND.ink },
+      columnStyles: { 0: { cellWidth: 125, fontStyle: "bold" } },
+      alternateRowStyles: { fillColor: BRAND.zebra },
+      didDrawPage: drawHeader,
     });
-    y += cardH + 14;
-  }
+    // @ts-expect-error The table plugin adds this runtime property.
+    y = (doc.lastAutoTable?.finalY ?? y) + 14;
+  };
+  if (spec.meta?.length) drawDetails(spec.meta);
 
   // ---------- Sections ----------
   for (const section of spec.sections) {
@@ -166,8 +164,9 @@ export function downloadPdfReport(spec: PdfReportSpec): string {
       doc.setFont("helvetica", "bold");
       doc.setFontSize(11);
       doc.setTextColor(BRAND.primary);
-      doc.text(section.heading, MARGIN, y + 4);
-      y += 12;
+      const headingLines = doc.splitTextToSize(section.heading, CONTENT_W);
+      doc.text(headingLines, MARGIN, y + 4);
+      y += headingLines.length * 13;
       doc.setDrawColor(BRAND.primaryLight);
       doc.setLineWidth(1.5);
       doc.line(MARGIN, y, MARGIN + 24, y);
@@ -214,29 +213,7 @@ export function downloadPdfReport(spec: PdfReportSpec): string {
       y = (doc.lastAutoTable?.finalY ?? y) + 14;
     }
 
-    if (section.keyValue && section.keyValue.length > 0) {
-      const colW = CONTENT_W / 2;
-      const rowH = 22;
-      section.keyValue.forEach((kv, i) => {
-        const col = i % 2;
-        const row = Math.floor(i / 2);
-        const x = MARGIN + col * colW;
-        const ry = y + row * rowH;
-        if (ry > PAGE_H - MARGIN - rowH) {
-          doc.addPage();
-          y = MARGIN;
-        }
-        doc.setFont("helvetica", "normal");
-        doc.setFontSize(7);
-        doc.setTextColor(BRAND.inkMuted);
-        doc.text(kv.label.toUpperCase(), x, ry);
-        doc.setFont("helvetica", "bold");
-        doc.setFontSize(10);
-        doc.setTextColor(BRAND.ink);
-        doc.text(String(kv.value), x, ry + 12);
-      });
-      y += Math.ceil(section.keyValue.length / 2) * rowH + 10;
-    }
+    if (section.keyValue?.length) drawDetails(section.keyValue);
 
     if (section.paragraphs && section.paragraphs.length > 0) {
       for (const p of section.paragraphs) {
@@ -244,8 +221,15 @@ export function downloadPdfReport(spec: PdfReportSpec): string {
           doc.setFont("helvetica", "bold");
           doc.setFontSize(8);
           doc.setTextColor(BRAND.inkSoft);
-          doc.text(p.label.toUpperCase(), MARGIN, y + 4);
-          y += 12;
+          const labelLines = doc.splitTextToSize(p.label.toUpperCase(), CONTENT_W);
+          for (const line of labelLines) {
+            if (y > PAGE_H - MARGIN - 26) {
+              doc.addPage();
+              y = MARGIN;
+            }
+            doc.text(line, MARGIN, y + 4);
+            y += 12;
+          }
         }
         doc.setFont("helvetica", "normal");
         doc.setFontSize(9.5);
@@ -277,8 +261,9 @@ export function downloadPdfReport(spec: PdfReportSpec): string {
     doc.setTextColor(BRAND.inkMuted);
     const notice =
       spec.footer ??
-      "Practicum Evaluation Portal · Confidential · For official practicum records only";
-    doc.text(notice, MARGIN, PAGE_H - MARGIN + 18);
+      "Practo · Confidential · For official practicum records only";
+    const noticeLines = doc.splitTextToSize(notice, CONTENT_W - 85).slice(0, 2);
+    doc.text(noticeLines, MARGIN, PAGE_H - MARGIN + 18);
     doc.text(
       `Page ${i} of ${pageCount}`,
       PAGE_W - MARGIN,

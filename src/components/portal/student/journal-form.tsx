@@ -172,8 +172,10 @@ export function JournalForm() {
   const saveState =
     error || state.syncStatus === "error"
       ? "error"
-      : edited || saving || state.syncStatus === "saving"
+      : saving || state.syncStatus === "saving"
         ? "saving"
+        : edited
+          ? "unsaved"
         : activeId
           ? "saved"
           : "idle";
@@ -231,8 +233,8 @@ export function JournalForm() {
                 </p>
               </div>
             </div>
-            <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
-              <div>
+            <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
+              <div className="min-w-0">
                 <Label htmlFor="jrnl-date">Period date</Label>
                 <Input
                   className="mt-1.5 min-h-11"
@@ -259,7 +261,7 @@ export function JournalForm() {
                   Completed attendance in this period
                 </p>
               </div>
-              <div className="col-span-2 rounded-lg bg-primary/5 p-3 sm:col-span-1">
+              <div className="rounded-lg bg-primary/5 p-3">
                 <p className="text-xs text-muted-foreground">
                   Cumulative through this period
                 </p>
@@ -352,7 +354,7 @@ export function JournalForm() {
           onClick={() => void saveAndNotify()}
         >
           <Save className="size-4" />
-          Save Draft
+          {busy ? "Saving…" : "Save Draft"}
         </Button>
         <Button
           disabled={busy || Boolean(locked) || !form.date || context.hours <= 0}

@@ -12,7 +12,6 @@ import {
   getJournal,
   getStudent,
   getSupervisor,
-  weekLabel,
 } from "@/lib/selectors";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -46,6 +45,7 @@ export function JournalDetail() {
   const submitJournal = useAppStore((s) => s.submitJournal);
   const [submitOpen, setSubmitOpen] = React.useState(false);
   const [downloading, setDownloading] = React.useState(false);
+  const [pdfBusy, setPdfBusy] = React.useState(false);
   const student = getStudent(students, currentUser?.studentId);
   const journal = getJournal(journals, viewParams.journalId);
   if (!student) return null;
@@ -92,7 +92,7 @@ export function JournalDetail() {
         course: student.course,
         companyName: company?.name ?? "",
         supervisorName: supervisor?.name ?? "",
-        weekLabel: weekLabel(journal.date),
+        weekLabel: journalPeriodLabel(journal),
         dateLabel: formatDate(journal.date),
         tasks: journal.tasks,
         learnings: journal.learnings,
@@ -107,13 +107,15 @@ export function JournalDetail() {
       setDownloading(false);
     }
   };
-  const handleDownloadPdf = () => {
+  const handleDownloadPdf = async () => {
+    if (pdfBusy) return;
+    setPdfBusy(true);
     try {
       const filename = `journal-${formatDate(journal.date).replace(/\s+/g, "-").toLowerCase()}.pdf`;
-      downloadPdfReport({
+      await downloadPdfReport({
         filename,
-        title: "Weekly Practicum Journal",
-        subtitle: `${schoolIdentity.name} · Week of ${formatDate(journal.date)}`,
+        title: `${cadenceLabels[journal.cadence ?? "weekly"]} Practicum Journal`,
+        subtitle: `${schoolIdentity.name} · ${journalPeriodLabel(journal)}`,
         meta: [
           { label: "Student", value: student.name },
           { label: "Student No.", value: student.studentNumber },
@@ -167,11 +169,13 @@ export function JournalDetail() {
     } catch (e) {
       console.error(e);
       toast.error("Couldn't generate the PDF.");
+    } finally {
+      setPdfBusy(false);
     }
   };
   const handleShare = async () => {
     const shareUrl = "";
-    const shareText = `Weekly Practicum Journal — ${formatDate(journal.date)} (${weekLabel(journal.date)}) · ${student.name} · ${journal.hours}h · Status: ${journal.status}`;
+    const shareText = `Practicum Journal — ${journalPeriodLabel(journal)} · ${student.name} · ${journal.hours}h · Status: ${journal.status}`;
     try {
       if (typeof navigator !== "undefined" && navigator.share) {
         await navigator.share({
@@ -225,9 +229,9 @@ export function JournalDetail() {
                 <FileDown className="h-4 w-4" />
                 {downloading ? "Generating…" : "Word"}
               </Button>
-              <Button onClick={handleDownloadPdf}>
+              <Button disabled={pdfBusy} aria-busy={pdfBusy} onClick={handleDownloadPdf}>
                 <FileType2 className="h-4 w-4" />
-                Download PDF
+                {pdfBusy ? "Generating…" : "Download PDF"}
               </Button>
               <Button
                 variant="outline"
@@ -425,8 +429,8 @@ export function JournalDocument({
   return (
     <div className="space-y-6 text-black">
       <div className="border-b border-slate-300 pb-4">
-        <h1 className="text-xl font-bold">Weekly Practicum Journal</h1>
-        <p className="text-xs text-slate-600">Practicum Evaluation Portal</p>
+        <h1 className="text-xl font-bold">Practicum Journal</h1>
+        <p className="text-xs text-slate-600">Practo</p>
       </div>
 
       <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
@@ -456,7 +460,7 @@ export function JournalDocument({
         </div>
         <div>
           <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
-            Week of
+            Entry date
           </p>
           <p>{formatDate(date)}</p>
         </div>

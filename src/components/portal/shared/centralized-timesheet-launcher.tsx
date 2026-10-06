@@ -159,7 +159,7 @@ export function CentralizedTimesheetLauncher({
   };
 
   // ---- PDF download (clean, DOCX-style layout) ----
-  const buildPdf = () => {
+  const buildPdf = async () => {
     // Group by month for the PDF.
     const completed = filteredSessions
       .filter((t) => t.clockOutAt !== null && t.durationMs)
@@ -223,7 +223,7 @@ export function CentralizedTimesheetLauncher({
 
     const filename = `timesheet-${safeCompany}-${safeName}-${range}`;
 
-    downloadPdfReport({
+    await downloadPdfReport({
       filename,
       title: companyName.toUpperCase(),
       subtitle: `Intern Monthly Timesheet · ${student.name} (${student.studentNumber}) · ${rangeLabel}`,

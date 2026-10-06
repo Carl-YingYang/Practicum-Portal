@@ -4,6 +4,7 @@ import { configuredTerm } from "@/lib/prototype";
 import * as React from "react";
 import { flushChanges } from "@/client/portal-client";
 import { responseErrors } from "@/lib/prototype";
+import { usePdfExport } from "@/hooks/use-pdf-export";
 import { downloadFormPdf } from "@/lib/form-export";
 import { useAppStore } from "@/store/use-app-store";
 import { PageHeader } from "@/components/portal/layout/page-header";
@@ -56,6 +57,7 @@ type FieldValue = string | Record<string, string>;
  */
 export function StudentFormWorkspace({ formId }: { formId?: string }) {
   const { toast } = useToast();
+  const { exporting, exportPdf } = usePdfExport();
   const navigate = useAppStore((s) => s.navigate);
   const back = useAppStore((s) => s.back);
   const canBack = useAppStore((s) => s.history.length > 0);
@@ -191,7 +193,7 @@ export function StudentFormWorkspace({ formId }: { formId?: string }) {
     window.print();
   }
   function handleDownload() {
-    if (form) downloadFormPdf(form, valuesRef.current, currentUser?.name);
+    if (form) void exportPdf(() => downloadFormPdf(form, valuesRef.current, currentUser?.name));
   }
   function handleReset() {
     if (!currentSubmission) return;
@@ -293,7 +295,7 @@ export function StudentFormWorkspace({ formId }: { formId?: string }) {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-44">
-                <DropdownMenuItem onClick={handleDownload}>
+                <DropdownMenuItem onClick={handleDownload} disabled={exporting}>
                   <Download className="mr-2 h-3.5 w-3.5" /> Export PDF
                 </DropdownMenuItem>
                 {!isReadOnly && (

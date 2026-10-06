@@ -8,7 +8,6 @@ import {
   pendingJournalsForSupervisor,
   journalsForStudent,
   getStudent,
-  weekLabel,
   formatDate,
   relativeTime,
 } from "@/lib/selectors";
@@ -98,7 +97,7 @@ export function JournalApprovalQueue() {
           {journalPeriodLabel(j)}
         </span>
       ),
-      sortValue: (j) => weekLabel(j.date),
+      sortValue: (j) => j.date,
     },
     {
       key: "date",
@@ -263,7 +262,7 @@ export function JournalApprovalQueue() {
                         Week
                       </p>
                       <p className="truncate text-xs font-semibold text-foreground">
-                        {weekLabel(j.date)}
+                        {journalPeriodLabel(j)}
                       </p>
                     </div>
                     <div className="shrink-0 text-right">

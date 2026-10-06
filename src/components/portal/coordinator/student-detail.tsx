@@ -1,4 +1,5 @@
 "use client";
+import { journalPeriodLabel } from "@/domain/journal-period";
 
 import * as React from "react";
 import { useAppStore } from "@/store/use-app-store";
@@ -15,7 +16,6 @@ import {
   timeLogsForStudent,
   weeklyTimeMs,
   totalCompletedTimeMs,
-  weekLabel,
 } from "@/lib/selectors";
 import type { Journal, Evaluation, Student } from "@/lib/types";
 import { WORK_MODE_LABELS } from "@/lib/types";
@@ -123,9 +123,9 @@ export function StudentDetail({ studentId }: { studentId?: string }) {
     },
     {
       key: "week",
-      header: "Week",
+      header: "Period",
       hideOnMobile: true,
-      cell: (j) => <span className="text-sm text-muted-foreground">{weekLabel(j.date)}</span>,
+      cell: (j) => <span className="text-sm text-muted-foreground">{journalPeriodLabel(j)}</span>,
     },
     {
       key: "hours",
@@ -256,7 +256,7 @@ export function StudentDetail({ studentId }: { studentId?: string }) {
           <Avatar name={student.name} size="xl" />
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
-              <h2 className="text-xl font-bold text-foreground">{student.name}</h2>
+              <h2 className="break-words text-xl font-bold text-foreground">{student.name}</h2>
               <Badge tone={student.status === "active" ? "emerald" : "slate"}>
                 {student.status === "active" ? "Active" : "Inactive"}
               </Badge>
@@ -276,7 +276,7 @@ export function StudentDetail({ studentId }: { studentId?: string }) {
               </p>
               <p className="flex min-w-0 items-center gap-2 text-muted-foreground">
                 <Mail className="h-4 w-4 shrink-0" />
-                <span className="truncate">{student.email}</span>
+                <span className="min-w-0 break-all">{student.email}</span>
               </p>
               <p className="flex min-w-0 items-center gap-2 text-muted-foreground">
                 <ClipboardCheck className="h-4 w-4 shrink-0" />
@@ -310,7 +310,7 @@ export function StudentDetail({ studentId }: { studentId?: string }) {
       {/* Tabs */}
       <div className="mt-4">
         <Tabs defaultValue="overview">
-          <TabsList className="w-full justify-start sm:w-auto">
+          <TabsList className="grid h-auto w-full grid-cols-2 gap-1 sm:flex sm:w-auto">
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="journals">Journals ({studentJournals.length})</TabsTrigger>
             <TabsTrigger value="evaluations">Evaluations ({studentEvals.length})</TabsTrigger>
@@ -319,7 +319,7 @@ export function StudentDetail({ studentId }: { studentId?: string }) {
 
           {/* Overview */}
           <TabsContent value="overview" className="mt-4">
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
               <SectionCard title="Hours Progress">
                 <div className="flex items-center gap-3">
                   <ProgressRing value={pct} size={64} strokeWidth={6} />
@@ -399,7 +399,7 @@ export function StudentDetail({ studentId }: { studentId?: string }) {
                         {formatDate(j.date)}
                       </p>
                       <p className="text-xs text-muted-foreground">
-                        {weekLabel(j.date)} · {j.hours}h
+                        {journalPeriodLabel(j)} · {j.hours}h
                       </p>
                     </div>
                     <div className="shrink-0">
@@ -557,37 +557,6 @@ export function StudentDetail({ studentId }: { studentId?: string }) {
             </SectionCard>
           </TabsContent>
         </Tabs>
-      </div>
-
-      {/* Sticky bottom action bar (mobile + tablet) — primary CTAs thumb-reachable. */}
-      <div className="sticky bottom-[calc(56px+env(safe-area-inset-bottom,0px))] z-20 mt-6 -mx-5 flex gap-2 border-t border-border bg-background/95 p-3 backdrop-blur supports-[backdrop-filter]:bg-background/80 sm:-mx-6 sm:px-6 lg:hidden">
-        <Button
-          variant="outline"
-          className="flex-1"
-          onClick={() =>
-            navigate("coordinator.student-new", { studentId: student.id })
-          }
-        >
-          <Pencil className="h-4 w-4" />
-          Edit
-        </Button>
-        <Button
-          variant="outline"
-          className="flex-1"
-          onClick={() => setReassignOpen(true)}
-        >
-          <UserCog className="h-4 w-4" />
-          Reassign
-        </Button>
-        <Button onClick={() => setPdfOpen(true)} aria-label="Generate PDF">
-          <FileText className="h-4 w-4" />
-        </Button>
-        <Button
-          onClick={() => setAccreditationOpen(true)}
-          aria-label="Accreditation PDF"
-        >
-          <Award className="h-4 w-4" />
-        </Button>
       </div>
 
       <PdfPreviewModal

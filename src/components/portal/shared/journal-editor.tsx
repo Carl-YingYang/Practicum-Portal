@@ -31,7 +31,7 @@ export interface JournalEditorProps {
   onChangeLearnings: (value: string) => void;
   readOnly?: boolean;
   disabled?: boolean;
-  saveState?: "idle" | "saving" | "saved" | "error";
+  saveState?: "idle" | "unsaved" | "saving" | "saved" | "error";
   className?: string;
   onDownloadWord?: () => void | Promise<void>;
 }
@@ -214,7 +214,9 @@ export function JournalEditor({
         </span>
         {!readOnly && (
           <span>
-            {saveState === "saving"
+            {saveState === "unsaved"
+              ? "Unsaved changes"
+              : saveState === "saving"
               ? "Saving to server…"
               : saveState === "saved"
                 ? "Saved to server"

@@ -1,5 +1,7 @@
 "use client";
 import { flushChanges } from "@/client/portal-client";
+import { useAsyncAction } from "@/hooks/use-async-action";
+import { usePdfExport } from "@/hooks/use-pdf-export";
 import { downloadFormPdf } from "@/lib/form-export";
 import * as React from "react";
 import { SlideOver } from "@/components/portal/shared/slide-over";
@@ -49,7 +51,9 @@ export function SubmissionReviewSlideOver({
   submissionId?: string;
 }) {
   const portalUsers = useAccountUsers();
+  const { pending, error: reviewError, run } = useAsyncAction();
   const { toast } = useToast();
+  const { exporting, exportPdf } = usePdfExport();
   const submission = useAppStore((s) =>
     s.formSubmissions.find((x) => x.id === submissionId),
   );
@@ -111,11 +115,7 @@ export function SubmissionReviewSlideOver({
       return;
     }
     reviewSubmission(submission.id, decision, reviewNote.trim() || undefined);
-    try {
-      await flushChanges();
-    } catch {
-      return;
-    }
+    await flushChanges();
     const label =
       decision === "approve" ? "approved" : "sent back for revision";
     toast({
@@ -132,7 +132,7 @@ export function SubmissionReviewSlideOver({
   }
   function handleDownload() {
     if (form && submission)
-      downloadFormPdf(form, submission.values, submitter?.name);
+      void exportPdf(() => downloadFormPdf(form, submission.values, submitter?.name));
   }
   return (
     <SlideOver
@@ -159,7 +159,7 @@ export function SubmissionReviewSlideOver({
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-44">
-              <DropdownMenuItem onClick={handleDownload}>
+              <DropdownMenuItem onClick={handleDownload} disabled={exporting}>
                 <Download className="mr-2 h-3.5 w-3.5" /> Export PDF
               </DropdownMenuItem>
               <DropdownMenuItem onClick={handlePrint} className="sm:hidden">
@@ -172,6 +172,7 @@ export function SubmissionReviewSlideOver({
       footer={
         isPendingReview ? (
           <div className="space-y-4">
+            {reviewError && <p role="alert" className="text-sm text-destructive">{reviewError} Retry your review.</p>}
             {decision && (
               <div className="space-y-2">
                 <Label
@@ -211,9 +212,10 @@ export function SubmissionReviewSlideOver({
                   </Button>
                   <Button
                     size="sm"
-                    onClick={handleConfirm}
+                    onClick={() => void run(handleConfirm)}
+                    aria-busy={pending}
                     disabled={
-                      decision === "request_revision" && !reviewNote.trim()
+                      pending || (decision === "request_revision" && !reviewNote.trim())
                     }
                     className={cn(
                       "w-full sm:w-auto gap-1.5",
@@ -223,8 +225,7 @@ export function SubmissionReviewSlideOver({
                     )}
                   >
                     <CheckCircle2 className="h-4 w-4" />
-                    Confirm{" "}
-                    {decision === "approve" ? "approval" : "revision request"}
+                    {pending ? "Saving review…" : decision === "approve" ? "Confirm approval" : "Confirm revision request"}
                   </Button>
                 </>
               ) : (

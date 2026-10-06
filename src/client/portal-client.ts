@@ -47,16 +47,34 @@ let processing: Promise<void> | null = null,
   initialization: Promise<void> | null = null;
 let appliedRevision = -1;
 async function request(path: string, body?: unknown): Promise<ServerState> {
-  const response = await fetch(path, {
-    method: body === undefined ? "GET" : "POST",
-    headers: body === undefined ? {} : { "Content-Type": "application/json" },
-    body: body === undefined ? undefined : JSON.stringify(body),
-    cache: "no-store",
-  });
-  const result = await response.json();
-  if (!response.ok)
-    throw new Error(result.error ?? "The server is unavailable.");
-  return result;
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 20000);
+  try {
+    const response = await fetch(path, {
+      method: body === undefined ? "GET" : "POST",
+      headers: body === undefined ? {} : { "Content-Type": "application/json" },
+      body: body === undefined ? undefined : JSON.stringify(body),
+      cache: "no-store",
+      signal: controller.signal,
+    });
+    let result: ServerState & { error?: string };
+    try {
+      result = await response.json();
+    } catch {
+      throw new Error("The server returned an incomplete response. Please retry.");
+    }
+    if (!result || typeof result !== "object")
+      throw new Error("The server returned an invalid response. Please retry.");
+    if (!response.ok)
+      throw new Error(result.error ?? "The server is unavailable.");
+    return result;
+  } catch (error) {
+    if (controller.signal.aborted)
+      throw new Error("The connection timed out. Please retry.");
+    throw error;
+  } finally {
+    clearTimeout(timeout);
+  }
 }
 function apply(result: ServerState, navigate = false) {
   // A delayed poll must not replace a newer saved snapshot or a switched account.
@@ -159,6 +177,7 @@ export async function refreshPortal() {
 }
 export async function initializePortal() {
   if (initialization) return initialization;
+  portalStore.setState({ hasHydrated: false });
   initialization = request("/api/auth/session")
     .then((result) => apply(result, true))
     .catch((error) => {

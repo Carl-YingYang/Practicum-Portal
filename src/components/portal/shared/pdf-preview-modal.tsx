@@ -55,14 +55,12 @@ export function PdfPreviewModal({
     setPreparing(true);
     setDone(false);
     try {
-      // Brief delay for UX realism (the PDF build itself is synchronous
-      // and near-instant for these report sizes).
-      await new Promise((r) => setTimeout(r, 350));
       if (onDownloadPdf) {
         await onDownloadPdf();
       } else {
         // Fallback: open the browser print dialog (legacy behaviour).
         window.print();
+        return;
       }
       setDone(true);
       toast.success("PDF downloaded", {
@@ -83,19 +81,19 @@ export function PdfPreviewModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="no-print max-w-3xl gap-0 overflow-hidden p-0 sm:max-w-3xl">
-        <DialogHeader className="border-b border-border px-5 py-4">
+      <DialogContent className="pdf-preview flex max-w-3xl flex-col gap-0 overflow-hidden p-0 sm:max-w-3xl">
+        <DialogHeader className="shrink-0 border-b border-border py-4 pl-5 pr-16">
           <DialogTitle className="text-base">{title}</DialogTitle>
           {subtitle && (
             <DialogDescription className="text-xs">{subtitle}</DialogDescription>
           )}
         </DialogHeader>
-        <div className="max-h-[60vh] overflow-y-auto scroll-area-custom bg-slate-100 p-5 dark:bg-slate-900">
-          <div className="print-area mx-auto max-w-2xl rounded-lg bg-white p-8 shadow-sm">
+        <div className="min-h-0 max-h-[60dvh] overflow-auto scroll-area-custom bg-slate-100 p-3 sm:p-5 dark:bg-slate-900">
+          <div className="print-area mx-auto min-w-0 max-w-2xl rounded-lg bg-white p-4 sm:p-8 shadow-sm">
             {children}
           </div>
         </div>
-        <div className="flex flex-wrap items-center justify-end gap-2 border-t border-border px-5 py-3">
+        <div className="no-print flex shrink-0 flex-wrap items-center justify-end gap-2 border-t border-border px-5 py-3">
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Close
           </Button>
@@ -103,7 +101,7 @@ export function PdfPreviewModal({
             <Printer className="h-4 w-4" />
             Print
           </Button>
-          <Button onClick={handleDownload} disabled={preparing}>
+          {onDownloadPdf && <Button onClick={handleDownload} disabled={preparing} aria-busy={preparing}>
             {preparing ? (
               <Loader2 className="h-4 w-4 animate-spin" />
             ) : done ? (
@@ -112,7 +110,7 @@ export function PdfPreviewModal({
               <Download className="h-4 w-4" />
             )}
             {preparing ? "Generating…" : done ? "Downloaded" : "Download PDF"}
-          </Button>
+          </Button>}
         </div>
       </DialogContent>
     </Dialog>

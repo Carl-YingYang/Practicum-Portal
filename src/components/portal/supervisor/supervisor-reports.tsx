@@ -1,4 +1,5 @@
 "use client";
+import { journalPeriodLabel } from "@/domain/journal-period";
 
 import { useMemo, useState } from "react";
 import {
@@ -170,8 +171,8 @@ export function SupervisorReports() {
       : "";
 
   // ---------- Real PDF download builders ----------
-  const buildEvaluationSummaryPdf = () => {
-    downloadPdfReport({
+  const buildEvaluationSummaryPdf = async () => {
+    await downloadPdfReport({
       filename: "evaluation-summary-all-interns",
       title: "Evaluation Summary — All Interns",
       subtitle: `${interns.length} interns · ${evalSummary.filter((r) => r.evaluation).length} evaluated · All terms`,
@@ -228,8 +229,8 @@ export function SupervisorReports() {
     });
   };
 
-  const buildJournalReportPdf = () => {
-    downloadPdfReport({
+  const buildJournalReportPdf = async () => {
+    await downloadPdfReport({
       filename: "per-intern-journal-report",
       title: "Per-Intern Journal Report",
       subtitle: `${interns.length} interns · ${journalReport.reduce((s, r) => s + r.approvedJournals.length, 0)} approved journals · All terms`,
@@ -264,7 +265,7 @@ export function SupervisorReports() {
                   head: ["Date", "Week", "Hours"],
                   body: approvedJournals.map((j) => [
                     formatDate(j.date),
-                    weekLabel(j.date),
+                    journalPeriodLabel(j),
                     `${j.hours}h`,
                   ]),
                   foot: [
@@ -673,7 +674,7 @@ function JournalReportPrint({
                     <tr key={j.id} className="border-b border-slate-100">
                       <td className="py-1 pr-2">{formatDate(j.date)}</td>
                       <td className="py-1 pr-2 text-slate-600">
-                        {weekLabel(j.date)}
+                        {journalPeriodLabel(j)}
                       </td>
                       <td className="py-1 pr-2 text-right tabular-nums">
                         {j.hours}h

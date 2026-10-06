@@ -8,6 +8,7 @@ import { signIn, demoSignIn, initializePortal } from "@/client/portal-client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { PractoBrand } from "@/components/portal/shared/practo-brand";
 
 const heroSubtitles = [
   "Clock in. Learn something new. Make every hour count with your work and progress in one place.",
@@ -71,9 +72,7 @@ export function LoginScreen() {
   return (
     <main className="editorial-login min-h-svh bg-background text-foreground">
       <header className="flex items-center justify-between border-b border-border h-16 px-5 md:px-8">
-        <span className="text-2xl font-black tracking-[-.07em]">
-          PRACTO<span className="text-[var(--brand-accent)]">.</span>
-        </span>
+        <PractoBrand className="text-2xl font-black tracking-[-.07em]" />
         <div className="flex items-center gap-2">
           <span className="mr-3 hidden text-[10px] font-semibold uppercase tracking-[.2em] sm:inline">
             Practicum / Management

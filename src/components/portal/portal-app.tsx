@@ -56,7 +56,7 @@ export function PortalApp() {
   React.useEffect(() => {
     void hydratePrototype();
   }, [hydratePrototype]);
-  if (!hasHydrated) return <WorkspaceLoader />;
+  if (!hasHydrated) return <WorkspaceLoader fullScreen />;
   // Public route.
   if (!currentUser || view === "login") {
     return <LoginScreen />;

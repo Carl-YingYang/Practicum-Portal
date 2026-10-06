@@ -76,6 +76,7 @@ export function StudentWorkspace() {
   const student = useAppStore((s) =>
     s.students.find((st) => st.id === currentUser?.studentId),
   );
+  const journal = useAppStore((s) => s.journals.find((j) => j.id === viewParams.journalId));
   if (!student?.supervisorId && view !== "student.profile")
     return <StudentDashboard />;
   switch (view) {
@@ -84,7 +85,7 @@ export function StudentWorkspace() {
     case "student.journals":
       return <JournalsList />;
     case "student.journal-new":
-      return <JournalForm />;
+      return viewParams.journalId && (!journal || !["draft", "rejected"].includes(journal.status)) ? <JournalDetail /> : <JournalForm />;
     case "student.journal-view":
       return <JournalDetail />;
     case "student.evaluations":

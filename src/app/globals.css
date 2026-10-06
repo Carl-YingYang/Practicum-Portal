@@ -1055,3 +1055,35 @@
 }
 
 @media print { :root, .dark { --foreground: #191919; --background: #ffffff; --card: #ffffff; --card-foreground: #191919; --muted-foreground: #646461; --border: #dcdcd7; } }
+
+/* A preview prints its document, without the workspace or modal chrome. */
+@media print {
+  body:has(.pdf-preview, .form-print-preview) .editorial-shell,
+  body:has(.pdf-preview, .form-print-preview) [data-slot="dialog-overlay"],
+  .pdf-preview [data-slot="dialog-header"],
+  .form-print-preview [data-slot="dialog-header"],
+  .pdf-preview [data-slot="dialog-close"],
+  .form-print-preview [data-slot="dialog-close"],
+  .form-print-preview > div:not(:has(.print-area)) { display: none !important; }
+  .pdf-preview, .form-print-preview {
+    position: static !important;
+    transform: none !important;
+    display: block !important;
+    width: 100% !important;
+    max-width: none !important;
+    height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+    padding: 0 !important;
+    border: 0 !important;
+    box-shadow: none !important;
+  }
+  .pdf-preview > div:has(.print-area), .form-print-preview > div:has(.print-area) {
+    display: block !important;
+    max-height: none !important;
+    overflow: visible !important;
+    padding: 0 !important;
+    background: white !important;
+  }
+  body:has(.pdf-preview, .form-print-preview) { overflow: visible !important; }
+}

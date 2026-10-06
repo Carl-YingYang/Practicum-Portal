@@ -498,8 +498,7 @@ export function UserManagement() {
               <Upload className="h-4 w-4" />
               Import from Excel
             </Button>
-            {/* Add User dropdown — students + supervisors only.
-                Coordinators self-register via the login screen. */}
+            {/* All accounts are provisioned by authorized coordinators. */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button className="w-full sm:w-auto">
@@ -534,6 +533,16 @@ export function UserManagement() {
                     <span className="truncate text-xs text-muted-foreground">
                       Single supervisor account
                     </span>
+                  </div>
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => navigate("coordinator.coordinator-new")}
+                  className="gap-2.5 rounded-md py-2"
+                >
+                  <ShieldCheck className="h-4 w-4 text-muted-foreground" />
+                  <div className="flex min-w-0 flex-col">
+                    <span className="text-sm font-medium">Add Coordinator</span>
+                    <span className="truncate text-xs text-muted-foreground">Authorized university staff</span>
                   </div>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />

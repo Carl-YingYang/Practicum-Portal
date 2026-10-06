@@ -62,7 +62,7 @@ export function BottomSheet({
           className
         )}
         style={{
-          maxHeight: `${maxHeight}vh`,
+          maxHeight: `${maxHeight}dvh`,
           paddingBottom: "env(safe-area-inset-bottom, 0px)",
         }}
       >

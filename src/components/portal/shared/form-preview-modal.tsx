@@ -1,5 +1,6 @@
 "use client";
 
+import { usePdfExport } from "@/hooks/use-pdf-export";
 import { downloadFormPdf } from "@/lib/form-export";
 import * as React from "react";
 import {
@@ -12,7 +13,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { FormBlockRenderer } from "@/components/portal/shared/form-block-renderer";
 import { FormStatusBadge, SubmissionStatusBadge } from "@/components/portal/shared/badges";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Printer,
   Download,
@@ -23,7 +23,6 @@ import {
 } from "lucide-react";
 import { type FormDocument, type FormSubmission, FORM_CATEGORY_LABELS } from "@/lib/types";
 import { format } from "date-fns";
-import { useToast } from "@/hooks/use-toast";
 
 type FieldValue = string | Record<string, string>;
 
@@ -46,7 +45,7 @@ export function FormPreviewModal({
   submission?: FormSubmission | null;
   mode?: "template" | "submission";
 }) {
-  const { toast } = useToast();
+  const { exporting, exportPdf } = usePdfExport();
   const [values, setValues] = React.useState<Record<string, FieldValue>>({});
 
   React.useEffect(() => {
@@ -67,12 +66,12 @@ export function FormPreviewModal({
     window.print();
   }
   function handleDownload() {
-    if (form) downloadFormPdf(form, {});
+    if (form) void exportPdf(() => downloadFormPdf(form, mode === "submission" ? values : {}));
   }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[760px] p-0 gap-0 overflow-hidden max-h-[92vh]">
+      <DialogContent className="form-print-preview flex flex-col sm:max-w-[760px] p-0 gap-0 overflow-hidden max-h-[calc(100dvh-2rem)]">
         {/* Header */}
         <DialogHeader className="border-b border-border/60 px-5 py-3.5 pr-12">
           <div className="flex flex-wrap items-center gap-1.5">
@@ -120,8 +119,8 @@ export function FormPreviewModal({
         </div>
 
         {/* Body — scrollable form preview */}
-        <ScrollArea className="max-h-[55vh]">
-          <div className="space-y-3.5 px-5 py-4">
+        <div className="min-h-0 max-h-[55dvh] overflow-y-auto scroll-area-custom">
+          <div className="print-area space-y-3.5 px-5 py-4">
             {form.blocks.length === 0 ? (
               <div className="rounded-md border border-dashed border-border/70 px-4 py-8 text-center text-[12px] text-muted-foreground">
                 This form has no blocks yet. Open the editor to add questions, rating tables, and signature fields.
@@ -138,15 +137,15 @@ export function FormPreviewModal({
               ))
             )}
           </div>
-        </ScrollArea>
+        </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-end gap-2 border-t border-border/60 px-5 py-3">
+        <div className="no-print flex shrink-0 flex-wrap items-center justify-end gap-2 border-t border-border/60 px-5 py-3">
           <Button variant="outline" size="sm" onClick={handlePrint} className="gap-1.5">
             <Printer className="h-3.5 w-3.5" /> Print
           </Button>
-          <Button variant="outline" size="sm" onClick={handleDownload} className="gap-1.5">
-            <Download className="h-3.5 w-3.5" /> Export PDF
+          <Button variant="outline" size="sm" onClick={handleDownload} disabled={exporting} aria-busy={exporting} className="gap-1.5">
+            <Download className="h-3.5 w-3.5" /> {exporting ? "Generating…" : "Export PDF"}
           </Button>
           <Button size="sm" onClick={() => onOpenChange(false)}>
             Done

@@ -2,6 +2,7 @@
 import { FormField as Field } from "@/components/portal/shared/form-field";
 import { accountUsers } from "@/lib/prototype";
 import * as React from "react";
+import { useAsyncAction } from "@/hooks/use-async-action";
 import { flushChanges } from "@/client/portal-client";
 import { useAppStore } from "@/store/use-app-store";
 import type { ViewParams } from "@/lib/types";
@@ -35,6 +36,7 @@ export function CoordinatorForm({
 }: {
   coordinatorId?: ViewParams["coordinatorId"];
 }) {
+  const { pending, error: saveError, run } = useAsyncAction();
   const navigate = useAppStore((s) => s.navigate);
   const back = useAppStore((s) => s.back);
   const coordinators = useAppStore((s) => s.coordinators);
@@ -48,10 +50,10 @@ export function CoordinatorForm({
         : undefined,
     [coordinators, coordinatorId],
   );
-  const [name, setName] = React.useState("");
-  const [email, setEmail] = React.useState("");
-  const [title, setTitle] = React.useState("");
-  const [department, setDepartment] = React.useState<string>("");
+  const [name, setName] = React.useState(existing?.name ?? "");
+  const [email, setEmail] = React.useState(existing?.email ?? "");
+  const [title, setTitle] = React.useState(existing?.title ?? "");
+  const [department, setDepartment] = React.useState<string>(existing?.department ?? "");
   const [errors, setErrors] = React.useState<Record<string, string>>({});
   const [credsOpen, setCredsOpen] = React.useState(false);
   const [createdCreds, setCreatedCreds] = React.useState<{
@@ -61,14 +63,6 @@ export function CoordinatorForm({
     userId: string;
     coordinatorId: string;
   } | null>(null);
-  React.useEffect(() => {
-    if (existing) {
-      setName(existing.name);
-      setEmail(existing.email);
-      setTitle(existing.title);
-      setDepartment(existing.department);
-    }
-  }, [existing]);
   if (isEdit && !existing) {
     return (
       <div>
@@ -147,11 +141,7 @@ export function CoordinatorForm({
         title: title.trim(),
         department,
       });
-      try {
-        await flushChanges();
-      } catch {
-        return;
-      }
+      await flushChanges();
       toast.success("Coordinator updated", {
         description: `${name} saved.`,
       });
@@ -163,11 +153,7 @@ export function CoordinatorForm({
         title: title.trim(),
         department,
       });
-      try {
-        await flushChanges();
-      } catch {
-        return;
-      }
+      await flushChanges();
       setCreatedCreds({
         name: name.trim(),
         email: email.trim(),
@@ -278,12 +264,13 @@ export function CoordinatorForm({
         </SectionCard>
       </div>
 
+      {saveError && <p role="alert" className="mb-3 text-sm text-destructive">{saveError} Your fields are kept; retry Create / Save.</p>}
       <ActionBar>
-        <Button variant="outline" onClick={back}>
+        <Button variant="outline" disabled={pending} onClick={back}>
           Cancel
         </Button>
-        <Button onClick={handleSave}>
-          {isEdit ? "Save Changes" : "Create Coordinator"}
+        <Button disabled={pending || credsOpen} aria-busy={pending} onClick={() => void run(handleSave)}>
+          {pending ? "Saving…" : isEdit ? "Save Changes" : "Create Coordinator"}
         </Button>
       </ActionBar>
 

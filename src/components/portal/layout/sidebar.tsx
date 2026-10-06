@@ -3,10 +3,9 @@
 import * as React from "react";
 import { cn } from "@/lib/utils";
 import { useAppStore } from "@/store/use-app-store";
-import { navConfig, getNavIcon, secondaryNavItems } from "@/lib/nav";
+import { navConfig, getNavIcon, secondaryNavItems, isNavViewActive } from "@/lib/nav";
 import { ROLE_LABELS, type Role, type NavItem, type ViewKey } from "@/lib/types";
 import { Avatar } from "@/components/portal/shared/avatar";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Sheet,
   SheetContent,
@@ -179,7 +178,7 @@ export function Sidebar({ collapsed, onToggleCollapse }: SidebarProps) {
       </div>
 
       {/* Grouped nav — section labels + crisper active states. */}
-      <ScrollArea className="flex-1">
+      <div data-navigation-scroll className="min-h-0 flex-1 overflow-y-auto overscroll-contain scroll-area-custom">
         <div className={cn("py-2", collapsed ? "px-2" : "px-2")}>
           {grouped.map((group, gi) => (
             <div key={gi} className={cn(gi > 0 && "mt-4")}>
@@ -195,7 +194,7 @@ export function Sidebar({ collapsed, onToggleCollapse }: SidebarProps) {
               <nav className="space-y-px">
                 {group.items.map((item) => {
                   const Icon = getNavIcon(item.icon);
-                  const active = view === item.view;
+                  const active = isNavViewActive(view, item.view);
                   const badge = badgeFor(item.badgeKey);
                   return (
                     <button
@@ -249,7 +248,7 @@ export function Sidebar({ collapsed, onToggleCollapse }: SidebarProps) {
             </div>
           ))}
         </div>
-      </ScrollArea>
+      </div>
 
       {/* Footer — current user. Sharper: thinner top border, tighter row. */}
       <div className="shrink-0 border-t border-sidebar-border p-1.5">
@@ -351,7 +350,7 @@ export function MobileSidebar({
 
   const renderItem = (item: NavItem) => {
     const Icon = getNavIcon(item.icon);
-    const active = view === item.view;
+    const active = isNavViewActive(view, item.view);
     const badge = badgeFor(item.badgeKey);
     return (
       <button
@@ -359,7 +358,7 @@ export function MobileSidebar({
         onClick={() => handleNavigate(item.view)}
         aria-current={active ? "page" : undefined}
         className={cn(
-          "group relative flex h-10 w-full items-center gap-3 rounded-md px-3 text-sm font-medium transition-colors",
+          "group relative flex min-h-11 w-full items-center gap-3 rounded-md px-3 text-sm font-medium transition-colors",
           active
             ? "bg-sidebar-accent text-sidebar-accent-foreground"
             : "text-sidebar-foreground/80 active:bg-sidebar-accent"
@@ -396,10 +395,15 @@ export function MobileSidebar({
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
         side="left"
-        className="flex w-[280px] flex-col border-r-0 bg-sidebar p-0"
+        onCloseAutoFocus={(event) => {
+          // This controlled drawer opens from the separate workspace header.
+          event.preventDefault();
+          document.querySelector<HTMLButtonElement>("[data-mobile-navigation-trigger]")?.focus();
+        }}
+        className="flex h-dvh max-h-dvh w-[min(280px,calc(100vw-1rem))] flex-col gap-0 overflow-hidden border-r-0 bg-sidebar p-0"
         style={{ paddingTop: "env(safe-area-inset-top, 0px)" }}
       >
-        <SheetHeader className="space-y-0 border-b border-sidebar-border px-4 py-4">
+        <SheetHeader className="shrink-0 space-y-0 border-b border-sidebar-border py-4 pl-4 pr-16">
           <SheetTitle className="flex items-center gap-2.5">
             <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-md bg-sidebar-accent ring-1 ring-sidebar-border">
               {schoolIdentity.logoDataUrl ? (
@@ -423,7 +427,7 @@ export function MobileSidebar({
           </SheetTitle>
         </SheetHeader>
 
-        <ScrollArea className="flex-1">
+        <div data-navigation-scroll className="min-h-0 flex-1 overflow-y-auto overscroll-contain scroll-area-custom">
           <div className="px-2.5 py-3">
             {groupedPrimary.map((group, gi) => (
               <div key={gi} className={gi > 0 ? "mt-4" : ""}>
@@ -449,7 +453,7 @@ export function MobileSidebar({
               </div>
             )}
           </div>
-        </ScrollArea>
+        </div>
 
         <div
           className="shrink-0 border-t border-sidebar-border p-2.5"

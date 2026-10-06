@@ -98,3 +98,7 @@ Billing screens remain illustrative and do not charge money. External tool URLs 
 ## Writing and workflow follow-up
 
 See [the writing/workflow guide](WRITING_ASSISTANT.md) for the optional demo assistant, own-account language/detail preferences, explicit preview/apply/undo, serialized autosave and exit guards, saved-draft recovery, attendance-based journal coverage and scenario picker. `/api/preferences/writing` is an authenticated, same-origin validated GET/POST route. The additive migration preserves existing records; run `npm run db:setup` after pulling. No external AI connection or provider login is enabled.
+
+## October 6 responsive and workflow polish
+
+See [the responsive/workflow guide](RESPONSIVE_POLISH.md) for bounded navigation scrolling, consistent detail highlights, coordinator creation access, real loading/action feedback, locked form previews, cadence labels, async PDF generation and print pagination verification. Carl's current login design and logo asset are preserved.

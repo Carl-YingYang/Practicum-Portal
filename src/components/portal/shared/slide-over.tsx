@@ -62,7 +62,7 @@ export function SlideOver({
         )}
       >
         {/* Header */}
-        <div className="flex items-start justify-between gap-3 border-b border-border/60 bg-background px-4 py-3 sm:px-5 sm:py-4 sm:pr-12">
+        <div className="flex shrink-0 flex-wrap items-start justify-between gap-3 border-b border-border/60 bg-background px-4 py-3 sm:px-5 sm:py-4 sm:pr-16">
           <div className="min-w-0 flex-1">
             {eyebrow && (
               <div className="mb-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
@@ -86,13 +86,13 @@ export function SlideOver({
         </div>
 
         {/* Body — scrollable */}
-        <div className="flex-1 overflow-y-auto bg-background px-4 py-4 sm:px-5">
+        <div className="min-h-0 min-w-0 flex-1 overflow-y-auto bg-background px-4 py-4 sm:px-5">
           {children}
         </div>
 
         {/* Optional sticky footer */}
         {footer && (
-          <div className="border-t border-border/60 bg-muted/30 px-4 py-3 sm:px-5 pb-safe">
+          <div className="shrink-0 border-t border-border/60 bg-muted/30 px-4 py-3 sm:px-5 pb-safe">
             {footer}
           </div>
         )}
@@ -114,7 +114,7 @@ export function SlideOverCloseButton({
       type="button"
       onClick={onClose}
       aria-label={label}
-      className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+      className="flex size-11 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
     >
       <XIcon className="h-4 w-4" />
     </button>

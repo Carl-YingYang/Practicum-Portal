@@ -9,8 +9,9 @@ import {
   getJournal,
   getStudent,
   getSupervisor,
-  weekLabel,
 } from "@/lib/selectors";
+import { journalPeriodLabel, cadenceLabels } from "@/domain/journal-period";
+import { downloadPdfReport } from "@/lib/client-pdf";
 import { PageHeader } from "@/components/portal/layout/page-header";
 import { SectionCard } from "@/components/portal/shared/section-card";
 import { EmptyState } from "@/components/portal/shared/empty-state";
@@ -56,7 +57,7 @@ export function JournalView({ journalId }: { journalId?: string }) {
   return (
     <div>
       <PageHeader
-        title={weekLabel(journal.date)}
+        title={journalPeriodLabel(journal)}
         description={`${formatDate(journal.date)} · ${journal.hours} hours`}
         breadcrumb="Journals"
         showBack
@@ -97,7 +98,7 @@ export function JournalView({ journalId }: { journalId?: string }) {
                   <Avatar name={supervisor.name} size="md" />
                   <div className="min-w-0">
                     <p className="text-sm font-semibold text-foreground">{supervisor.name}</p>
-                    <p className="text-xs text-muted-foreground">{supervisor.email}</p>
+                    <p className="text-xs break-all text-muted-foreground">{supervisor.email}</p>
                   </div>
                 </div>
               ) : (
@@ -108,7 +109,7 @@ export function JournalView({ journalId }: { journalId?: string }) {
 
           {/* Meta */}
           <div className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
-            <Meta label="Week" value={weekLabel(journal.date)} />
+            <Meta label="Period" value={journalPeriodLabel(journal)} />
             <Meta label="Date" value={formatDate(journal.date)} />
             <Meta label="Hours" value={`${journal.hours}h`} />
             <Meta
@@ -122,7 +123,7 @@ export function JournalView({ journalId }: { journalId?: string }) {
             <h3 className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               Tasks Completed
             </h3>
-            <p className="whitespace-pre-wrap text-sm leading-relaxed text-foreground">
+            <p className="whitespace-pre-wrap break-words text-sm leading-relaxed text-foreground">
               {journal.tasks || "—"}
             </p>
           </div>
@@ -132,7 +133,7 @@ export function JournalView({ journalId }: { journalId?: string }) {
             <h3 className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               Learnings & Reflections
             </h3>
-            <p className="whitespace-pre-wrap text-sm leading-relaxed text-foreground">
+            <p className="whitespace-pre-wrap break-words text-sm leading-relaxed text-foreground">
               {journal.learnings || "—"}
             </p>
           </div>
@@ -170,7 +171,26 @@ export function JournalView({ journalId }: { journalId?: string }) {
         open={pdfOpen}
         onOpenChange={setPdfOpen}
         title={`Journal — ${student?.name ?? "Student"}`}
-        subtitle={weekLabel(journal.date)}
+        subtitle={journalPeriodLabel(journal)}
+        onDownloadPdf={async () => {
+          await downloadPdfReport({
+            filename: `journal-${journal.id}.pdf`,
+            title: `${cadenceLabels[journal.cadence ?? "weekly"]} Practicum Journal`,
+            subtitle: journalPeriodLabel(journal),
+            meta: [
+              { label: "Student", value: `${student?.name ?? "—"} · ${student?.studentNumber ?? "—"}` },
+              { label: "Company", value: company?.name ?? "—" },
+              { label: "Supervisor", value: supervisor?.name ?? "Unassigned" },
+              { label: "Hours", value: `${journal.hours}h` },
+              { label: "Status", value: journal.status },
+            ],
+            sections: [{ paragraphs: [
+              { label: "Tasks completed", text: journal.tasks },
+              { label: "Learnings & reflections", text: journal.learnings },
+              ...(journal.rejectionReason ? [{ label: "Revision note", text: journal.rejectionReason }] : []),
+            ] }],
+          });
+        }}
       >
         <JournalPrintDoc
           studentName={student?.name ?? "—"}
@@ -179,6 +199,8 @@ export function JournalView({ journalId }: { journalId?: string }) {
           companyName={company?.name ?? "—"}
           supervisorName={supervisor?.name ?? "—"}
           date={journal.date}
+          periodLabel={journalPeriodLabel(journal)}
+          cadenceLabel={cadenceLabels[journal.cadence ?? "weekly"]}
           hours={journal.hours}
           status={journal.status}
           tasks={journal.tasks}
@@ -227,6 +249,8 @@ function JournalPrintDoc({
   companyName,
   supervisorName,
   date,
+  periodLabel,
+  cadenceLabel,
   hours,
   status,
   tasks,
@@ -241,6 +265,8 @@ function JournalPrintDoc({
   companyName: string;
   supervisorName: string;
   date: string;
+  periodLabel: string;
+  cadenceLabel: string;
   hours: number;
   status: "draft" | "pending" | "approved" | "rejected";
   tasks: string;
@@ -253,8 +279,8 @@ function JournalPrintDoc({
     <div className="space-y-4 text-slate-900">
       <div className="flex items-center justify-between border-b border-slate-300 pb-3">
         <div>
-          <h1 className="text-lg font-bold">Weekly Journal</h1>
-          <p className="text-xs text-slate-600">{weekLabel(date)} · {formatDate(date)}</p>
+          <h1 className="text-lg font-bold">{cadenceLabel} Practicum Journal</h1>
+          <p className="text-xs text-slate-600">{periodLabel} · {formatDate(date)}</p>
         </div>
         <span className="rounded-full border border-slate-300 px-2 py-0.5 text-[10px] uppercase tracking-wide">
           {status}
@@ -280,7 +306,7 @@ function JournalPrintDoc({
         <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
           Tasks Completed
         </p>
-        <p className="mt-0.5 whitespace-pre-wrap text-sm text-slate-800">
+        <p className="mt-0.5 whitespace-pre-wrap break-words text-sm text-slate-800">
           {tasks || "—"}
         </p>
       </div>
@@ -289,7 +315,7 @@ function JournalPrintDoc({
         <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
           Learnings &amp; Reflections
         </p>
-        <p className="mt-0.5 whitespace-pre-wrap text-sm text-slate-800">
+        <p className="mt-0.5 whitespace-pre-wrap break-words text-sm text-slate-800">
           {learnings || "—"}
         </p>
       </div>

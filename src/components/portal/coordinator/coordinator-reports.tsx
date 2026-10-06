@@ -1,4 +1,5 @@
 "use client";
+import { journalPeriodLabel } from "@/domain/journal-period";
 
 import * as React from "react";
 import { useAppStore } from "@/store/use-app-store";
@@ -180,7 +181,7 @@ export function CoordinatorReports() {
   const journalStudent = getStudent(students, journalStudentId);
 
   // ---------- Real PDF download builders ----------
-  const buildAllEvaluationsPdf = () => {
+  const buildAllEvaluationsPdf = async () => {
     const submitted = evaluations
       .filter((e) => e.status === "submitted")
       .map((e) => {
@@ -198,7 +199,7 @@ export function CoordinatorReports() {
         };
       })
       .sort((a, b) => (a.date < b.date ? 1 : -1));
-    downloadPdfReport({
+    await downloadPdfReport({
       filename: "all-evaluations-bundle",
       title: "All Evaluations — Cohort Bundle",
       subtitle: `${submitted.length} submitted evaluations · All terms`,
@@ -225,7 +226,7 @@ export function CoordinatorReports() {
     });
   };
 
-  const buildJournalCompliancePdf = () => {
+  const buildJournalCompliancePdf = async () => {
     const rows = students.map((s) => {
       const sj = journalsForStudent(journals, s.id);
       const sup = getSupervisor(supervisors, s.supervisorId);
@@ -244,7 +245,7 @@ export function CoordinatorReports() {
         requiredHours: s.requiredHours,
       };
     });
-    downloadPdfReport({
+    await downloadPdfReport({
       filename: "journal-compliance-report",
       title: "Journal Compliance Report",
       subtitle: `${students.length} students · All terms`,
@@ -295,7 +296,7 @@ export function CoordinatorReports() {
     });
   };
 
-  const buildPerStudentEvalPdf = () => {
+  const buildPerStudentEvalPdf = async () => {
     if (!evalStudent) return;
     const evals = evaluationsForStudent(evaluations, evalStudent.id);
     const submitted = evals.find((e) => e.status === "submitted");
@@ -303,7 +304,7 @@ export function CoordinatorReports() {
     const companyName = getCompany(companies, evalStudent.companyId)?.name ?? "—";
     const supervisorName =
       getSupervisor(supervisors, evalStudent.supervisorId)?.name ?? "—";
-    downloadPdfReport({
+    await downloadPdfReport({
       filename: `evaluation-${evalStudent.studentNumber}`,
       title: `Evaluation Report — ${evalStudent.name}`,
       subtitle: `${evalStudent.studentNumber} · ${evalStudent.course} · ${companyName} · All terms`,
@@ -364,13 +365,13 @@ export function CoordinatorReports() {
     });
   };
 
-  const buildPerStudentJournalPdf = () => {
+  const buildPerStudentJournalPdf = async () => {
     if (!journalStudent) return;
     const studentJournals = journalsForStudent(journals, journalStudent.id);
     const companyName = getCompany(companies, journalStudent.companyId)?.name ?? "—";
     const supervisorName =
       getSupervisor(supervisors, journalStudent.supervisorId)?.name ?? "—";
-    downloadPdfReport({
+    await downloadPdfReport({
       filename: `journal-report-${journalStudent.studentNumber}`,
       title: `Journal Report — ${journalStudent.name}`,
       subtitle: `${journalStudent.studentNumber} · ${journalStudent.course} · ${companyName}`,
@@ -392,7 +393,7 @@ export function CoordinatorReports() {
         studentJournals.length === 0
           ? [{ paragraphs: [{ text: "No journal entries on record." }] }]
           : studentJournals.map((j) => ({
-              heading: `${weekLabel(j.date)} · ${formatDate(j.date)} · ${j.hours}h`,
+              heading: `${journalPeriodLabel(j)} · ${formatDate(j.date)} · ${j.hours}h`,
               keyValue: [{ label: "Status", value: j.status.toUpperCase() }],
               paragraphs: [
                 { label: "Tasks", text: j.tasks || "—" },
@@ -1003,7 +1004,7 @@ function PerStudentJournalPrintDoc({
             <div key={j.id} className="rounded border border-slate-300 p-3">
               <div className="flex items-center justify-between">
                 <p className="text-sm font-semibold">
-                  {weekLabel(j.date)}
+                  {journalPeriodLabel(j)}
                 </p>
                 <span className="rounded-full border border-slate-300 px-2 py-0.5 text-[10px] uppercase tracking-wide">
                   {j.status}

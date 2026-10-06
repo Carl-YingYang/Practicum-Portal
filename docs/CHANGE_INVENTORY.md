@@ -270,3 +270,88 @@ single theme toggle, headline and role captions are preserved.
 Typecheck, targeted lint, a fresh production build and focused production-server
 browser checks passed. Full prior workflow suites were not rerun in this pass;
 the detailed check scope is in the subtitle guide.
+
+## October 6 responsive and workflow polish
+
+Base: `1e4020d`. See [the plan/research](RESPONSIVE_POLISH_PLAN.md) and [behavior, tests and limitations](RESPONSIVE_POLISH.md). Carl's logo file and login hero design are preserved; only the testing branch is in scope.
+
+This includes shared scroll/sizing fixes, profile/navigation controls, coordinator creation access, actual loading/action feedback, form preview locks, captured journal periods, awaited PDF generation/pagination/printing and a narrowly scoped dashboard filename cleanup. Existing account/workflow/attendance invariants were reverified.
+
+Changed files for this pass (A = added, M = modified, D = removed):
+
+| File | Status |
+| --- | --- |
+| `README.md` | M |
+| `docs/CHANGE_INVENTORY.md` | M |
+| `docs/CONNECTED_PLATFORM.md` | M |
+| `docs/RESPONSIVE_POLISH.md` | A |
+| `docs/RESPONSIVE_POLISH_PLAN.md` | A |
+| `docs/VERIFICATION.md` | M |
+| `docs/screenshots/coordinator-users-mobile.png` | M |
+| `docs/screenshots/drafting-room.png` | M |
+| `docs/screenshots/form-wizard-mobile.png` | M |
+| `docs/screenshots/journal-mobile.png` | M |
+| `docs/screenshots/login-contained-hero.png` | M |
+| `docs/screenshots/login-heroes.png` | M |
+| `docs/screenshots/login-mobile-dark.png` | M |
+| `docs/screenshots/login-mobile-light.png` | M |
+| `docs/screenshots/polish-form-editor-mobile.png` | A |
+| `docs/screenshots/polish-sidebar-mobile.png` | A |
+| `docs/screenshots/polish-student-detail-mobile.png` | A |
+| `docs/screenshots/secondary-color-preview.png` | M |
+| `docs/screenshots/student-dark.png` | M |
+| `docs/screenshots/student-light.png` | M |
+| `docs/screenshots/student-mobile.png` | M |
+| `docs/screenshots/testing-scenarios-mobile.png` | M |
+| `docs/screenshots/writing-assistant-desktop.png` | M |
+| `package.json` | M |
+| `src/app/globals.css` | M |
+| `src/app/loading.tsx` | A |
+| `src/client/portal-client.ts` | M |
+| `src/components/portal/auth/login-screen.tsx` | M |
+| `src/components/portal/coordinator/coordinator-form.tsx` | M |
+| `src/components/portal/coordinator/coordinator-reports.tsx` | M |
+| `src/components/portal/coordinator/form-editor.tsx` | M |
+| `src/components/portal/coordinator/forms-hub.tsx` | M |
+| `src/components/portal/coordinator/journal-view.tsx` | M |
+| `src/components/portal/coordinator/student-detail.tsx` | M |
+| `src/components/portal/coordinator/user-management.tsx` | M |
+| `src/components/portal/layout/app-shell.tsx` | M |
+| `src/components/portal/layout/bottom-tab-bar.tsx` | M |
+| `src/components/portal/layout/page-actions.tsx` | M |
+| `src/components/portal/layout/page-header.tsx` | M |
+| `src/components/portal/layout/sidebar.tsx` | M |
+| `src/components/portal/portal-app.tsx` | M |
+| `src/components/portal/shared/bottom-sheet.tsx` | M |
+| `src/components/portal/shared/centralized-timesheet-launcher.tsx` | M |
+| `src/components/portal/shared/form-preview-modal.tsx` | M |
+| `src/components/portal/shared/journal-editor.tsx` | M |
+| `src/components/portal/shared/pdf-preview-modal.tsx` | M |
+| `src/components/portal/shared/practo-brand.tsx` | A |
+| `src/components/portal/shared/section-card.tsx` | M |
+| `src/components/portal/shared/slide-over.tsx` | M |
+| `src/components/portal/shared/submission-review-slide-over.tsx` | M |
+| `src/components/portal/shared/time-log-report-launcher.tsx` | M |
+| `src/components/portal/shared/workspace-loader.tsx` | M |
+| `src/components/portal/student/StudentDashboard.tsx` | D |
+| `src/components/portal/student/active-student-dashboard.tsx` | A |
+| `src/components/portal/student/journal-detail.tsx` | M |
+| `src/components/portal/student/journal-form.tsx` | M |
+| `src/components/portal/student/student-dashboard.tsx` | M |
+| `src/components/portal/student/student-form-workspace.tsx` | M |
+| `src/components/portal/student/student-reports.tsx` | M |
+| `src/components/portal/student/student-workspace.tsx` | M |
+| `src/components/portal/supervisor/intern-detail.tsx` | M |
+| `src/components/portal/supervisor/journal-approval-queue.tsx` | M |
+| `src/components/portal/supervisor/journal-review.tsx` | M |
+| `src/components/portal/supervisor/supervisor-form-workspace.tsx` | M |
+| `src/components/portal/supervisor/supervisor-reports.tsx` | M |
+| `src/components/ui/sheet.tsx` | M |
+| `src/hooks/use-async-action.ts` | A |
+| `src/hooks/use-pdf-export.ts` | A |
+| `src/lib/client-pdf.ts` | M |
+| `src/lib/form-export.ts` | M |
+| `src/lib/nav.ts` | M |
+| `src/lib/pdf-renderer.ts` | M |
+| `tests/pdf-layout.cjs` | A |
+| `tests/responsive-polish.cjs` | A |

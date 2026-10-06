@@ -82,10 +82,10 @@ export function StudentReports() {
   const coordinatorName = coordinator?.name ?? "Practicum Coordinator";
 
   // ---------- Real PDF download builders ----------
-  const buildEvaluationPdf = () => {
+  const buildEvaluationPdf = async () => {
     if (!latestEval) return;
     const avg = averageScore(latestEval);
-    downloadPdfReport({
+    await downloadPdfReport({
       filename: `evaluation-report-${student.studentNumber}`,
       title: "Evaluation Report",
       subtitle: `${student.name} · ${student.studentNumber} · ${student.course} · Term ${latestEval.term}`,
@@ -146,8 +146,8 @@ export function StudentReports() {
     });
   };
 
-  const buildJournalPdf = () => {
-    downloadPdfReport({
+  const buildJournalPdf = async () => {
+    await downloadPdfReport({
       filename: `journal-report-${student.studentNumber}`,
       title: "Journal Compliance Report",
       subtitle: `${student.name} · ${student.studentNumber} · ${approvedJournals.length} approved journals`,
@@ -186,11 +186,11 @@ export function StudentReports() {
     });
   };
 
-  const buildAccreditationPdf = () => {
+  const buildAccreditationPdf = async () => {
     const approvedCount = myJournals.filter((j) => j.status === "approved").length;
     const submittedEval = myEvaluations.find((e) => e.status === "submitted");
     const evalAvg = submittedEval ? averageScore(submittedEval) : 0;
-    downloadPdfReport({
+    await downloadPdfReport({
       filename: `accreditation-document-${student.studentNumber}`,
       title: "Practicum Accreditation Document",
       subtitle: `${student.name} · ${student.studentNumber} · ${student.course} · All terms`,
@@ -215,7 +215,7 @@ export function StudentReports() {
           ],
         },
         {
-          heading: "2. Weekly Journal Index",
+          heading: "2. Journal Index",
           table:
             approvedJournals.length === 0
               ? undefined

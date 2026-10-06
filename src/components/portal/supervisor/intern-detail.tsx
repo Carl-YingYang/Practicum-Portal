@@ -1,4 +1,5 @@
 "use client";
+import { journalPeriodLabel } from "@/domain/journal-period";
 
 import { useMemo, useState, useEffect } from "react";
 import {
@@ -29,7 +30,6 @@ import {
   formatDate,
   formatDuration,
   formatTime,
-  weekLabel,
   timeLogsForStudent,
   weeklyTimeMs,
   totalCompletedTimeMs,
@@ -131,9 +131,9 @@ export function InternDetail() {
     },
     {
       key: "week",
-      header: "Week",
-      cell: (j) => <span className="text-muted-foreground">{weekLabel(j.date)}</span>,
-      sortValue: (j) => weekLabel(j.date),
+      header: "Period",
+      cell: (j) => <span className="text-muted-foreground">{journalPeriodLabel(j)}</span>,
+      sortValue: (j) => j.date,
       hideOnMobile: true,
     },
     {
@@ -420,7 +420,7 @@ export function InternDetail() {
                             {formatDate(j.date)}
                           </p>
                           <p className="text-xs text-muted-foreground">
-                            {weekLabel(j.date)} · {j.hours}h
+                            {journalPeriodLabel(j)} · {j.hours}h
                           </p>
                         </div>
                         <div className="shrink-0">
@@ -623,7 +623,7 @@ export function InternDetail() {
                     <tr key={j.id} className="border-b border-slate-100">
                       <td className="py-1 pr-2">{formatDate(j.date)}</td>
                       <td className="py-1 pr-2 text-slate-600">
-                        {weekLabel(j.date)}
+                        {journalPeriodLabel(j)}
                       </td>
                       <td className="py-1 pr-2 text-right tabular-nums">
                         {j.hours}h

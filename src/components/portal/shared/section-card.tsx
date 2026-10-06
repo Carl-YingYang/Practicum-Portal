@@ -29,12 +29,12 @@ export function SectionCard({
   return (
     <Card
       className={cn(
-        "card-refined gap-0 overflow-hidden border-border/60",
+        "card-refined min-w-0 max-w-full gap-0 overflow-hidden border-border/60",
         className
       )}
     >
       {hasHeader && (
-        <div className="flex items-center justify-between gap-3 border-b border-border/50 px-5 py-3.5">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/50 px-4 py-3.5 sm:px-5">
           <div className="min-w-0">
             {title && (
               <h2 className="heading-accent text-sm font-semibold tracking-tight text-foreground">
@@ -47,10 +47,10 @@ export function SectionCard({
               </p>
             )}
           </div>
-          {actions && <div className="flex shrink-0 items-center gap-1.5">{actions}</div>}
+          {actions && <div className="flex max-w-full flex-wrap items-center gap-1.5">{actions}</div>}
         </div>
       )}
-      <div className={cn(!noPadding && "p-5", contentClassName)}>{children}</div>
+      <div className={cn("min-w-0", !noPadding && "p-4 sm:p-5", contentClassName)}>{children}</div>
     </Card>
   );
 }

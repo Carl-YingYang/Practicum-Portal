@@ -18,6 +18,8 @@ import {
   sortableKeyboardCoordinates,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import { flushChanges } from "@/client/portal-client";
+import { useAsyncAction } from "@/hooks/use-async-action";
 import { useAppStore } from "@/store/use-app-store";
 import { PageHeader } from "@/components/portal/layout/page-header";
 import { SectionCard } from "@/components/portal/shared/section-card";
@@ -103,6 +105,8 @@ const BLOCK_TYPES: BlockTypeMeta[] = [
 
 export function FormEditor({ formId }: { formId?: string }) {
   const { toast } = useToast();
+  const { pending, error: actionError, run } = useAsyncAction();
+  const syncStatus = useAppStore((s) => s.syncStatus);
   const navigate = useAppStore((s) => s.navigate);
   const back = useAppStore((s) => s.back);
   const canBack = useAppStore((s) => s.history.length > 0);
@@ -155,41 +159,48 @@ export function FormEditor({ formId }: { formId?: string }) {
   }
 
   function handleAddBlock(type: FormBlockType, afterBlockId?: string) {
-    if (!form) return;
+    if (!form || form.status !== "draft" || pending) return;
     addFormBlock(form.id, type, afterBlockId);
     toast({ title: "Block added", description: BLOCK_TYPES.find((b) => b.type === type)?.label });
   }
 
-  function handlePublish() {
+  async function handlePublish() {
     if (!form) return;
+    if (!form.title.trim()) {
+      throw new Error("Give the form a title before publishing.");
+    }
     if (form.blocks.length === 0) {
       toast({ title: "Cannot publish empty form", description: "Add at least one block first.", variant: "destructive" });
       return;
     }
     publishFormDocument(form.id);
+    await flushChanges();
     toast({ title: "Form published", description: `v${form.version + 1} is now visible to supervisors.` });
   }
 
-  function handleUnpublish() {
+  async function handleUnpublish() {
     if (!form) return;
     unpublishFormDocument(form.id);
+    await flushChanges();
     toast({ title: "Reverted to draft" });
   }
 
-  function handleArchive() {
+  async function handleArchive() {
     if (!form) return;
     archiveFormDocument(form.id);
+    await flushChanges();
     toast({ title: "Form archived" });
     navigate("coordinator.forms");
   }
 
+  const showingPreview = previewMode || form.status !== "draft";
   const outlineItems = form.blocks.filter((b) => b.type === "heading");
 
   return (
     <TooltipProvider delayDuration={250}>
       <div className="space-y-3">
         {/* Sticky editor toolbar */}
-        <div className="sticky top-0 z-20 -mx-5 border-b border-border/60 bg-background/95 px-5 py-2 backdrop-blur sm:-mx-6 sm:px-6">
+        <div className="sticky top-16 z-20 -mx-4 border-b border-border/60 bg-background/95 px-4 py-2 backdrop-blur sm:-mx-6 sm:px-6">
           <div className="flex flex-wrap items-center gap-2">
             <Button variant="ghost" size="sm" onClick={back} className="gap-1 text-muted-foreground hover:text-foreground">
               <X className="h-4 w-4" /> Exit
@@ -201,33 +212,34 @@ export function FormEditor({ formId }: { formId?: string }) {
                 <span className="text-[11px] text-muted-foreground">v{form.version}</span>
               )}
             </div>
-            <div className="ml-auto flex items-center gap-1.5">
+            <div className="flex w-full flex-wrap items-center gap-1.5 sm:ml-auto sm:w-auto">
               <Button
-                variant={previewMode ? "default" : "outline"}
+                variant={showingPreview ? "default" : "outline"}
                 size="sm"
+                disabled={pending || form.status !== "draft"}
                 onClick={() => setPreviewMode((v) => !v)}
                 className="gap-1.5"
               >
-                {previewMode ? <Pencil className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
-                {previewMode ? "Edit" : "Preview"}
+                {showingPreview ? <Pencil className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                {form.status !== "draft" ? "Preview" : previewMode ? "Edit" : "Preview"}
               </Button>
               {form.status === "published" ? (
-                <Button variant="outline" size="sm" onClick={handleUnpublish} className="gap-1.5">
-                  <RotateCcw className="h-3.5 w-3.5" /> Unpublish
+                <Button variant="outline" size="sm" disabled={pending} aria-busy={pending} onClick={() => void run(handleUnpublish)} className="gap-1.5">
+                  <RotateCcw className="h-3.5 w-3.5" /> {pending ? "Saving…" : "Unpublish"}
                 </Button>
               ) : (
-                <Button size="sm" onClick={handlePublish} className="gap-1.5">
-                  <Send className="h-3.5 w-3.5" /> Publish
+                <Button size="sm" disabled={pending || form.status !== "draft"} aria-busy={pending} onClick={() => void run(handlePublish)} className="gap-1.5">
+                  <Send className="h-3.5 w-3.5" /> {pending ? "Saving…" : "Publish"}
                 </Button>
               )}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon" className="h-8 w-8">
+                  <Button variant="ghost" size="icon" className="size-11" aria-label="Form actions" disabled={pending}>
                     <MoreVertical className="h-4 w-4" />
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-44">
-                  <DropdownMenuItem onClick={handleArchive}>
+                  <DropdownMenuItem disabled={pending} onClick={() => void run(handleArchive)}>
                     <Archive className="mr-2 h-3.5 w-3.5" /> Archive form
                   </DropdownMenuItem>
                 </DropdownMenuContent>
@@ -236,10 +248,14 @@ export function FormEditor({ formId }: { formId?: string }) {
           </div>
         </div>
 
-        <div className="grid gap-3 lg:grid-cols-[200px_1fr_220px]">
+        <p role={actionError ? "alert" : "status"} className={actionError ? "text-sm text-destructive" : "text-xs text-muted-foreground"}>
+          {actionError || (pending || syncStatus === "saving" ? "Saving form changes…" : syncStatus === "error" ? "Changes were not saved. Reconnect before retrying." : "Form changes saved")}
+        </p>
+        {form.status !== "draft" && <p className="text-sm text-muted-foreground">{form.status === "published" ? "Published form — unpublish to edit the template." : "Archived form — read only."}</p>}
+        <div className="grid min-w-0 gap-3 xl:grid-cols-[180px_minmax(0,1fr)_180px]">
           {/* Left: outline */}
-          <aside className="hidden lg:block">
-            <SectionCard title="Outline" className="sticky top-16">
+          <aside className="hidden min-w-0 xl:block">
+            <SectionCard title="Outline" className="sticky top-36">
               {outlineItems.length === 0 ? (
                 <p className="text-[12px] text-muted-foreground">Headings you add will appear here.</p>
               ) : (
@@ -265,7 +281,7 @@ export function FormEditor({ formId }: { formId?: string }) {
           {/* Center: title meta + blocks */}
           <div className="min-w-0 space-y-3">
             <SectionCard>
-              <div className="space-y-2.5">
+              <fieldset disabled={pending || form.status !== "draft"} className="min-w-0 space-y-2.5">
                 <div className="space-y-1">
                   <Label htmlFor="form-title" className="text-[11px] uppercase tracking-wide text-muted-foreground">
                     Form title
@@ -291,7 +307,7 @@ export function FormEditor({ formId }: { formId?: string }) {
                     className="text-[13px]"
                   />
                 </div>
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                   <div className="space-y-1">
                     <Label htmlFor="form-cat" className="text-[11px] uppercase tracking-wide text-muted-foreground">
                       Category
@@ -317,11 +333,11 @@ export function FormEditor({ formId }: { formId?: string }) {
                     </div>
                   </div>
                 </div>
-              </div>
+              </fieldset>
             </SectionCard>
 
             {/* Toolbar */}
-            {!previewMode && (
+            {!showingPreview && (
               <div className="flex flex-wrap items-center gap-1.5 rounded-lg border border-border/60 bg-card p-2">
                 <span className="px-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
                   Insert:
@@ -365,7 +381,7 @@ export function FormEditor({ formId }: { formId?: string }) {
             )}
 
             {/* Blocks (edit or preview) */}
-            {previewMode ? (
+            {showingPreview ? (
               <SectionCard title="Live preview" description="How supervisors will see this form.">
                 <div className="space-y-3">
                   {form.blocks.map((b) => (
@@ -415,7 +431,7 @@ export function FormEditor({ formId }: { formId?: string }) {
             )}
 
             {/* Bottom insert helper */}
-            {!previewMode && form.blocks.length > 0 && (
+            {!showingPreview && form.blocks.length > 0 && (
               <div className="flex justify-center pt-1">
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
@@ -436,15 +452,16 @@ export function FormEditor({ formId }: { formId?: string }) {
           </div>
 
           {/* Right: insert helper / tips */}
-          <aside className="hidden lg:block">
-            <SectionCard title="Block types" className="sticky top-16">
+          <aside className="hidden min-w-0 xl:block">
+            <SectionCard title="Block types" className="sticky top-36">
               <ul className="space-y-1.5">
                 {BLOCK_TYPES.map((b) => (
                   <li key={b.type}>
                     <button
                       type="button"
                       onClick={() => handleAddBlock(b.type)}
-                      className="flex w-full items-start gap-2 rounded-md px-1.5 py-1.5 text-left transition-colors hover:bg-muted/50"
+                      disabled={showingPreview || pending}
+                      className="flex w-full items-start gap-2 disabled:opacity-50 rounded-md px-1.5 py-1.5 text-left transition-colors hover:bg-muted/50"
                     >
                       <b.icon className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground" />
                       <div className="min-w-0">
@@ -512,12 +529,12 @@ function SortableBlock({
       )}
     >
       {/* Block chrome: drag handle + type badge + actions */}
-      <div className="flex items-center gap-1 border-b border-border/40 px-2 py-1">
+      <div className="flex flex-wrap items-center gap-1 border-b border-border/40 px-2 py-1">
         <button
           type="button"
           {...attributes}
           {...listeners}
-          className="cursor-grab rounded p-1 text-muted-foreground/60 hover:bg-muted/70 hover:text-foreground active:cursor-grabbing"
+          className="inline-flex size-11 shrink-0 items-center justify-center cursor-grab rounded p-1 text-muted-foreground/60 hover:bg-muted/70 hover:text-foreground active:cursor-grabbing"
           aria-label="Drag to reorder"
         >
           <GripVertical className="h-3.5 w-3.5" />
@@ -526,17 +543,17 @@ function SortableBlock({
           {block.type}
         </span>
         <span className="text-[10.5px] text-muted-foreground/70">#{index + 1}</span>
-        <div className="ml-auto flex items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100">
-          <Button variant="ghost" size="icon" className="h-6 w-6" onClick={onMoveUp} disabled={index === 0}>
+        <div className="ml-auto flex items-center gap-0.5">
+          <Button variant="ghost" size="icon" className="size-11" aria-label="Move block up" onClick={onMoveUp} disabled={index === 0}>
             <ChevronUp className="h-3.5 w-3.5" />
           </Button>
-          <Button variant="ghost" size="icon" className="h-6 w-6" onClick={onMoveDown} disabled={index === total - 1}>
+          <Button variant="ghost" size="icon" className="size-11" aria-label="Move block down" onClick={onMoveDown} disabled={index === total - 1}>
             <ChevronDown className="h-3.5 w-3.5" />
           </Button>
-          <Button variant="ghost" size="icon" className="h-6 w-6" onClick={onDuplicate}>
+          <Button variant="ghost" size="icon" className="size-11" aria-label="Duplicate block" onClick={onDuplicate}>
             <Copy className="h-3.5 w-3.5" />
           </Button>
-          <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-destructive" onClick={onRemove}>
+          <Button variant="ghost" size="icon" className="size-11 text-muted-foreground hover:text-destructive" aria-label="Remove block" onClick={onRemove}>
             <Trash2 className="h-3.5 w-3.5" />
           </Button>
         </div>

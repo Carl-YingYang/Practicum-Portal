@@ -69,14 +69,14 @@ export function AppShell({ children }: AppShellProps) {
     return () => window.removeEventListener("keydown", onKey);
   }, []);
   return (
-    <div className="editorial-shell flex min-h-screen bg-background">
+    <div className="editorial-shell flex min-h-svh bg-background">
       {/*
           Desktop sidebar — pinned to the viewport via sticky so it NEVER scrolls
           with the page. self-start prevents the flex row from stretching it to
           content height; h-screen pins it to exactly one viewport; the internal
           ScrollArea handles its own nav overflow.
         */}
-      <div className="sticky top-0 hidden h-screen shrink-0 self-start lg:flex lg:flex-col">
+      <div className="sticky top-0 hidden h-dvh shrink-0 self-start lg:flex lg:flex-col">
         <Sidebar
           collapsed={collapsed}
           onToggleCollapse={() =>
@@ -131,8 +131,8 @@ export function AppShell({ children }: AppShellProps) {
           Page gutter px-4 sm:px-6 lg:px-8 (§1.1).
         */}
         <main className="min-w-0 flex-1 px-4 pb-[calc(56px+env(safe-area-inset-bottom,0px)+1rem)] pt-4 sm:px-6 lg:px-8 lg:pb-6 lg:pt-6">
-          <div className="mx-auto w-full max-w-7xl">
-            <div key={`${view}:${JSON.stringify(viewParams)}`}>{children}</div>
+          <div className="mx-auto min-w-0 w-full max-w-7xl">
+            <div className="min-w-0" key={`${view}:${JSON.stringify(viewParams)}`}>{children}</div>
           </div>
         </main>
         {/* Footer — desktop only. Sticky to bottom via mt-auto. Bottom tab bar

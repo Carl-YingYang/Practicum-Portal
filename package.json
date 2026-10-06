@@ -20,7 +20,9 @@
     "db:reset:test": "node scripts/seed.cjs --reset",
     "test:integration": "node tests/server-integration.cjs",
     "test:login": "node tests/login-development.cjs",
-    "test:workflow": "node tests/writing-workflow.cjs"
+    "test:workflow": "node tests/writing-workflow.cjs",
+    "test:responsive": "node tests/responsive-polish.cjs",
+    "test:pdf": "node tests/pdf-layout.cjs"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

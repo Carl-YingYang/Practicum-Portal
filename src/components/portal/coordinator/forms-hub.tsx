@@ -1,6 +1,8 @@
 "use client";
 
 import * as React from "react";
+import { flushChanges } from "@/client/portal-client";
+import { useAsyncAction } from "@/hooks/use-async-action";
 import { useAppStore } from "@/store/use-app-store";
 import { PageHeader } from "@/components/portal/layout/page-header";
 import { SectionCard } from "@/components/portal/shared/section-card";
@@ -101,6 +103,7 @@ const submissionStatusFilters: { value: FormSubmissionStatus | "all" | "pending_
 type HubTab = "forms" | "submissions" | "assignments";
 
 export function FormsHub() {
+  const { pending, error: actionError, run } = useAsyncAction();
   const portalUsers = useAccountUsers();
   const { toast } = useToast();
   const navigate = useAppStore((s) => s.navigate);
@@ -163,31 +166,36 @@ export function FormsHub() {
     return { published, pending, approved, responseRate };
   }, [forms, submissions, assignments, supervisors, students]);
 
-  function handleFormAction(form: FormDocument, action: "edit" | "duplicate" | "publish" | "unpublish" | "archive" | "delete" | "assign" | "preview" | "responses") {
+  async function handleFormAction(form: FormDocument, action: "edit" | "duplicate" | "publish" | "unpublish" | "archive" | "delete" | "assign" | "preview" | "responses") {
     switch (action) {
       case "edit":
         navigate("coordinator.form-editor", { formId: form.id });
         break;
       case "duplicate": {
         const newId = duplicateFormDocument(form.id);
+        await flushChanges();
         toast({ title: "Form duplicated", description: "A draft copy has been created." });
         if (newId) navigate("coordinator.form-editor", { formId: newId });
         break;
       }
       case "publish":
         publishFormDocument(form.id);
+        await flushChanges();
         toast({ title: "Form published", description: "Ready to assign to supervisors or students." });
         break;
       case "unpublish":
         unpublishFormDocument(form.id);
+        await flushChanges();
         toast({ title: "Reverted to draft" });
         break;
       case "archive":
         archiveFormDocument(form.id);
+        await flushChanges();
         toast({ title: "Form archived" });
         break;
       case "delete":
         deleteFormDocument(form.id);
+        await flushChanges();
         toast({ title: "Form deleted" });
         break;
       case "assign":
@@ -258,6 +266,8 @@ export function FormsHub() {
         }
       />
 
+      {actionError && <p role="alert" className="text-sm text-destructive">{actionError} Retry the form action.</p>}
+      {pending && <p role="status" className="text-xs text-muted-foreground">Saving form changes…</p>}
       {/* KPI strip */}
       <div className="grid grid-cols-2 gap-2.5 lg:grid-cols-4">
         <KpiTile label="Published forms" value={stats.published} icon={Send} tone="emerald" />
@@ -350,7 +360,8 @@ export function FormsHub() {
                   submissions={submissions}
                   supervisors={supervisors}
                   students={students}
-                  onAction={(a) => handleFormAction(form, a)}
+                  pending={pending}
+                  onAction={(a) => void run(() => handleFormAction(form, a))}
                 />
               ))}
             </div>
@@ -670,7 +681,9 @@ function FormCard({
   supervisors,
   students,
   onAction,
+  pending,
 }: {
+  pending: boolean;
   form: FormDocument;
   assignments: ReturnType<typeof useAppStore.getState>["formAssignments"];
   submissions: FormSubmission[];
@@ -708,7 +721,7 @@ function FormCard({
         </div>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0 opacity-60 group-hover:opacity-100">
+            <Button variant="ghost" size="icon" disabled={pending} aria-label={`Actions for ${form.title}`} className="size-11 shrink-0 sm:size-8">
               <MoreHorizontal className="h-4 w-4" />
             </Button>
           </DropdownMenuTrigger>

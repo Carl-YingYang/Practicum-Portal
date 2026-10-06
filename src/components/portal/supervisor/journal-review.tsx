@@ -19,7 +19,6 @@ import {
   getCompany,
   getSupervisor,
   formatDate,
-  weekLabel,
   formatDateTime,
 } from "@/lib/selectors";
 import { PageHeader } from "@/components/portal/layout/page-header";
@@ -237,7 +236,7 @@ export function JournalReview() {
         <ActionBar>
           <span className="hidden text-xs text-muted-foreground sm:mr-auto sm:block">
             Reviewing {student?.name ?? "intern"}'s journal for{" "}
-            {weekLabel(journal.date)}.
+            {journalPeriodLabel(journal)}.
           </span>
           <Button
             variant="outline"
