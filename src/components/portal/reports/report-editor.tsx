@@ -12,6 +12,8 @@ import {
 } from "@/domain/reports/model";
 import { useReportDraft } from "@/hooks/use-report-draft";
 import { reportRequest, reportAssetUrl } from "@/client/reports";
+import { TemplateReference } from "../templates/template-reference";
+import { TemplateUpgrade } from "../templates/template-upgrade";
 import { ReportSectionPreview } from "./report-section-preview";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -47,11 +49,19 @@ export function ReportEditor({
     [wholePreview, setWholePreview] = useState(false),
     [allowDraft, setAllowDraft] = useState(false),
     [reviewNote, setReviewNote] = useState(""),
-    [template, setTemplate] = useState(sectionTemplates[0].key);
+    [template, setTemplate] = useState(
+      initial.binding ? "custom" : sectionTemplates[0].key,
+    ),
+    [customTitle, setCustomTitle] = useState("");
   const section =
     content.sections.find((s) => s.id === activeId) ?? content.sections[0];
   const activeIndex = content.sections.indexOf(section);
-  const checks = reportChecks(content, snapshot(state), report.assets);
+  const checks = reportChecks(
+    content,
+    snapshot(state),
+    report.assets,
+    report.binding,
+  );
   for (const s of content.sections.filter(
     (s) =>
       s.included &&
@@ -70,6 +80,7 @@ export function ReportEditor({
       },
       snapshot(state),
       report.assets,
+      report.binding,
     );
   }
   async function run(action: () => Promise<void>) {
@@ -182,12 +193,24 @@ export function ReportEditor({
     draft.change({ ...content, sections });
   }
   function add() {
-    const t = sectionTemplates.find((t) => t.key === template)!;
+    const t =
+      template === "custom"
+        ? {
+            key: `custom_${crypto.randomUUID().slice(0, 8)}`,
+            title: customTitle.trim(),
+            kind: "narrative" as const,
+            scope: "student" as const,
+            required: false,
+            prompt: "Write your custom section.",
+          }
+        : sectionTemplates.find((t) => t.key === template)!;
+    if (!t.title) return;
     const studentId =
       t.scope === "shared"
         ? null
         : (section.studentId ?? content.studentIds[0]);
     const added = makeSection(t, studentId, crypto.randomUUID());
+    added.included = true;
     let index = content.sections.findLastIndex(
       (s) => s.studentId === studentId,
     );
@@ -198,7 +221,24 @@ export function ReportEditor({
     draft.change({ ...content, sections });
     setActiveId(added.id);
   }
-  const editDisabled = !report.canEdit || pending;
+  const definition = report.binding?.sections.find(
+    (d) => d.key === section.template,
+  );
+  const sectionEditable =
+    report.canEdit &&
+    (!report.binding ||
+      (report.editableSectionIds?.includes(section.id) ?? false) ||
+      (!definition &&
+        report.binding.allowStudentExtras &&
+        state.currentUser?.role === "student"));
+  const formatLocked = !!report.binding;
+  const canAdd =
+    report.canEdit &&
+    (!report.binding ||
+      (report.binding.allowStudentExtras &&
+        state.currentUser?.role === "student"));
+  const canExport = report.canEdit && state.currentUser?.role !== "supervisor";
+  const editDisabled = !sectionEditable || pending;
   const statusLabel = (
     {
       draft: "Draft",
@@ -220,7 +260,9 @@ export function ReportEditor({
         </div>
       </div>
       <div className="flex flex-wrap items-center gap-3">
-        <h1 className="text-2xl font-semibold">Report Builder</h1>
+        <h1 className="text-2xl font-semibold">
+          {report.binding ? report.binding.title : "Independent report draft"}
+        </h1>
         <Button
           variant="outline"
           disabled={pending}
@@ -242,6 +284,80 @@ export function ReportEditor({
           Save now
         </Button>
       </div>
+      {report.binding && (
+        <section className="space-y-3 rounded-xl border bg-card p-4">
+          <p className="text-sm font-medium">
+            Assigned format v{report.binding.number}
+            {report.binding.dueDate ? ` · Due ${report.binding.dueDate}` : ""}
+          </p>
+          <p className="text-xs text-muted-foreground">
+            Your answers are kept separately from the professor’s blank format
+            and filled example. Preview shows assembled content; open the Word
+            download to inspect pagination.
+          </p>
+          <div className="flex flex-wrap gap-4 text-sm">
+            <a
+              className="text-primary underline"
+              href={`/api/templates/${report.binding.templateId}?file=word&version=${report.binding.versionId}`}
+            >
+              Download assigned blank format
+            </a>
+          </div>
+          {report.binding.hasExample && (
+            <TemplateReference
+              url={`/api/templates/${report.binding.templateId}?file=example&version=${report.binding.versionId}`}
+            />
+          )}
+          {state.currentUser?.role === "coordinator" && (
+            <TemplateUpgrade
+              key={report.binding.versionId}
+              report={report}
+              disabled={pending || draft.saving}
+              onUpgrade={async (versionId) => {
+                await draft.save();
+                draft.accept(
+                  await reportRequest(`/api/reports/${report.id}`, "POST", {
+                    action: "upgrade",
+                    versionId,
+                    revision: draft.revision(),
+                  }),
+                );
+              }}
+            />
+          )}
+        </section>
+      )}
+      {!!report.retiredSections?.length && (
+        <details className="rounded-xl border p-4">
+          <summary className="cursor-pointer text-sm">
+            Retained answers from earlier formats (
+            {report.retiredSections.length})
+          </summary>
+          <div className="mt-3 space-y-3">
+            {report.retiredSections.map((entry, i) => (
+              <article key={i} className="space-y-2">
+                <h3 className="text-sm font-medium">
+                  {entry.section.title} · v{entry.version}
+                </h3>
+                <p className="whitespace-pre-wrap break-words text-sm">
+                  {entry.section.body || "No written answer"}
+                </p>
+                {report.assets
+                  .filter((a) => a.sectionId === entry.section.id)
+                  .map((a) => (
+                    <a
+                      key={a.id}
+                      className="block break-all text-sm text-primary underline"
+                      href={reportAssetUrl(report.id, a.id)}
+                    >
+                      {a.name}
+                    </a>
+                  ))}
+              </article>
+            ))}
+          </div>
+        </details>
+      )}
       {(error || draft.error) && (
         <div
           role="alert"
@@ -292,7 +408,7 @@ export function ReportEditor({
         </div>
       )}
       <fieldset
-        disabled={editDisabled}
+        disabled={editDisabled || formatLocked}
         className="grid min-w-0 gap-3 rounded-xl border bg-card p-4 sm:grid-cols-2"
       >
         <label className="min-w-0 text-sm">
@@ -319,7 +435,7 @@ export function ReportEditor({
           Word layout and placement details
         </summary>
         <fieldset
-          disabled={editDisabled}
+          disabled={editDisabled || formatLocked}
           className="mt-4 grid min-w-0 gap-3 sm:grid-cols-2 lg:grid-cols-3"
         >
           {(
@@ -401,8 +517,9 @@ export function ReportEditor({
             />
           </label>
           <p className="text-xs text-muted-foreground">
-            Margins: left 1.5″; top, bottom and right 1″. Word updates the table
-            of contents after opening.
+            {report.binding
+              ? "Page layout follows the assigned Word format. Update the table of contents after opening in Word."
+              : "Margins: left 1.5″; top, bottom and right 1″. Update the table of contents in Word after opening."}
           </p>
         </fieldset>
       </details>
@@ -421,6 +538,10 @@ export function ReportEditor({
                 <h3 className="font-semibold">{s.title}</h3>
                 <ReportSectionPreview
                   section={s}
+                  formIds={
+                    report.binding?.sections.find((d) => d.key === s.template)
+                      ?.formIds
+                  }
                   assets={report.assets}
                   reportId={report.id}
                 />
@@ -476,7 +597,7 @@ export function ReportEditor({
                 </button>
               ))}
             </nav>
-            {report.canEdit && (
+            {canAdd && (
               <div className="mt-4 space-y-2 border-t pt-3">
                 <label className="text-xs">
                   Add section template
@@ -486,17 +607,30 @@ export function ReportEditor({
                     value={template}
                     onChange={(e) => setTemplate(e.target.value)}
                   >
-                    {sectionTemplates.map((t) => (
+                    <option value="custom">Custom written section</option>
+                    {(!report.binding ? sectionTemplates : []).map((t) => (
                       <option key={t.key} value={t.key}>
                         {t.title}
                       </option>
                     ))}
                   </select>
                 </label>
+                {template === "custom" && (
+                  <label className="block text-xs">
+                    Custom section title
+                    <Input
+                      value={customTitle}
+                      maxLength={200}
+                      onChange={(e) => setCustomTitle(e.target.value)}
+                    />
+                  </label>
+                )}
                 <Button
                   variant="outline"
                   className="w-full"
-                  disabled={pending}
+                  disabled={
+                    pending || (template === "custom" && !customTitle.trim())
+                  }
                   onClick={add}
                 >
                   Add section
@@ -525,6 +659,7 @@ export function ReportEditor({
                   aria-label="Move section up"
                   disabled={
                     editDisabled ||
+                    formatLocked ||
                     content.sections[activeIndex - 1]?.studentId !==
                       section.studentId
                   }
@@ -538,6 +673,7 @@ export function ReportEditor({
                   aria-label="Move section down"
                   disabled={
                     editDisabled ||
+                    formatLocked ||
                     content.sections[activeIndex + 1]?.studentId !==
                       section.studentId
                   }
@@ -550,7 +686,7 @@ export function ReportEditor({
             <label className="block text-sm">
               Section title
               <Input
-                disabled={editDisabled}
+                disabled={editDisabled || !!definition}
                 value={section.title}
                 onChange={(e) => editSection({ title: e.target.value })}
               />
@@ -559,7 +695,7 @@ export function ReportEditor({
               <label className="flex items-center gap-2">
                 <input
                   type="checkbox"
-                  disabled={editDisabled}
+                  disabled={editDisabled || (!!definition && section.required)}
                   checked={section.included}
                   onChange={(e) => editSection({ included: e.target.checked })}
                 />
@@ -568,19 +704,61 @@ export function ReportEditor({
               <label className="flex items-center gap-2">
                 <input
                   type="checkbox"
-                  disabled={editDisabled}
+                  disabled={editDisabled || formatLocked}
                   checked={section.required}
                   onChange={(e) => editSection({ required: e.target.checked })}
                 />
                 Required section
               </label>
             </div>
+            {definition && (
+              <p className="text-xs text-primary">
+                Responsible respondent: {definition.respondent}
+              </p>
+            )}
+            {!!definition?.formIds.length && (
+              <div className="flex flex-wrap gap-2">
+                {definition.formIds.map((fid) => (
+                  <Button
+                    key={fid}
+                    disabled={
+                      pending ||
+                      (state.currentUser?.role !== "coordinator" &&
+                        definition.respondent !== state.currentUser?.role)
+                    }
+                    variant="outline"
+                    size="sm"
+                    onClick={() =>
+                      state.navigate(
+                        state.currentUser?.role === "student"
+                          ? "student.form-view"
+                          : state.currentUser?.role === "supervisor"
+                            ? "supervisor.form-view"
+                            : "coordinator.forms",
+                        {
+                          formId: fid,
+                          studentId: section.studentId ?? undefined,
+                        },
+                      )
+                    }
+                  >
+                    Open{" "}
+                    {state.formDocuments.find((f) => f.id === fid)?.title ??
+                      "assigned form"}
+                  </Button>
+                ))}
+              </div>
+            )}
             <p className="rounded-lg bg-muted/40 p-3 text-sm text-muted-foreground">
-              {sectionTemplates.find((t) => t.key === section.template)?.prompt}
+              {definition?.instructions ??
+                sectionTemplates.find((t) => t.key === section.template)
+                  ?.prompt ??
+                "Write your custom section in your own words."}
             </p>
-            {preview || !report.canEdit ? (
+            {preview || !sectionEditable ? (
               <ReportSectionPreview
                 section={section}
+                formIds={definition?.formIds}
                 assets={report.assets}
                 reportId={report.id}
               />
@@ -614,7 +792,7 @@ export function ReportEditor({
                 <p className="mt-1 whitespace-pre-wrap">{section.reviewNote}</p>
               </div>
             )}
-            {report.canEdit && (
+            {sectionEditable && (
               <div className="flex flex-wrap gap-2">
                 <Button
                   disabled={
@@ -636,7 +814,10 @@ export function ReportEditor({
                 <Button
                   variant="ghost"
                   disabled={
-                    pending || section.required || content.sections.length < 2
+                    pending ||
+                    !!definition ||
+                    section.required ||
+                    content.sections.length < 2
                   }
                   onClick={() => {
                     if (
@@ -662,6 +843,10 @@ export function ReportEditor({
               </div>
             )}
             {report.canReview &&
+              !(
+                state.currentUser?.role === "supervisor" &&
+                definition?.respondent === "supervisor"
+              ) &&
               section.status === "ready" &&
               (state.currentUser?.role === "coordinator" ||
                 !!section.studentId) && (
@@ -695,7 +880,7 @@ export function ReportEditor({
               <h3 className="text-sm font-semibold">
                 Evidence and attachments
               </h3>
-              {report.canEdit && (
+              {sectionEditable && (
                 <label className="block text-xs text-muted-foreground">
                   PNG, JPEG, PDF or DOCX · up to 32 MB per file
                   <input
@@ -747,7 +932,7 @@ export function ReportEditor({
         ) : (
           <p className="mt-3 text-sm">All included sections are ready.</p>
         )}
-        {report.canEdit && (
+        {canExport && (
           <>
             <label className="mt-4 flex items-center gap-2 text-sm">
               <input
@@ -851,7 +1036,7 @@ export function ReportEditor({
                   </a>
                 ))}
             </div>
-            {report.canEdit && (
+            {canExport && (
               <label className="block text-xs text-muted-foreground">
                 Upload grammarian-reviewed DOCX for this version
                 <input

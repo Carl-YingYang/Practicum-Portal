@@ -64,7 +64,10 @@ const SupervisorFormWorkspace = dynamic(
     ),
   { loading: () => <WorkspaceLoader /> },
 );
-const ReportWorkspace = dynamic(() => import("../reports/report-workspace").then(m => m.ReportWorkspace), { loading: () => <WorkspaceLoader /> });
+const ReportWorkspace = dynamic(
+  () => import("../reports/report-workspace").then((m) => m.ReportWorkspace),
+  { loading: () => <WorkspaceLoader /> },
+);
 export function SupervisorWorkspace() {
   const view = useAppStore((s) => s.view);
   const viewParams = useAppStore((s) => s.viewParams);
@@ -88,7 +91,13 @@ export function SupervisorWorkspace() {
     case "supervisor.forms":
       return <SupervisorFormsList />;
     case "supervisor.form-view":
-      return <SupervisorFormWorkspace formId={viewParams.formId} />;
+      return (
+        <SupervisorFormWorkspace
+          key={`${viewParams.formId}:${viewParams.studentId ?? ""}`}
+          formId={viewParams.formId}
+          studentId={viewParams.studentId}
+        />
+      );
     case "supervisor.report-builder":
       return <ReportWorkspace />;
     case "supervisor.reports":

@@ -1,4 +1,6 @@
 "use client";
+import { FormBlockRenderer } from "../shared/form-block-renderer";
+import { accountUsers } from "@/lib/prototype";
 import ReactMarkdown from "react-markdown";
 import type { ReportSection, ReportAssetInfo } from "@/domain/reports/model";
 import { useAppStore } from "@/store/use-app-store";
@@ -10,10 +12,12 @@ export function ReportSectionPreview({
   section,
   assets,
   reportId,
+  formIds,
 }: {
   section: ReportSection;
   assets: ReportAssetInfo[];
   reportId: string;
+  formIds?: string[];
 }) {
   const state = useAppStore(),
     data = snapshot(state);
@@ -96,11 +100,65 @@ export function ReportSectionPreview({
         </>
       )}
       {section.kind === "forms" && (
-        <p className="rounded-lg bg-muted/40 p-3">
-          Word assembly includes approved custom form responses linked to this
-          student and submitted supervisor evaluations. Official signed sheets
-          can be attached below.
-        </p>
+        <div className="space-y-3">
+          <p className="rounded-lg bg-muted/40 p-3">
+            Approved form responses and submitted evaluations are assembled
+            here. Official wet-signed sheets stay as attachments.
+          </p>
+          {state.formSubmissions
+            .filter(
+              (sub) =>
+                sub.status === "approved" &&
+                (!formIds?.length || formIds.includes(sub.formId)) &&
+                (sub.targetStudentId === section.studentId ||
+                  sub.userId ===
+                    accountUsers(data).find(
+                      (u) => u.studentId === section.studentId,
+                    )?.id),
+            )
+            .map((sub) => {
+              const form =
+                sub.formSnapshot ??
+                state.formDocuments.find((f) => f.id === sub.formId);
+              return form ? (
+                <details key={sub.id} className="rounded-lg border p-3">
+                  <summary className="cursor-pointer break-words font-medium">
+                    {form.title} · v{form.version}
+                  </summary>
+                  <div className="mt-3 min-w-0 space-y-3">
+                    {form.blocks.map((block) => (
+                      <FormBlockRenderer
+                        key={block.id}
+                        block={block}
+                        values={sub.values}
+                      />
+                    ))}
+                  </div>
+                </details>
+              ) : null;
+            })}
+          {state.evaluations
+            .filter(
+              (e) =>
+                e.studentId === section.studentId && e.status === "submitted",
+            )
+            .map((e) => (
+              <article key={e.id} className="rounded-lg border p-3">
+                <h3 className="font-medium">
+                  Supervisor evaluation · {e.term}
+                </h3>
+                <p className="mt-2 whitespace-pre-wrap">
+                  Strengths: {e.strengths}
+                </p>
+                <p className="mt-2 whitespace-pre-wrap">
+                  Areas for improvement: {e.weaknesses}
+                </p>
+                <p className="mt-2 whitespace-pre-wrap">
+                  Recommendations: {e.recommendations}
+                </p>
+              </article>
+            ))}
+        </div>
       )}
       {assets
         .filter((a) => a.kind === "evidence" && a.sectionId === section.id)

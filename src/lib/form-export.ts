@@ -1,4 +1,9 @@
-import { formBlockVisible } from "@/domain/form-templates";
+import {
+  formBlockVisible,
+  isRatingHeading,
+  ratingDisplay,
+  ratingSummary,
+} from "@/domain/form-templates";
 import type { FormDocument, FormFieldValue } from "./types";
 import { downloadPdfReport, type PdfSectionSpec } from "./client-pdf";
 
@@ -13,7 +18,7 @@ export async function downloadFormPdf(
     title: form.title,
     subtitle: `${respondent ?? "Form template"} · Version ${form.version}`,
     sections: form.blocks.flatMap<PdfSectionSpec>((b) => {
-      if(!formBlockVisible(b,values))return [];
+      if (!formBlockVisible(b, values)) return [];
       const value = values[b.id];
       if (b.type === "divider") return [];
       if (b.type === "rating-table")
@@ -22,10 +27,31 @@ export async function downloadFormPdf(
             heading: b.label ?? "Ratings",
             table: {
               head: ["Criterion", "Response"],
-              body: (b.criteria ?? []).map((c) => [
-                c.label,
-                typeof value === "object" ? (value[c.id] ?? "—") : "—",
-              ]),
+              body: [
+                ...(b.criteria ?? []).map((c) => [
+                  c.label,
+                  isRatingHeading(c)
+                    ? ""
+                    : ratingDisplay(
+                        b,
+                        typeof value === "object" ? value[c.id] : undefined,
+                      ),
+                ]),
+                ...(ratingSummary(b, typeof value === "object" ? value : {})
+                  ? [
+                      [
+                        ratingSummary(
+                          b,
+                          typeof value === "object" ? value : {},
+                        )!.label,
+                        ratingSummary(
+                          b,
+                          typeof value === "object" ? value : {},
+                        )!.value,
+                      ],
+                    ]
+                  : []),
+              ],
             },
           },
         ];
@@ -42,9 +68,9 @@ export async function downloadFormPdf(
                     ? (b.text ?? "")
                     : b.type === "signature"
                       ? "________________________________________"
-                    : typeof value === "string"
-                      ? value || "—"
-                      : "—",
+                      : typeof value === "string"
+                        ? value || "—"
+                        : "—",
             },
           ],
         },

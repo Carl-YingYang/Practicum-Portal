@@ -534,6 +534,7 @@ export type FormBlockType =
   | "rating-table"
   | "signature";
 export interface FormRatingCriterion {
+  role?: "criterion" | "heading";
   id: string;
   label: string;
   /**
@@ -567,6 +568,7 @@ export interface FormBlock {
    * OJT Performance Evaluation Sheet which uses weighted percentages.
    */
   scoreMode?: boolean;
+  summaryMode?: "none" | "total" | "average";
   /** signature: caption under the line (e.g. "Signature over Printed Name") */
   caption?: string;
 }
@@ -714,6 +716,7 @@ export type ViewKey =
   | "coordinator.evaluation-view"
   | "coordinator.journals"
   | "coordinator.journal-view"
+  | "coordinator.templates"
   | "coordinator.report-builder"
   | "coordinator.reports"
   | "coordinator.time-monitor"

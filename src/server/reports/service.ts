@@ -14,7 +14,16 @@ import {
   type ReportVersion,
 } from "@/domain/reports/model";
 import type { User } from "@/lib/types";
-export type ReportState = { content: ReportContent; versions: ReportVersion[] };
+export type ReportState = {
+  content: ReportContent;
+  versions: ReportVersion[];
+  binding?: import("@/domain/templates/model").TemplateBinding;
+  retiredSections?: {
+    section: import("@/domain/reports/model").ReportSection;
+    version: number;
+  }[];
+  formatHistory?: { from: number; to: number; at: string; by: string }[];
+};
 export const assetSelect = {
   id: true,
   name: true,
@@ -126,7 +135,10 @@ export async function loadReport(
     record,
     state,
     canEdit:
-      ctx.actor.role === "coordinator" || record.ownerId === ctx.actor.id,
+      ctx.actor.role === "coordinator" ||
+      record.ownerId === ctx.actor.id ||
+      (!!state.binding &&
+        state.binding.sections.some((s) => s.respondent === ctx.actor.role)),
     canReview: ctx.actor.role !== "student",
   };
 }
@@ -141,11 +153,13 @@ export function reportFingerprint(
     rotation: number;
     order: number;
   }[],
+  binding?: import("@/domain/templates/model").TemplateBinding,
 ) {
   return createHash("sha256")
     .update(
       JSON.stringify({
         content,
+        binding,
         source: sourceFingerprint(content, data),
         evidence: assets
           .filter((a) => a.kind === "evidence")
@@ -174,6 +188,20 @@ export async function reportResponse(
   return {
     id,
     ownerId: r.record.ownerId,
+    binding: r.state.binding,
+    retiredSections: r.state.retiredSections,
+    formatHistory: r.state.formatHistory,
+    editableSectionIds: r.state.content.sections
+      .filter((s) =>
+        !r.state.binding
+          ? r.canEdit
+          : r.state.binding.sections.find((d) => d.key === s.template)
+              ?.respondent === r.actor.role ||
+            (r.actor.role === "student" &&
+              r.state.binding.allowStudentExtras &&
+              !r.state.binding.sections.some((d) => d.key === s.template)),
+      )
+      .map((s) => s.id),
     revision: r.record.revision,
     content: r.state.content,
     versions: r.state.versions,
@@ -185,7 +213,12 @@ export async function reportResponse(
     canEdit: r.canEdit,
     canReview: r.canReview,
     updatedAt: r.record.updatedAt.toISOString(),
-    sourceFingerprint: reportFingerprint(r.state.content, r.data, assets),
+    sourceFingerprint: reportFingerprint(
+      r.state.content,
+      r.data,
+      assets,
+      r.state.binding,
+    ),
     boundSourceFingerprint: sourceFingerprint(r.state.content, r.data),
   };
 }
@@ -277,6 +310,7 @@ export async function updateReport(
         400,
         "Report members cannot be changed after creation.",
       );
+    if (r.state.binding) enforceAssignedEdits(r.state, content, r.actor.role);
     for (const section of content.sections) {
       const previous = r.state.content.sections.find(
         (s) => s.id === section.id,
@@ -341,6 +375,12 @@ export async function reviewSection(
       );
     if (
       r.actor.role === "supervisor" &&
+      r.state.binding?.sections.find((d) => d.key === section.template)
+        ?.respondent === "supervisor"
+    )
+      throw new HttpError(403, "The professor reviews supervisor responses.");
+    if (
+      r.actor.role === "supervisor" &&
       (!section.studentId ||
         !r.data.students.some(
           (s) =>
@@ -366,4 +406,107 @@ export async function reviewSection(
     });
   });
   return reportResponse(id, account);
+}
+
+/** Format and respondent rules are enforced on the server, not just disabled inputs. */
+function enforceAssignedEdits(
+  state: ReportState,
+  content: ReportContent,
+  role: string,
+) {
+  const binding = state.binding!;
+  if (
+    JSON.stringify(content.settings) !==
+      JSON.stringify(state.content.settings) ||
+    content.title !== state.content.title
+  )
+    throw new HttpError(
+      403,
+      "Assigned report settings come from the published format.",
+    );
+  const oldCore = state.content.sections.filter((s) =>
+    binding.sections.some((d) => d.key === s.template),
+  );
+  const nextCore = content.sections.filter((s) =>
+    binding.sections.some((d) => d.key === s.template),
+  );
+  if (
+    JSON.stringify(oldCore.map((s) => s.id)) !==
+    JSON.stringify(nextCore.map((s) => s.id))
+  )
+    throw new HttpError(
+      403,
+      "Only the professor changes core sections through a new template version.",
+    );
+  for (const next of content.sections) {
+    const prev = state.content.sections.find((s) => s.id === next.id);
+    const def = binding.sections.find((d) => d.key === next.template);
+    if (def) {
+      if (
+        !prev ||
+        ["title", "kind", "template", "studentId", "required"].some(
+          (k) => next[k as keyof typeof next] !== prev[k as keyof typeof prev],
+        ) ||
+        (def.required && !next.included)
+      )
+        throw new HttpError(
+          403,
+          "Keep the assigned format and required sections intact.",
+        );
+      if (def.respondent !== role && !sameSection(next, prev))
+        throw new HttpError(403, "This section belongs to another respondent.");
+    } else if (
+      (!binding.allowStudentExtras || role !== "student") &&
+      (!prev || !sameSection(next, prev))
+    )
+      throw new HttpError(
+        403,
+        "Student extra sections are disabled for this format.",
+      );
+    if (
+      !def &&
+      (next.kind !== "narrative" ||
+        next.required ||
+        !next.template.startsWith("custom_"))
+    )
+      throw new HttpError(
+        400,
+        "Extra sections must be optional custom narratives.",
+      );
+  }
+  const removed = state.content.sections.filter(
+    (s) => !content.sections.some((n) => n.id === s.id),
+  );
+  if (
+    removed.length &&
+    (!binding.allowStudentExtras ||
+      role !== "student" ||
+      removed.some((s) => binding.sections.some((d) => d.key === s.template)))
+  )
+    throw new HttpError(403, "You cannot remove these assigned sections.");
+}
+
+export function canWriteSection(
+  r: Awaited<ReturnType<typeof loadReport>>,
+  sectionId: string | null,
+) {
+  if (!r.canEdit || !sectionId) return false;
+  if (!r.state.binding) return true;
+  const s = r.state.content.sections.find((s) => s.id === sectionId),
+    def = r.state.binding.sections.find((d) => d.key === s?.template);
+  return (
+    !!s &&
+    (def
+      ? def.respondent === r.actor.role
+      : r.actor.role === "student" && r.state.binding.allowStudentExtras)
+  );
+}
+
+function sameSection(
+  a: import("@/domain/reports/model").ReportSection,
+  b: import("@/domain/reports/model").ReportSection,
+) {
+  return Object.keys(a)
+    .concat(Object.keys(b))
+    .every((k) => a[k as keyof typeof a] === b[k as keyof typeof b]);
 }

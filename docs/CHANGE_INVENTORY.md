@@ -479,3 +479,24 @@ Base refreshed to `7bc2cf9`; target remains `practo/testing-platform`. See [work
 | `tests/report-browser.cjs` | A |
 | `tests/report-document.cjs` | A |
 | `tests/report-integration.cjs` | A |
+
+## 2026-10-06 — Professor templates and assignments
+
+Implemented on `practo/testing-platform` after fetching the user's current branch. Login, hero, SVG and subtitle edits are preserved.
+
+| Area | Improvement |
+| --- | --- |
+| Roles/navigation | Templates & Assignments, Submission Reviews, My Practicum Report; supervisor reviews through an intern's detail page |
+| Template configuration | Real custom sections; edit instructions, source, respondent, required/page-break settings and linked forms; remove/reorder core sections in the professor's draft |
+| Official files | Clean mapped pilot, separate blank/sample uploads, content previews, downloads and named placeholders |
+| Persistence | Additive Prisma migration; immutable published versions; blank student assignments; repeat assignment is idempotent |
+| Revision workflow | Explicit upgrade diff; retain matching answers and permitted extras; archive removed answers/evidence; preserve old exports |
+| Reports | Server-enforced respondent ownership and locked format; full/chunk exports inherit Word layout; linked approved responses use snapshots |
+| Supervisor form context | A linked form opens for the report's actual intern, including non-first interns; unavailable recipients do not silently fall back |
+| Evaluation | Fix actual label-vs-number save bug; explicit non-scored heading rows; historical answer compatibility; selectable summaries and score maximums |
+| Word layout | Full-width journal answers; wide rating criteria/compact scores; merged heading rows; no copied sample answers |
+| Reliability | Serialized draft saves/recovery, revision conflicts, upload/ZIP/XML validation, proper new-workspace loading and compact expandable section settings |
+| Testing reset | Explicit prototype reset also clears independent report/template tables; normal upgrade retains the database |
+| Documentation | `PROFESSOR_TEMPLATES.md`, verification results, screenshots and a fictional mapped DOCX sample |
+
+Validation commands: `typecheck`, `lint`, `build`, `test`, `test:templates`, `test:templates-ui`, `test:templates-doc`, and relevant report/server/browser regressions. Detailed results are in `VERIFICATION.md`.

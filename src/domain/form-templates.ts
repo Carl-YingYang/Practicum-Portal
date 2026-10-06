@@ -143,7 +143,10 @@ export function formStructureErrors(
     if (["fill-in", "info-field"].includes(b.type) && !b.label?.trim())
       errors.push(`${at}: add a field label.`);
     if (b.type === "rating-table") {
-      if (!b.criteria?.length || b.criteria.some((c) => !c.label.trim()))
+      if (
+        !b.criteria?.some((c) => !isRatingHeading(c)) ||
+        b.criteria.some((c) => !c.label.trim())
+      )
         errors.push(`${at}: add named rating criteria.`);
       if (new Set(b.criteria?.map((c) => c.id)).size !== b.criteria?.length)
         errors.push(`${at}: criteria IDs must be unique.`);
@@ -151,8 +154,9 @@ export function formStructureErrors(
         if (
           b.criteria?.some(
             (c) =>
-              !/^\d+(\.\d+)?%?$/.test(c.max ?? "") ||
-              parseFloat(c.max ?? "") <= 0,
+              !isRatingHeading(c) &&
+              (!/^\d+(\.\d+)?%?$/.test(c.max ?? "") ||
+                parseFloat(c.max ?? "") <= 0),
           )
         )
           errors.push(`${at}: every score criterion needs a positive maximum.`);
@@ -180,12 +184,13 @@ export function ratingResponseErrors(
       : {};
   const errors: string[] = [];
   for (const c of block.criteria ?? []) {
+    if (isRatingHeading(c)) continue;
     const raw = ratings[c.id];
     if (raw === undefined || !String(raw).trim()) {
       if (block.required !== false) errors.push(`Rate ${c.label}.`);
       continue;
     }
-    const numeric = Number(raw),
+    const numeric = ratingNumber(block, raw),
       maximum = block.scoreMode
         ? parseFloat(c.max ?? "")
         : (block.scaleLabels?.length ?? 0);
@@ -210,4 +215,75 @@ export function formBlockVisible(
     typeof value === "string" &&
     value.trim().toLowerCase() === block.showIf.equals.trim().toLowerCase()
   );
+}
+
+// Explicit row roles take precedence. These three exact legacy seed rows were headings.
+export function isRatingHeading(c: {
+  id: string;
+  label: string;
+  role?: "criterion" | "heading";
+}) {
+  if (c.role) return c.role === "heading";
+  return (
+    (
+      {
+        o1g: "1. MARKET ONESELF EFFECTIVELY",
+        o2g: "2. WORK WITH OTHERS EFFECTIVELY",
+        o3g: "3. BE USEFUL AND ACTIVE PLAYER OF THE COMPANY AND ACQUIRE ACTUAL EXPERIENCE",
+      } as Record<string, string>
+    )[c.id] === c.label
+  );
+}
+export function ratingNumber(
+  block: Pick<FormBlock, "scoreMode" | "scaleLabels">,
+  raw: string | undefined,
+) {
+  if (raw === undefined || !raw.trim()) return NaN;
+  if (!block.scoreMode) {
+    const index = block.scaleLabels?.indexOf(raw) ?? -1;
+    if (index >= 0) return index + 1;
+  }
+  return Number(raw);
+}
+export function ratingDisplay(
+  block: Pick<FormBlock, "scoreMode" | "scaleLabels">,
+  raw: string | undefined,
+) {
+  const n = ratingNumber(block, raw);
+  return Number.isFinite(n)
+    ? block.scoreMode
+      ? String(n)
+      : (block.scaleLabels?.[n - 1] ?? String(n))
+    : raw || "—";
+}
+/** A configured summary is incomplete until every scored row has a valid answer. */
+export function ratingSummary(
+  block: FormBlock,
+  ratings: Record<string, string> = {},
+) {
+  const mode = block.summaryMode ?? (block.scoreMode ? "total" : "none");
+  if (mode === "none") return null;
+  const criteria = (block.criteria ?? []).filter((c) => !isRatingHeading(c));
+  const values = criteria.map((c) => ratingNumber(block, ratings[c.id]));
+  const valid =
+    criteria.length > 0 &&
+    criteria.every(
+      (c, i) =>
+        Number.isFinite(values[i]) &&
+        values[i] >= (block.scoreMode ? 0 : 1) &&
+        values[i] <=
+          (block.scoreMode
+            ? parseFloat(c.max ?? "")
+            : (block.scaleLabels?.length ?? 0)) &&
+        (block.scoreMode || Number.isInteger(values[i])),
+    );
+  const sum = values.reduce((a, b) => a + b, 0);
+  return {
+    label: mode === "average" ? "Average score" : "Total score",
+    value: valid
+      ? String(
+          Number((mode === "average" ? sum / criteria.length : sum).toFixed(2)),
+        )
+      : "Incomplete",
+  };
 }

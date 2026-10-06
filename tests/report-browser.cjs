@@ -53,7 +53,10 @@ const { startServer } = require("./server-harness.cjs");
     await page.goto(app.baseURL);
     await page.getByRole("heading", { name: "Welcome back." }).waitFor();
     await login("student");
-    await nav("Report Builder");
+    await nav("My Practicum Report");
+    await page
+      .getByText("Independent / combined drafts", { exact: true })
+      .click();
     await page
       .getByRole("button", { name: "Create report", exact: true })
       .click();
@@ -158,7 +161,14 @@ const { startServer } = require("./server-harness.cjs");
       fullPage: false,
     });
     await login("supervisor");
-    await nav("Report Builder");
+    await nav("My Interns");
+    await page
+      .getByRole("row")
+      .filter({ has: page.getByText("Sample Student 1", { exact: true }) })
+      .click();
+    await page
+      .getByRole("button", { name: "Review practicum report", exact: true })
+      .click();
     await page.getByRole("button", { name: /Practicum Report/ }).click();
     assert.equal(
       await page

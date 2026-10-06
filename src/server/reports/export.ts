@@ -9,6 +9,7 @@ import {
   reportFingerprint,
   sourceFingerprint,
 } from "./service";
+import { buildMappedWord } from "@/server/templates/word";
 import { buildReportWord } from "./word";
 import { reportChecks } from "@/domain/reports/checks";
 export async function exportReport(
@@ -19,7 +20,7 @@ export async function exportReport(
   await db.$transaction(
     async (tx) => {
       const r = await lockReport(tx, id, account, input.revision);
-      if (!r.canEdit)
+      if (!r.canEdit || r.actor.role === "supervisor")
         throw new HttpError(
           403,
           "Only the report author/coordinator creates export versions.",
@@ -49,6 +50,7 @@ export async function exportReport(
         selectedContent,
         r.data,
         assets.map((a) => ({ ...a, kind: "evidence" as const })),
+        r.state.binding,
       );
       const bound = sourceFingerprint(r.state.content, r.data);
       for (const s of selectedContent.sections.filter(
@@ -68,12 +70,29 @@ export async function exportReport(
         );
       const versionId = randomUUID(),
         number = r.state.versions.length + 1;
-      const bytes = await buildReportWord(
-        r.state.content,
-        r.data,
-        assets,
-        input.sectionIds,
-      );
+      const version = r.state.binding
+        ? await tx.practicumTemplateVersion.findUnique({
+            where: { id: r.state.binding.versionId },
+          })
+        : null;
+      if (r.state.binding && !version)
+        throw new HttpError(409, "Assigned Word format is unavailable.");
+      const bytes =
+        version && r.state.binding
+          ? await buildMappedWord(
+              version.wordBytes,
+              r.state.binding,
+              r.state.content,
+              r.data,
+              assets,
+              input.sectionIds,
+            )
+          : await buildReportWord(
+              r.state.content,
+              r.data,
+              assets,
+              input.sectionIds,
+            );
       const name = `practicum-report-v${number}.docx`;
       const zip = new JSZip();
       zip.file(name, bytes);
@@ -89,12 +108,18 @@ export async function exportReport(
         "Open the DOCX in Microsoft Word. Update the table of contents (References > Update Table). Evidence files are original uploads; PDFs and DOCX attachments remain separate. Wet signatures and grammarian review are performed outside the portal. Draft/review statuses describe saved portal records, not signature validity.\n\n" +
           checks.join("\n"),
       );
-      const fingerprint = reportFingerprint(r.state.content, r.data, assets);
+      const fingerprint = reportFingerprint(
+        r.state.content,
+        r.data,
+        assets,
+        r.state.binding,
+      );
       zip.file(
         "report-manifest.json",
         JSON.stringify(
           {
             version: number,
+            template: r.state.binding,
             revision: input.revision,
             sourceFingerprint: fingerprint,
             content: selectedContent,

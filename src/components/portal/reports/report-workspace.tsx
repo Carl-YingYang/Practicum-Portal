@@ -9,7 +9,15 @@ import type { ReportRecord } from "@/domain/reports/model";
 export function ReportWorkspace() {
   const state = useAppStore();
   const [reports, setReports] = useState<
-      { id: string; title: string; studentIds: string[]; updatedAt: string }[]
+      {
+        id: string;
+        title: string;
+        studentIds: string[];
+        updatedAt: string;
+        templateVersion: number | null;
+        dueDate: string | null;
+        ready: number;
+      }[]
     >([]),
     [current, setCurrent] = useState<ReportRecord | null>(null),
     [chosen, setChosen] = useState<string[]>([]),
@@ -81,15 +89,28 @@ export function ReportWorkspace() {
   const selectedCompany = state.students.find(
     (s) => s.id === chosen[0],
   )?.companyId;
+  const visibleReports = reports.filter(
+    (r) =>
+      account.role !== "supervisor" ||
+      !state.viewParams.studentId ||
+      r.studentIds.includes(state.viewParams.studentId),
+  );
   return (
     <div className="mx-auto w-full min-w-0 max-w-6xl space-y-5 p-4 sm:p-6">
       <div>
         <p className="text-xs uppercase tracking-widest text-primary">
           Word-first drafting
         </p>
-        <h1 className="mt-1 text-2xl font-semibold">Report Builder</h1>
+        <h1 className="mt-1 text-2xl font-semibold">
+          {account.role === "student"
+            ? "My Practicum Report"
+            : account.role === "coordinator"
+              ? "Submission Reviews"
+              : "Intern Report Review"}
+        </h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          Write in sections. Assemble an editable report for your grammarian.
+          Assigned formats, section responses and editable Word reports for
+          review.
         </p>
       </div>
       {error && (
@@ -104,10 +125,14 @@ export function ReportWorkspace() {
         </p>
       )}
       {account.role !== "supervisor" && (
-        <section className="rounded-xl border bg-card p-4">
-          <h2 className="font-medium">Start a practicum report</h2>
+        <details className="rounded-xl border bg-card p-4">
+          <summary className="cursor-pointer text-sm font-medium">
+            Independent / combined drafts
+          </summary>
+          <h2 className="font-medium">Start an independent draft</h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            Keep shared information and individual student sections together.
+            Use this for earlier or combined drafts. Official assignments appear
+            below and follow the professor’s published format.
           </p>
           {account.role === "coordinator" && (
             <fieldset className="mt-3 grid max-h-64 gap-2 overflow-y-auto sm:grid-cols-2">
@@ -153,27 +178,34 @@ export function ReportWorkspace() {
           >
             {pending ? "Please wait…" : "Create report"}
           </Button>
-        </section>
+        </details>
       )}
       {pending ? (
         <WorkspaceLoader />
       ) : (
         <section className="space-y-3">
           <h2 className="font-medium">Saved reports</h2>
-          {!reports.length && (
+          {!visibleReports.length && (
             <p className="rounded-lg border border-dashed p-5 text-sm text-muted-foreground">
               {account.role === "supervisor"
                 ? "Your assigned students’ reports will appear here for review."
-                : "Create your first report to start writing."}
+                : "No reports yet. A professor can publish a format and assign it to you."}
             </p>
           )}
-          {reports.map((r) => (
+          {visibleReports.map((r) => (
             <button
               key={r.id}
               onClick={() => void open(r.id)}
               className="flex w-full min-w-0 flex-col gap-1 rounded-xl border bg-card p-4 text-left hover:border-primary"
             >
               <span className="break-words font-medium">{r.title}</span>
+              <span className="text-xs text-primary">
+                {r.templateVersion
+                  ? `Assigned format v${r.templateVersion}`
+                  : "Independent draft"}
+                {r.dueDate ? ` · Due ${r.dueDate}` : ""}
+                {r.ready ? ` · ${r.ready} section(s) ready for review` : ""}
+              </span>
               <span className="break-words text-sm text-muted-foreground">
                 {r.studentIds
                   .map(

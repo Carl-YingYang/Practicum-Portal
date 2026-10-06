@@ -4,7 +4,7 @@ import sharp from "sharp";
 import JSZip from "jszip";
 import { db } from "@/server/database";
 import { HttpError } from "@/server/security";
-import { lockReport, reportResponse } from "./service";
+import { lockReport, reportResponse, canWriteSection } from "./service";
 export const MAX_ASSET_BYTES = 32 * 1024 * 1024;
 export async function uploadReportAsset(
   id: string,
@@ -79,6 +79,20 @@ export async function uploadReportAsset(
     const r = await lockReport(tx, id, account, revision);
     if (!r.canEdit)
       throw new HttpError(403, "Only the author/coordinator uploads evidence.");
+    if (
+      kind === "evidence" &&
+      r.state.binding &&
+      !canWriteSection(r, sectionId)
+    )
+      throw new HttpError(
+        403,
+        "Upload evidence to your own assigned sections only.",
+      );
+    if (kind === "reviewed" && r.actor.role === "supervisor")
+      throw new HttpError(
+        403,
+        "Only the author/coordinator uploads grammarian revisions.",
+      );
     if (
       kind === "evidence" &&
       !r.state.content.sections.some((s) => s.id === sectionId)
@@ -157,6 +171,11 @@ export async function updateAsset(
       throw new HttpError(
         400,
         "Exported and reviewed documents are retained unchanged.",
+      );
+    if (r.state.binding && !canWriteSection(r, asset.sectionId))
+      throw new HttpError(
+        403,
+        "Change evidence in your own assigned sections only.",
       );
     if (
       input.caption !== undefined &&

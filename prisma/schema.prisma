@@ -10,84 +10,136 @@ datasource db {
 // Versioned school aggregate: flexible form schemas stay JSON during testing.
 // Accounts, sessions, rate limits and retry receipts have separate constraints.
 model PortalSchool {
-  id        String   @id
+  id        String          @id
   name      String
   stateJson String
-  revision  Int      @default(0)
-  updatedAt DateTime @updatedAt
+  revision  Int             @default(0)
+  updatedAt DateTime        @updatedAt
   accounts  PortalAccount[]
 }
 
 model PortalAccount {
-  id                 String @id
-  schoolId           String
-  profileId          String
-  role               String
-  email              String @unique
-  passwordHash       String
-  status             String @default("active")
-  mustChangePassword Boolean @default(false)
-  isDemo             Boolean @default(false)
-  writingPreferencesJson String @default("{}")
-  notificationPreferencesJson String @default("{}")
-  school             PortalSchool @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-  sessions           PortalSession[]
-  receipts           PortalReceipt[]
+  id                          String          @id
+  schoolId                    String
+  profileId                   String
+  role                        String
+  email                       String          @unique
+  passwordHash                String
+  status                      String          @default("active")
+  mustChangePassword          Boolean         @default(false)
+  isDemo                      Boolean         @default(false)
+  writingPreferencesJson      String          @default("{}")
+  notificationPreferencesJson String          @default("{}")
+  school                      PortalSchool    @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  sessions                    PortalSession[]
+  receipts                    PortalReceipt[]
+
   @@unique([schoolId, role, profileId])
   @@index([schoolId])
 }
 
 model PortalSession {
-  tokenHash String @id
+  tokenHash String        @id
   accountId String
   expiresAt DateTime
   account   PortalAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
   @@index([expiresAt])
 }
 
 model PortalReceipt {
-  id        String @id @default(cuid())
+  id        String        @id @default(cuid())
   accountId String
   requestId String
-  createdAt DateTime @default(now())
+  createdAt DateTime      @default(now())
   account   PortalAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
   @@unique([accountId, requestId])
 }
 
 model PortalLoginAttempt {
-  key        String @id
-  count      Int @default(0)
-  resetAt    DateTime
+  key     String   @id
+  count   Int      @default(0)
+  resetAt DateTime
 }
 
 // Independent report aggregates keep narrative revisions separate from attendance.
 model PracticumReport {
-  id        String @id
+  id        String        @id
   schoolId  String
   ownerId   String
-  revision  Int @default(0)
+  revision  Int           @default(0)
   stateJson String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
   assets    ReportAsset[]
+
   @@index([schoolId])
 }
 
 model ReportAsset {
-  id        String @id
+  id        String          @id
   reportId  String
   name      String
   mime      String
   kind      String
   sectionId String?
-  caption   String @default("")
-  rotation  Int @default(0)
+  caption   String          @default("")
+  rotation  Int             @default(0)
   width     Int?
   height    Int?
   size      Int
-  order     Int @default(0)
+  order     Int             @default(0)
   bytes     Bytes
-  createdAt DateTime @default(now())
+  createdAt DateTime        @default(now())
   report    PracticumReport @relation(fields: [reportId], references: [id], onDelete: Cascade)
+
   @@index([reportId])
+}
+
+// Drafts are editable; published formats are immutable assignment snapshots.
+model PracticumTemplate {
+  id           String                     @id
+  schoolId     String
+  ownerId      String
+  revision     Int                        @default(0)
+  draftJson    String
+  wordBytes    Bytes?
+  wordName     String?
+  exampleBytes Bytes?
+  exampleName  String?
+  archived     Boolean                    @default(false)
+  createdAt    DateTime                   @default(now())
+  updatedAt    DateTime                   @updatedAt
+  versions     PracticumTemplateVersion[]
+
+  @@index([schoolId])
+}
+
+model PracticumTemplateVersion {
+  id           String                @id
+  templateId   String
+  number       Int
+  schemaJson   String
+  wordBytes    Bytes
+  wordName     String
+  exampleBytes Bytes?
+  exampleName  String?
+  publishedAt  DateTime              @default(now())
+  template     PracticumTemplate     @relation(fields: [templateId], references: [id], onDelete: Restrict)
+  assignments  PracticumAssignment[]
+
+  @@unique([templateId, number])
+}
+
+model PracticumAssignment {
+  id        String                   @id
+  versionId String
+  studentId String
+  reportId  String                   @unique
+  dueDate   String?
+  createdAt DateTime                 @default(now())
+  version   PracticumTemplateVersion @relation(fields: [versionId], references: [id], onDelete: Restrict)
+
+  @@unique([versionId, studentId])
 }

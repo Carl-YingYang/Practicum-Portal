@@ -10,6 +10,7 @@ import {
   reviewSection,
   updateReport,
 } from "@/server/reports/service";
+import { upgradeAssignment } from "@/server/templates/assignments";
 import { updateAsset } from "@/server/reports/assets";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -44,6 +45,8 @@ export async function POST(request: Request, ctx: Context) {
     const account = await requireAccount(),
       id = (await ctx.params).reportId,
       body = await jsonBody(request);
+    if (body?.action === "upgrade")
+      return Response.json(await upgradeAssignment(id, account, body));
     if (!body || !["review", "asset"].includes(body.action))
       throw new HttpError(400, "Choose a report review or evidence action.");
     return Response.json(

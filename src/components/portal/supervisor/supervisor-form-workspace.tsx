@@ -68,7 +68,13 @@ type FieldValue = string | Record<string, string>;
  *     and the coordinator's review note when needs_revision.
  *   - Allows re-submitting after a revision request.
  */
-export function SupervisorFormWorkspace({ formId }: { formId?: string }) {
+export function SupervisorFormWorkspace({
+  formId,
+  studentId,
+}: {
+  formId?: string;
+  studentId?: string;
+}) {
   const { toast } = useToast();
   const { exporting, exportPdf } = usePdfExport();
   const navigate = useAppStore((s) => s.navigate);
@@ -98,10 +104,20 @@ export function SupervisorFormWorkspace({ formId }: { formId?: string }) {
       .sort((a, b) => a.name.localeCompare(b.name));
   }, [students, currentUser]);
   const isStudentTargeted =
-    liveForm?.category === "evaluation" || liveForm?.category === "ojt";
+    !!studentId ||
+    liveForm?.category === "evaluation" ||
+    liveForm?.category === "ojt";
   const [selectedStudentId, setSelectedStudentId] = React.useState<
     string | undefined
-  >(isStudentTargeted && myInterns.length > 0 ? myInterns[0].id : undefined);
+  >(
+    isStudentTargeted && myInterns.length > 0
+      ? studentId
+        ? myInterns.some((s) => s.id === studentId)
+          ? studentId
+          : undefined
+        : myInterns[0].id
+      : undefined,
+  );
   // current submission for this form (+ selected student)
   const currentSubmission = React.useMemo(() => {
     if (!formId || !currentUser) return undefined;
@@ -421,6 +437,7 @@ export function SupervisorFormWorkspace({ formId }: { formId?: string }) {
               return (
                 <button
                   key={stu.id}
+                  aria-pressed={isSelected}
                   onClick={() => {
                     void draft
                       .save()

@@ -69,3 +69,7 @@ Deploy this single Next.js app on a Node host with a **persistent writable volum
 Keep `APP_ENV=testing` and `ENABLE_DEMO_LOGIN=true` only for an intentionally disposable demonstration. For real accounts, use `APP_ENV=production` and disable demo login. Read the remaining deployment work in [CONNECTED_PLATFORM.md](docs/CONNECTED_PLATFORM.md#remaining-work). Ephemeral serverless filesystems need an external persistent database; this SQLite prototype does not provide persistence there.
 
 See [account, loading and attendance follow-up](docs/ACCOUNT_ATTENDANCE_POLISH.md) for personal passwords, coordinator reset access, confirmed clock saves and reviewed clock-out corrections.
+
+### Professor templates and assignments
+
+Use **Coordinator → Templates & Assignments** to configure the clean Word pilot, publish a version and assign blank reports. Students use **My Practicum Report**; supervisors open report review from **My Interns**. After pulling this update, run `bun install` and `bun run db:setup` before restarting. Existing data is retained. See [Professor template workflow and Word mapping](docs/PROFESSOR_TEMPLATES.md).

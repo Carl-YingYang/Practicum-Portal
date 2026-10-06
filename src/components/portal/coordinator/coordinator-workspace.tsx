@@ -115,7 +115,15 @@ const ExternalToolsSetup = dynamic(
     ),
   { loading: () => <WorkspaceLoader /> },
 );
-const ReportWorkspace = dynamic(() => import("../reports/report-workspace").then(m => m.ReportWorkspace), { loading: () => <WorkspaceLoader /> });
+const ReportWorkspace = dynamic(
+  () => import("../reports/report-workspace").then((m) => m.ReportWorkspace),
+  { loading: () => <WorkspaceLoader /> },
+);
+const TemplateWorkspace = dynamic(
+  () =>
+    import("../templates/template-workspace").then((m) => m.TemplateWorkspace),
+  { loading: () => <WorkspaceLoader /> },
+);
 export function CoordinatorWorkspace() {
   const view = useAppStore((s) => s.view);
   const viewParams = useAppStore((s) => s.viewParams);
@@ -156,6 +164,8 @@ export function CoordinatorWorkspace() {
       return <SchoolIdentitySettings />;
     case "coordinator.settings-tools":
       return <ExternalToolsSetup />;
+    case "coordinator.templates":
+      return <TemplateWorkspace />;
     case "coordinator.report-builder":
       return <ReportWorkspace />;
     case "coordinator.reports":

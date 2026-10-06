@@ -60,6 +60,10 @@ export interface ReportAssetInfo {
 export interface ReportRecord {
   id: string;
   ownerId: string;
+  retiredSections?: { section: ReportSection; version: number }[];
+  formatHistory?: { from: number; to: number; at: string; by: string }[];
+  binding?: import("@/domain/templates/model").TemplateBinding;
+  editableSectionIds?: string[];
   revision: number;
   content: ReportContent;
   versions: ReportVersion[];

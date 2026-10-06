@@ -1,4 +1,10 @@
 "use client";
+import {
+  isRatingHeading,
+  ratingNumber,
+  ratingSummary,
+} from "@/domain/form-templates";
+import type { FormRatingCriterion } from "@/lib/types";
 import { formBlockVisible } from "@/domain/form-templates";
 
 import * as React from "react";
@@ -126,6 +132,7 @@ export function FormBlockRenderer({
       return (
         <RatingTable
           scoreMode={block.scoreMode}
+          summaryMode={block.summaryMode}
           scaleLabels={block.scaleLabels ?? []}
           criteria={block.criteria ?? []}
           interactive={interactive}
@@ -309,6 +316,7 @@ function FillIn({
 
 function RatingTable({
   scoreMode,
+  summaryMode,
   scaleLabels,
   criteria,
   interactive,
@@ -317,8 +325,9 @@ function RatingTable({
   className,
 }: {
   scoreMode?: boolean;
+  summaryMode?: "none" | "total" | "average";
   scaleLabels: string[];
-  criteria: { id: string; label: string; max?: string }[];
+  criteria: FormRatingCriterion[];
   interactive: boolean;
   selectedMap: Record<string, string>;
   onSelect: (criterionId: string, scaleLabel: string) => void;
@@ -340,6 +349,7 @@ function RatingTable({
     return (
       <ScoreTable
         criteria={criteria}
+        summaryMode={summaryMode}
         interactive={interactive}
         selectedMap={selectedMap}
         onSelect={onSelect}
@@ -372,9 +382,19 @@ function RatingTable({
         </thead>
         <tbody>
           {criteria.map((c, idx) => {
-            const isGroupHeader =
-              /^(\d+\.?\s*)?[A-Z][A-Z\s&/()-]{2,}$/.test(c.label.trim()) &&
-              !/^[a-z]\./.test(c.label.trim());
+            const isGroupHeader = isRatingHeading(c);
+            if (isGroupHeader)
+              return (
+                <tr key={c.id} className="bg-muted/50">
+                  <th
+                    scope="rowgroup"
+                    colSpan={scaleLabels.length + 1}
+                    className="border-b px-2.5 py-2 text-left font-semibold"
+                  >
+                    {c.label}
+                  </th>
+                </tr>
+              );
             return (
               <tr key={c.id} className={cn(idx % 2 === 1 && "bg-muted/20")}>
                 <td
@@ -385,8 +405,9 @@ function RatingTable({
                 >
                   {c.label}
                 </td>
-                {scaleLabels.map((s) => {
-                  const selected = selectedMap[c.id] === s;
+                {scaleLabels.map((s, i) => {
+                  const selected =
+                    ratingNumber({ scaleLabels }, selectedMap[c.id]) === i + 1;
                   return (
                     <td
                       key={s}
@@ -395,7 +416,7 @@ function RatingTable({
                       {interactive ? (
                         <button
                           type="button"
-                          onClick={() => onSelect(c.id, s)}
+                          onClick={() => onSelect(c.id, String(i + 1))}
                           className={cn(
                             "mx-auto flex h-5 w-5 items-center justify-center rounded-full border text-[11px] transition-colors",
                             selected
@@ -421,6 +442,52 @@ function RatingTable({
             );
           })}
         </tbody>
+        {ratingSummary(
+          {
+            id: "rating",
+            type: "rating-table",
+            criteria,
+            scaleLabels,
+            summaryMode,
+          },
+          selectedMap,
+        ) && (
+          <tfoot>
+            <tr>
+              <th className="border-t px-2.5 py-2">
+                {
+                  ratingSummary(
+                    {
+                      id: "rating",
+                      type: "rating-table",
+                      criteria,
+                      scaleLabels,
+                      summaryMode,
+                    },
+                    selectedMap,
+                  )!.label
+                }
+              </th>
+              <td
+                colSpan={scaleLabels.length}
+                className="border-t px-2 py-2 text-center"
+              >
+                {
+                  ratingSummary(
+                    {
+                      id: "rating",
+                      type: "rating-table",
+                      criteria,
+                      scaleLabels,
+                      summaryMode,
+                    },
+                    selectedMap,
+                  )!.value
+                }
+              </td>
+            </tr>
+          </tfoot>
+        )}
       </table>
     </div>
   );
@@ -434,21 +501,32 @@ function RatingTable({
  */
 function ScoreTable({
   criteria,
+  summaryMode = "total",
   interactive,
   selectedMap,
   onSelect,
   className,
 }: {
-  criteria: { id: string; label: string; max?: string }[];
+  criteria: FormRatingCriterion[];
+  summaryMode?: "none" | "total" | "average";
   interactive: boolean;
   selectedMap: Record<string, string>;
   onSelect: (criterionId: string, score: string) => void;
   className?: string;
 }) {
-  const total = criteria
-    .map((c) => parseFloat(selectedMap[c.id] ?? ""))
-    .filter((n) => Number.isFinite(n))
-    .reduce((sum, n) => sum + n, 0);
+  const maximum = criteria
+    .filter((c) => !isRatingHeading(c))
+    .reduce((sum, c) => sum + parseFloat(c.max ?? "0"), 0);
+  const summary = ratingSummary(
+    {
+      id: "weighted",
+      type: "rating-table",
+      scoreMode: true,
+      summaryMode,
+      criteria,
+    },
+    selectedMap,
+  );
   return (
     <div
       className={cn(
@@ -471,44 +549,58 @@ function ScoreTable({
           </tr>
         </thead>
         <tbody>
-          {criteria.map((c, idx) => (
-            <tr key={c.id} className={cn(idx % 2 === 1 && "bg-muted/20")}>
-              <td className="border-b border-border/40 px-2.5 py-1.5 align-top text-foreground">
-                {c.label}
+          {criteria.map((c, idx) =>
+            isRatingHeading(c) ? (
+              <tr key={c.id} className="bg-muted/50">
+                <th
+                  scope="rowgroup"
+                  colSpan={3}
+                  className="px-2.5 py-2 text-left font-semibold"
+                >
+                  {c.label}
+                </th>
+              </tr>
+            ) : (
+              <tr key={c.id} className={cn(idx % 2 === 1 && "bg-muted/20")}>
+                <td className="border-b border-border/40 px-2.5 py-1.5 align-top text-foreground">
+                  {c.label}
+                </td>
+                <td className="border-b border-l border-border/40 px-2 py-1.5 text-center align-top tabular-nums text-muted-foreground">
+                  {c.max ?? "—"}
+                </td>
+                <td className="border-b border-l border-border/40 px-2 py-1.5 text-center align-top">
+                  {interactive ? (
+                    <input
+                      type="number"
+                      inputMode="decimal"
+                      value={selectedMap[c.id] ?? ""}
+                      onChange={(e) => onSelect(c.id, e.target.value)}
+                      placeholder="—"
+                      aria-label={`Rating for ${c.label}`}
+                      className="w-full min-w-[56px] rounded border border-border/70 bg-background px-1.5 py-0.5 text-center tabular-nums text-[12.5px] text-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/30"
+                    />
+                  ) : (
+                    <span className="tabular-nums text-foreground">
+                      {selectedMap[c.id] || "—"}
+                    </span>
+                  )}
+                </td>
+              </tr>
+            ),
+          )}
+          {summaryMode !== "none" && (
+            <tr className="bg-muted/40 font-semibold">
+              <td className="border-t border-border/60 px-2.5 py-1.5 text-foreground">
+                {summaryMode === "average" ? "Average score" : "Total score"}
               </td>
-              <td className="border-b border-l border-border/40 px-2 py-1.5 text-center align-top tabular-nums text-muted-foreground">
-                {c.max ?? "—"}
+              <td className="border-t border-l border-border/60 px-2 py-1.5 text-center tabular-nums text-muted-foreground">
+                {summaryMode === "average" ? "—" : maximum}
               </td>
-              <td className="border-b border-l border-border/40 px-2 py-1.5 text-center align-top">
-                {interactive ? (
-                  <input
-                    type="number"
-                    inputMode="decimal"
-                    value={selectedMap[c.id] ?? ""}
-                    onChange={(e) => onSelect(c.id, e.target.value)}
-                    placeholder="—"
-                    aria-label={`Rating for ${c.label}`}
-                    className="w-full min-w-[56px] rounded border border-border/70 bg-background px-1.5 py-0.5 text-center tabular-nums text-[12.5px] text-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/30"
-                  />
-                ) : (
-                  <span className="tabular-nums text-foreground">
-                    {selectedMap[c.id] || "—"}
-                  </span>
-                )}
+              <td className="border-t border-l border-border/60 px-2 py-1.5 text-center tabular-nums text-foreground">
+                {summary?.value ?? "Incomplete"}
               </td>
             </tr>
-          ))}
-          <tr className="bg-muted/40 font-semibold">
-            <td className="border-t border-border/60 px-2.5 py-1.5 text-foreground">
-              Total Rating
-            </td>
-            <td className="border-t border-l border-border/60 px-2 py-1.5 text-center tabular-nums text-muted-foreground">
-              100%
-            </td>
-            <td className="border-t border-l border-border/60 px-2 py-1.5 text-center tabular-nums text-foreground">
-              {total > 0 ? `${total}%` : "—"}
-            </td>
-          </tr>
+          )}
         </tbody>
       </table>
     </div>

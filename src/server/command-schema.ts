@@ -87,7 +87,12 @@ const formMeta = z
   .strict();
 const blockPatch = z
   .object({
-    showIf: z.object({blockId:id,equals:z.string().max(1000)}).strict().nullable().transform(value=>value??undefined).optional(),
+    showIf: z
+      .object({ blockId: id, equals: z.string().max(1000) })
+      .strict()
+      .nullable()
+      .transform((value) => value ?? undefined)
+      .optional(),
     text: optionalText,
     level: z.union([z.literal(1), z.literal(2), z.literal(3)]).optional(),
     label: optionalText,
@@ -96,11 +101,21 @@ const blockPatch = z
     required: z.boolean().optional(),
     scaleLabels: z.array(text).max(10).optional(),
     criteria: z
-      .array(z.object({ id, label: text, max: optionalText }).strict())
+      .array(
+        z
+          .object({
+            id,
+            label: text,
+            max: optionalText,
+            role: z.enum(["criterion", "heading"]).optional(),
+          })
+          .strict(),
+      )
       .max(100)
       .optional(),
     caption: optionalText,
     scoreMode: z.boolean().optional(),
+    summaryMode: z.enum(["none", "total", "average"]).optional(),
   })
   .strict();
 const schoolIdentity = z
@@ -223,7 +238,13 @@ const schemas: Partial<Record<MutationName, z.ZodType>> = {
       })
       .strict(),
   ]),
-  createFormDocument: z.tuple([formMeta.extend({ templateKey: z.enum(["journal", "site", "reflection", "feedback"]).optional() })]),
+  createFormDocument: z.tuple([
+    formMeta.extend({
+      templateKey: z
+        .enum(["journal", "site", "reflection", "feedback"])
+        .optional(),
+    }),
+  ]),
   updateFormMeta: z.tuple([id, formMeta.partial()]),
   updateFormBlock: z.tuple([id, id, blockPatch]),
   addFormBlock: z

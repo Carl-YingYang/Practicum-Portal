@@ -1,4 +1,5 @@
 "use client";
+import { isRatingHeading } from "@/domain/form-templates";
 import { formStructureErrors } from "@/domain/form-templates";
 
 import * as React from "react";
@@ -1031,6 +1032,41 @@ function RatingTableEditor({
 
   return (
     <div className="space-y-3">
+      <div className="grid gap-3 sm:grid-cols-2">
+        <label className="text-sm">
+          Scoring method
+          <select
+            className="mt-1 w-full rounded border bg-background p-2"
+            value={block.scoreMode ? "weighted" : "rating"}
+            onChange={(e) =>
+              onChange({ scoreMode: e.target.value === "weighted" })
+            }
+          >
+            <option value="rating">Rating options</option>
+            <option value="weighted">Numeric scores with maximums</option>
+          </select>
+        </label>
+        <label className="text-sm">
+          Score summary
+          <select
+            className="mt-1 w-full rounded border bg-background p-2"
+            value={block.summaryMode ?? (block.scoreMode ? "total" : "none")}
+            onChange={(e) =>
+              onChange({
+                summaryMode: e.target.value as FormBlock["summaryMode"],
+              })
+            }
+          >
+            <option value="none">No automatic summary</option>
+            <option value="total">Total</option>
+            <option value="average">Average</option>
+          </select>
+        </label>
+      </div>
+      <p className="text-xs text-muted-foreground">
+        Heading rows group questions and never require scores. Summary values
+        describe the configured scale; they are not automatic grades.
+      </p>
       <div>
         <Label className="text-[11px] uppercase tracking-wide text-muted-foreground">
           Scale columns ({scaleLabels.length})
@@ -1081,7 +1117,45 @@ function RatingTableEditor({
         </div>
         <div className="mt-1.5 space-y-1">
           {criteria.map((c) => (
-            <div key={c.id} className="flex items-center gap-1">
+            <div
+              key={c.id}
+              className="flex min-w-0 flex-wrap items-center gap-1"
+            >
+              <select
+                aria-label={`Row type for ${c.label}`}
+                className="min-h-8 max-w-full rounded border bg-background px-1 text-xs"
+                value={isRatingHeading(c) ? "heading" : "criterion"}
+                onChange={(e) =>
+                  onChange({
+                    criteria: criteria.map((x) =>
+                      x.id === c.id
+                        ? {
+                            ...x,
+                            role: e.target.value as "heading" | "criterion",
+                          }
+                        : x,
+                    ),
+                  })
+                }
+              >
+                <option value="criterion">Scored item</option>
+                <option value="heading">Heading</option>
+              </select>
+              {block.scoreMode && !isRatingHeading(c) && (
+                <Input
+                  aria-label={`Maximum for ${c.label}`}
+                  placeholder="Max"
+                  value={c.max ?? ""}
+                  className="w-16"
+                  onChange={(e) =>
+                    onChange({
+                      criteria: criteria.map((x) =>
+                        x.id === c.id ? { ...x, max: e.target.value } : x,
+                      ),
+                    })
+                  }
+                />
+              )}
               <Input
                 value={c.label}
                 onChange={(e) => updateCriterion(c.id, e.target.value)}

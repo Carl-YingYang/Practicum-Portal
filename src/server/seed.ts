@@ -113,6 +113,10 @@ export async function seedPortal(reset = false) {
   await db.$transaction(
     async (tx) => {
       if (reset) {
+        await tx.practicumAssignment.deleteMany();
+        await tx.practicumTemplateVersion.deleteMany();
+        await tx.practicumTemplate.deleteMany();
+        await tx.practicumReport.deleteMany();
         await tx.portalSchool.deleteMany();
         await tx.portalLoginAttempt.deleteMany();
       }

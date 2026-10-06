@@ -30,6 +30,11 @@ export async function GET() {
                 {
                   id: r.id,
                   title: state.content.title,
+                  templateVersion: state.binding?.number ?? null,
+                  dueDate: state.binding?.dueDate ?? null,
+                  ready: state.content.sections.filter(
+                    (s) => s.included && s.status === "ready",
+                  ).length,
                   studentIds: state.content.studentIds,
                   updatedAt: r.updatedAt,
                 },

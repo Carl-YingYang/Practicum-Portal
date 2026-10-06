@@ -185,6 +185,7 @@ export function InternDetail() {
   return (
     <div className="@container/intern min-w-0 w-full max-w-full">
       <PageHeader showBack breadcrumb="My Interns" />
+      <div className="mb-4 flex flex-wrap gap-2"><Button variant="outline" onClick={()=>navigate("supervisor.report-builder",{studentId:student.id})}><FileText className="mr-2 size-4"/>Review practicum report</Button></div>
 
       {/* Keep identity and progress compact at every available width. */}
       <SectionCard>

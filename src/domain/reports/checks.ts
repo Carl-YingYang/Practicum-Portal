@@ -6,6 +6,7 @@ export function reportChecks(
   content: ReportContent,
   data: PortalData,
   assets: Pick<ReportAssetInfo, "kind" | "sectionId" | "mime">[],
+  binding?: import("@/domain/templates/model").TemplateBinding,
 ) {
   const issues: string[] = [];
   for (const s of content.sections.filter((s) => s.included)) {
@@ -40,6 +41,20 @@ export function reportChecks(
     }
     if (s.kind === "forms") {
       const user = accountUsers(data).find((u) => u.studentId === s.studentId);
+      for (const fid of binding?.sections.find((d) => d.key === s.template)
+        ?.formIds ?? []) {
+        if (
+          !data.formSubmissions.some(
+            (f) =>
+              f.formId === fid &&
+              f.status === "approved" &&
+              (f.targetStudentId === s.studentId || f.userId === user?.id),
+          )
+        )
+          issues.push(
+            `${prefix}${s.title}: ${data.formDocuments.find((f) => f.id === fid)?.title ?? "Assigned form"} needs an approved response.`,
+          );
+      }
       if (
         !data.formSubmissions.some(
           (f) =>
