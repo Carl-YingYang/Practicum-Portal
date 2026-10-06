@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
 const heroSubtitles = [
-  "Clock in. Learn something new. Make every hour count—with your work and progress in one place.",
+  "Clock in. Learn something new. Make every hour count with your work and progress in one place.",
   "See the effort behind every entry. Give feedback that helps students grow beyond the classroom.",
   "Less chasing updates. More seeing progress. Keep your students, supervisors, and requirements connected.",
 ];
