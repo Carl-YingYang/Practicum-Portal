@@ -1,7 +1,7 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTheme } from "next-themes";
-import { ArrowUpRight, Eye, EyeOff, Moon, Sun } from "lucide-react";
+import { ArrowUpRight, Eye, EyeOff, Moon, Sun, UserPlus } from "lucide-react";
 import { useAppStore } from "@/store/use-app-store";
 import Image from "next/image";
 import { signIn, demoSignIn, initializePortal } from "@/client/portal-client";
@@ -9,6 +9,22 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PractoBrand } from "@/components/portal/shared/practo-brand";
+import type { Role, ViewKey } from "@/lib/types";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { toast } from "sonner";
+
+// These are existing coordinator views, not public registration endpoints.
+const accountCreationViews: Record<Role, ViewKey> = {
+  student: "coordinator.student-new",
+  supervisor: "coordinator.supervisor-new",
+  coordinator: "coordinator.coordinator-new",
+};
 
 const heroSubtitles = [
   "Clock in. Learn something new. Make every hour count with your work and progress in one place.",
@@ -23,6 +39,10 @@ export function LoginScreen() {
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [hero, setHero] = useState(1);
+  const [createOpen, setCreateOpen] = useState(false);
+  const [accountRole, setAccountRole] = useState<Role>("coordinator");
+  const [createError, setCreateError] = useState("");
+  const authLock = useRef(false);
   const users = useAppStore((s) => s.demoAccounts);
   const serverError = useAppStore((s) => s.syncError);
   const { resolvedTheme, setTheme } = useTheme();
@@ -48,6 +68,8 @@ export function LoginScreen() {
   }, []);
   async function submit(e: React.FormEvent) {
     e.preventDefault();
+    if (authLock.current) return;
+    authLock.current = true;
     setBusy(true);
     setError("");
     try {
@@ -55,10 +77,13 @@ export function LoginScreen() {
     } catch (error) {
       setError(error instanceof Error ? error.message : "Sign-in failed.");
     } finally {
+      authLock.current = false;
       setBusy(false);
     }
   }
   async function preview(userId: string) {
+    if (authLock.current) return;
+    authLock.current = true;
     setBusy(true);
     setError("");
     try {
@@ -66,9 +91,50 @@ export function LoginScreen() {
     } catch (error) {
       setError(error instanceof Error ? error.message : "Preview failed.");
     } finally {
+      authLock.current = false;
       setBusy(false);
     }
   }
+  const testingCoordinator = users.find((user) => user.role === "coordinator");
+
+  async function continueAccountCreation(useTestingAccount = false) {
+    if (authLock.current) return;
+    authLock.current = true;
+    setBusy(true);
+    setCreateError("");
+    try {
+      if (useTestingAccount) {
+        if (!testingCoordinator)
+          throw new Error("A testing coordinator is not available.");
+        await demoSignIn(testingCoordinator.id);
+      } else {
+        await signIn(email.trim(), password);
+      }
+
+      const state = useAppStore.getState();
+      if (state.currentUser?.role !== "coordinator") {
+        // The valid account still signs into its own workspace. It receives
+        // no coordinator view or provisioning permissions.
+        toast.error("Only an authorized coordinator can create accounts.");
+        return;
+      }
+      if (state.currentUser.mustChangePassword) {
+        toast.info(
+          "Replace your temporary password first. Then use User Management → Add User.",
+        );
+        return;
+      }
+      state.navigate(accountCreationViews[accountRole]);
+    } catch (err) {
+      setCreateError(
+        err instanceof Error ? err.message : "Account access could not be verified.",
+      );
+    } finally {
+      authLock.current = false;
+      setBusy(false);
+    }
+  }
+
   return (
     <main className="editorial-login min-h-svh bg-background text-foreground">
       <header className="flex items-center justify-between border-b border-border h-16 px-5 md:px-8">
@@ -230,8 +296,21 @@ export function LoginScreen() {
                 <ArrowUpRight className="size-4" />
               </Button>
             </form>
-            <p className="mt-3 text-xs leading-5 text-muted-foreground">
-              Need access? Ask your coordinator.
+            <Button
+              type="button"
+              variant="outline"
+              disabled={busy}
+              className="mt-3 h-11 w-full bg-background/80"
+              onClick={() => {
+                setCreateError("");
+                setCreateOpen(true);
+              }}
+            >
+              <UserPlus className="size-4" />
+              Create account
+            </Button>
+            <p className="mt-2 text-xs leading-5 text-muted-foreground">
+              Students and supervisors receive their accounts from a coordinator.
             </p>
             {serverError && (
               <div role="alert" className="mt-5 text-sm text-destructive">
@@ -280,6 +359,128 @@ export function LoginScreen() {
           </div>
         </section>
       </div>
+      <Dialog
+        open={createOpen}
+        onOpenChange={(next) => {
+          if (authLock.current) return;
+          setCreateOpen(next);
+          setCreateError("");
+        }}
+      >
+        <DialogContent
+          className="sm:max-w-md"
+          showCloseButton={!busy}
+          onEscapeKeyDown={(event) => {
+            if (authLock.current) event.preventDefault();
+          }}
+          onInteractOutside={(event) => {
+            if (authLock.current) event.preventDefault();
+          }}
+        >
+          <DialogHeader>
+            <DialogTitle>Create account</DialogTitle>
+            <DialogDescription>
+              Choose the account to add, then verify your coordinator access.
+              You will continue to the existing account-creation form.
+            </DialogDescription>
+          </DialogHeader>
+          <form
+            aria-busy={busy}
+            className="min-w-0 space-y-4"
+            onSubmit={(event) => {
+              event.preventDefault();
+              void continueAccountCreation();
+            }}
+          >
+            <fieldset disabled={busy} className="min-w-0 space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="create-account-role">Account type</Label>
+                <select
+                  id="create-account-role"
+                  value={accountRole}
+                  onChange={(event) => {
+                    setAccountRole(event.target.value as Role);
+                    setCreateError("");
+                  }}
+                  className="h-11 w-full min-w-0 rounded-md border border-input bg-background px-3 text-sm"
+                >
+                  <option value="coordinator">Practicum coordinator</option>
+                  <option value="supervisor">Supervisor</option>
+                  <option value="student">Student</option>
+                </select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="create-coordinator-email">Coordinator email</Label>
+                <Input
+                  id="create-coordinator-email"
+                  type="email"
+                  autoComplete="username"
+                  className="h-11"
+                  placeholder="coordinator@university.edu"
+                  required
+                  value={email}
+                  onChange={(event) => {
+                    setEmail(event.target.value);
+                    setCreateError("");
+                  }}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="create-coordinator-password">
+                  Coordinator password
+                </Label>
+                <div className="relative">
+                  <Input
+                    id="create-coordinator-password"
+                    type={visible ? "text" : "password"}
+                    autoComplete="current-password"
+                    className="h-11 pr-11"
+                    required
+                    value={password}
+                    onChange={(event) => {
+                      setPassword(event.target.value);
+                      setCreateError("");
+                    }}
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="absolute right-0 top-0 size-11"
+                    aria-label={visible ? "Hide password" : "Show password"}
+                    onClick={() => setVisible(!visible)}
+                  >
+                    {visible ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                  </Button>
+                </div>
+              </div>
+              {createError && (
+                <p role="alert" className="break-words text-sm text-destructive">
+                  {createError}
+                </p>
+              )}
+              <Button type="submit" className="h-11 w-full justify-between">
+                {busy ? "Verifying access…" : "Verify and continue"}
+                <ArrowUpRight className="size-4" />
+              </Button>
+              {testingCoordinator && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="h-11 w-full"
+                  onClick={() => void continueAccountCreation(true)}
+                >
+                  Continue with testing coordinator
+                </Button>
+              )}
+            </fieldset>
+            <p className="text-xs leading-5 text-muted-foreground">
+              No coordinator account yet? Ask your school administrator to provision
+              one. This button does not enable public registration.
+            </p>
+          </form>
+        </DialogContent>
+      </Dialog>
     </main>
   );
 }
