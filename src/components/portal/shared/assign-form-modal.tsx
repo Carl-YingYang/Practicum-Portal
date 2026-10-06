@@ -1,5 +1,6 @@
 "use client";
 
+import { flushChanges } from "@/client/portal-client";
 import * as React from "react";
 import {
   Dialog,
@@ -13,7 +14,13 @@ import {
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { CalendarClock, Users, GraduationCap, UserCheck, CheckCircle2 } from "lucide-react";
+import {
+  CalendarClock,
+  Users,
+  GraduationCap,
+  UserCheck,
+  CheckCircle2,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAppStore } from "@/store/use-app-store";
 import { useToast } from "@/hooks/use-toast";
@@ -65,35 +72,62 @@ export function AssignFormModal({
   form: FormDocument | null;
 }) {
   const { toast } = useToast();
-  const users = useAccountUsers().filter((u) => u.role !== "coordinator" && u.accountStatus !== "disabled");
+  const users = useAccountUsers().filter(
+    (u) => u.role !== "coordinator" && u.accountStatus !== "disabled",
+  );
   const [recipients, setRecipients] = React.useState<string[]>([]);
+  const [pending, setPending] = React.useState(false);
+  const [error, setError] = React.useState("");
   const assignForm = useAppStore((s) => s.assignForm);
-  const [target, setTarget] = React.useState<FormAssignmentTarget>("all_supervisors");
+  const [target, setTarget] =
+    React.useState<FormAssignmentTarget>("all_supervisors");
   const [dueDate, setDueDate] = React.useState<string>("");
 
   React.useEffect(() => {
     if (open) {
       // pick a sensible default based on category
-      setTarget(form?.category === "journal" || form?.category === "program" ? "all_students" : "all_supervisors");
+      setTarget(
+        form?.category === "journal" || form?.category === "program"
+          ? "all_students"
+          : "all_supervisors",
+      );
       setDueDate("");
       setRecipients([]);
+      setError("");
     }
   }, [open, form?.category]);
 
-  function handleAssign() {
-    if (!form || (target === "specific_users" && recipients.length === 0)) return;
-    assignForm({
-      formId: form.id,
-      target,
-      targetUserIds: recipients,
-      dueDate: dueDate || undefined,
-    });
-    onOpenChange(false);
-    const tLabel = targetOptions.find((t) => t.value === target)?.label.toLowerCase();
-    toast({
-      title: "Form assigned",
-      description: `"${form.title}" assigned to ${tLabel}. They'll see it in their Forms inbox immediately.`,
-    });
+  async function handleAssign() {
+    if (!form || (target === "specific_users" && recipients.length === 0))
+      return;
+    if (pending) return;
+    setPending(true);
+    setError("");
+    try {
+      assignForm({
+        formId: form.id,
+        target,
+        targetUserIds: recipients,
+        dueDate: dueDate || undefined,
+      });
+      await flushChanges();
+      onOpenChange(false);
+      const tLabel = targetOptions
+        .find((t) => t.value === target)
+        ?.label.toLowerCase();
+      toast({
+        title: "Form assigned",
+        description: `"${form.title}" assigned to ${tLabel}. They'll see it in their Forms inbox immediately.`,
+      });
+    } catch (e) {
+      setError(
+        e instanceof Error
+          ? e.message
+          : "Could not assign form. Retry with your selected recipients.",
+      );
+    } finally {
+      setPending(false);
+    }
   }
 
   if (!form) return null;
@@ -101,10 +135,17 @@ export function AssignFormModal({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[480px]">
+        {error && (
+          <p role="alert" className="text-sm text-destructive">
+            {error}
+          </p>
+        )}
         <DialogHeader>
           <DialogTitle className="text-base">Assign form</DialogTitle>
           <DialogDescription className="text-xs">
-            Choose who should fill <span className="font-medium text-foreground">{form.title}</span> ({FORM_CATEGORY_LABELS[form.category]}).
+            Choose who should fill{" "}
+            <span className="font-medium text-foreground">{form.title}</span> (
+            {FORM_CATEGORY_LABELS[form.category]}).
           </DialogDescription>
         </DialogHeader>
 
@@ -123,15 +164,28 @@ export function AssignFormModal({
                       "flex items-start gap-2.5 rounded-md border px-3 py-2 text-left transition-colors",
                       target === opt.value
                         ? "border-primary bg-primary/5 ring-1 ring-inset ring-primary/30"
-                        : "border-border/60 hover:bg-muted/40"
+                        : "border-border/60 hover:bg-muted/40",
                     )}
                   >
-                    <Icon className={cn("mt-0.5 h-4 w-4 shrink-0", target === opt.value ? "text-primary" : "text-muted-foreground")} />
+                    <Icon
+                      className={cn(
+                        "mt-0.5 h-4 w-4 shrink-0",
+                        target === opt.value
+                          ? "text-primary"
+                          : "text-muted-foreground",
+                      )}
+                    />
                     <div className="min-w-0 flex-1">
-                      <div className="text-[13px] font-medium text-foreground">{opt.label}</div>
-                      <div className="text-[11px] text-muted-foreground">{opt.description}</div>
+                      <div className="text-[13px] font-medium text-foreground">
+                        {opt.label}
+                      </div>
+                      <div className="text-[11px] text-muted-foreground">
+                        {opt.description}
+                      </div>
                     </div>
-                    {target === opt.value && <CheckCircle2 className="h-4 w-4 text-primary shrink-0" />}
+                    {target === opt.value && (
+                      <CheckCircle2 className="h-4 w-4 text-primary shrink-0" />
+                    )}
                   </button>
                 );
               })}
@@ -140,16 +194,47 @@ export function AssignFormModal({
 
           {target === "specific_users" && (
             <fieldset className="max-h-52 overflow-auto border border-border p-2">
-              <legend className="px-1 text-xs font-medium">Recipients ({recipients.length})</legend>
-              {users.map((u) => <label key={u.id} className="flex min-h-11 cursor-pointer items-center gap-3 px-2 text-sm hover:bg-muted">
-                <input type="checkbox" checked={recipients.includes(u.id)} onChange={(e) => setRecipients((ids) => e.target.checked ? [...ids, u.id] : ids.filter((id) => id !== u.id))} />
-                <span className="min-w-0"><span className="block truncate">{u.name}</span><span className="text-xs text-muted-foreground">{u.role} · {u.email}</span></span>
-              </label>)}
-              {users.length === 0 && <p className="p-2 text-sm text-muted-foreground">No active recipients.</p>}
+              <legend className="px-1 text-xs font-medium">
+                Recipients ({recipients.length})
+              </legend>
+              {users.map((u) => (
+                <label
+                  key={u.id}
+                  className="flex min-h-11 cursor-pointer items-center gap-3 px-2 text-sm hover:bg-muted"
+                >
+                  <input
+                    type="checkbox"
+                    checked={recipients.includes(u.id)}
+                    onChange={(e) =>
+                      setRecipients((ids) =>
+                        e.target.checked
+                          ? [...ids, u.id]
+                          : ids.filter((id) => id !== u.id),
+                      )
+                    }
+                  />
+                  <span className="min-w-0">
+                    <span className="block truncate">{u.name}</span>
+                    <span className="text-xs text-muted-foreground">
+                      {u.role} · {u.email}
+                    </span>
+                  </span>
+                </label>
+              ))}
+              {users.length === 0 && (
+                <p className="p-2 text-sm text-muted-foreground">
+                  No active recipients.
+                </p>
+              )}
             </fieldset>
           )}
           <div className="space-y-1.5">
-            <Label htmlFor="afm-due">Due date <span className="text-muted-foreground font-normal">(optional)</span></Label>
+            <Label htmlFor="afm-due">
+              Due date{" "}
+              <span className="text-muted-foreground font-normal">
+                (optional)
+              </span>
+            </Label>
             <div className="flex items-center gap-2">
               <CalendarClock className="h-4 w-4 text-muted-foreground" />
               <Input
@@ -160,7 +245,13 @@ export function AssignFormModal({
                 className="h-9 max-w-[180px]"
               />
               {dueDate && (
-                <Button type="button" variant="ghost" size="sm" className="h-7 text-[11px] text-muted-foreground" onClick={() => setDueDate("")}>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 text-[11px] text-muted-foreground"
+                  onClick={() => setDueDate("")}
+                >
                   Clear
                 </Button>
               )}
@@ -172,7 +263,14 @@ export function AssignFormModal({
           <DialogClose asChild>
             <Button variant="ghost">Cancel</Button>
           </DialogClose>
-          <Button disabled={target === "specific_users" && recipients.length === 0} onClick={handleAssign} className="gap-1.5">
+          <Button
+            disabled={
+              pending ||
+              (target === "specific_users" && recipients.length === 0)
+            }
+            onClick={() => void handleAssign()}
+            className="gap-1.5"
+          >
             <CheckCircle2 className="h-4 w-4" /> Assign form
           </Button>
         </DialogFooter>

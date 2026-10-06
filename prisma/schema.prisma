@@ -29,6 +29,7 @@ model PortalAccount {
   mustChangePassword Boolean @default(false)
   isDemo             Boolean @default(false)
   writingPreferencesJson String @default("{}")
+  notificationPreferencesJson String @default("{}")
   school             PortalSchool @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   sessions           PortalSession[]
   receipts           PortalReceipt[]
@@ -57,4 +58,36 @@ model PortalLoginAttempt {
   key        String @id
   count      Int @default(0)
   resetAt    DateTime
+}
+
+// Independent report aggregates keep narrative revisions separate from attendance.
+model PracticumReport {
+  id        String @id
+  schoolId  String
+  ownerId   String
+  revision  Int @default(0)
+  stateJson String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  assets    ReportAsset[]
+  @@index([schoolId])
+}
+
+model ReportAsset {
+  id        String @id
+  reportId  String
+  name      String
+  mime      String
+  kind      String
+  sectionId String?
+  caption   String @default("")
+  rotation  Int @default(0)
+  width     Int?
+  height    Int?
+  size      Int
+  order     Int @default(0)
+  bytes     Bytes
+  createdAt DateTime @default(now())
+  report    PracticumReport @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  @@index([reportId])
 }

@@ -420,3 +420,62 @@ Base: Carl’s `bbee8f4`; branch: `practo/testing-platform`. See [complete scope
 | `tests/account-clock-integration.cjs` | A |
 | `tests/browser-smoke.cjs` | M |
 | `tests/prototype.test.cjs` | M |
+
+## Report/form workspace — October 6, 2026
+
+Base refreshed to `7bc2cf9`; target remains `practo/testing-platform`. See [workflow/setup guide](REPORT_WORKSPACE.md) and [plan](REPORT_WORKSPACE_PLAN.md). Carl’s updated login/SVG are preserved.
+
+| File | Status |
+| --- | --- |
+| `README.md` | M |
+| `package-lock.json` | M |
+| `package.json` | M |
+| `prisma/schema.prisma` | M |
+| `src/components/portal/coordinator/coordinator-workspace.tsx` | M |
+| `src/components/portal/coordinator/form-editor.tsx` | M |
+| `src/components/portal/layout/notifications-dropdown.tsx` | M |
+| `src/components/portal/shared/assign-form-modal.tsx` | M |
+| `src/components/portal/shared/create-form-wizard.tsx` | M |
+| `src/components/portal/shared/form-block-renderer.tsx` | M |
+| `src/components/portal/student/student-form-workspace.tsx` | M |
+| `src/components/portal/student/student-workspace.tsx` | M |
+| `src/components/portal/supervisor/supervisor-form-workspace.tsx` | M |
+| `src/components/portal/supervisor/supervisor-workspace.tsx` | M |
+| `src/domain/portal/actions/forms.ts` | M |
+| `src/domain/portal/types.ts` | M |
+| `src/lib/form-export.ts` | M |
+| `src/lib/nav.ts` | M |
+| `src/lib/prototype.ts` | M |
+| `src/lib/types.ts` | M |
+| `src/lib/use-notifications.ts` | M |
+| `src/server/command-schema.ts` | M |
+| `src/server/permissions.ts` | M |
+| `docs/REPORT_WORKSPACE.md` | A |
+| `docs/REPORT_WORKSPACE_PLAN.md` | A |
+| `docs/screenshots/report-builder-desktop.png` | A |
+| `docs/screenshots/report-builder-mobile.png` | A |
+| `prisma/migrations/20261006123000_report_workspace/migration.sql` | A |
+| `src/app/api/preferences/notifications/route.ts` | A |
+| `src/app/api/reports/[reportId]/assets/[assetId]/route.ts` | A |
+| `src/app/api/reports/[reportId]/assets/route.ts` | A |
+| `src/app/api/reports/[reportId]/export/route.ts` | A |
+| `src/app/api/reports/[reportId]/route.ts` | A |
+| `src/app/api/reports/route.ts` | A |
+| `src/client/reports.ts` | A |
+| `src/components/portal/reports/report-editor.tsx` | A |
+| `src/components/portal/reports/report-section-preview.tsx` | A |
+| `src/components/portal/reports/report-workspace.tsx` | A |
+| `src/domain/form-templates.ts` | A |
+| `src/domain/reports/checks.ts` | A |
+| `src/domain/reports/model.ts` | A |
+| `src/hooks/use-form-draft.ts` | A |
+| `src/hooks/use-notification-preferences.ts` | A |
+| `src/hooks/use-report-draft.ts` | A |
+| `src/server/reports/assets.ts` | A |
+| `src/server/reports/export.ts` | A |
+| `src/server/reports/service.ts` | A |
+| `src/server/reports/upload-body.ts` | A |
+| `src/server/reports/word.ts` | A |
+| `tests/report-browser.cjs` | A |
+| `tests/report-document.cjs` | A |
+| `tests/report-integration.cjs` | A |

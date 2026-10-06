@@ -64,6 +64,7 @@ const SupervisorFormWorkspace = dynamic(
     ),
   { loading: () => <WorkspaceLoader /> },
 );
+const ReportWorkspace = dynamic(() => import("../reports/report-workspace").then(m => m.ReportWorkspace), { loading: () => <WorkspaceLoader /> });
 export function SupervisorWorkspace() {
   const view = useAppStore((s) => s.view);
   const viewParams = useAppStore((s) => s.viewParams);
@@ -88,6 +89,8 @@ export function SupervisorWorkspace() {
       return <SupervisorFormsList />;
     case "supervisor.form-view":
       return <SupervisorFormWorkspace formId={viewParams.formId} />;
+    case "supervisor.report-builder":
+      return <ReportWorkspace />;
     case "supervisor.reports":
       return <SupervisorReports />;
     // Alias: time-monitor now points to My Interns (the live board + roster

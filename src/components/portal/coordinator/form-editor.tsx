@@ -1,4 +1,5 @@
 "use client";
+import { formStructureErrors } from "@/domain/form-templates";
 
 import * as React from "react";
 import {
@@ -93,14 +94,44 @@ interface BlockTypeMeta {
 }
 
 const BLOCK_TYPES: BlockTypeMeta[] = [
-  { type: "heading", label: "Heading", icon: Heading2, hint: "Section / sub-section title" },
+  {
+    type: "heading",
+    label: "Heading",
+    icon: Heading2,
+    hint: "Section / sub-section title",
+  },
   { type: "paragraph", label: "Paragraph", icon: Pilcrow, hint: "Body text" },
-  { type: "instruction", label: "Instruction", icon: Info, hint: "Muted helper text" },
+  {
+    type: "instruction",
+    label: "Instruction",
+    icon: Info,
+    hint: "Muted helper text",
+  },
   { type: "divider", label: "Divider", icon: Minus, hint: "Horizontal rule" },
-  { type: "info-field", label: "Info field", icon: TextCursorInput, hint: "Label + blank (one line)" },
-  { type: "fill-in", label: "Fill-in", icon: AlignLeft, hint: "Label + multi-line answer area" },
-  { type: "rating-table", label: "Rating table", icon: Table2, hint: "Criteria × scale matrix" },
-  { type: "signature", label: "Signature", icon: PenLine, hint: "Signature line + caption" },
+  {
+    type: "info-field",
+    label: "Info field",
+    icon: TextCursorInput,
+    hint: "Label + blank (one line)",
+  },
+  {
+    type: "fill-in",
+    label: "Fill-in",
+    icon: AlignLeft,
+    hint: "Label + multi-line answer area",
+  },
+  {
+    type: "rating-table",
+    label: "Rating table",
+    icon: Table2,
+    hint: "Criteria × scale matrix",
+  },
+  {
+    type: "signature",
+    label: "Signature",
+    icon: PenLine,
+    hint: "Signature line + caption",
+  },
 ];
 
 export function FormEditor({ formId }: { formId?: string }) {
@@ -124,11 +155,15 @@ export function FormEditor({ formId }: { formId?: string }) {
   const archiveFormDocument = useAppStore((s) => s.archiveFormDocument);
 
   const [previewMode, setPreviewMode] = React.useState(false);
-  const [previewValues, setPreviewValues] = React.useState<Record<string, string | Record<string, string>>>({});
+  const [previewValues, setPreviewValues] = React.useState<
+    Record<string, string | Record<string, string>>
+  >({});
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
-    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    }),
   );
 
   if (!form) {
@@ -161,7 +196,10 @@ export function FormEditor({ formId }: { formId?: string }) {
   function handleAddBlock(type: FormBlockType, afterBlockId?: string) {
     if (!form || form.status !== "draft" || pending) return;
     addFormBlock(form.id, type, afterBlockId);
-    toast({ title: "Block added", description: BLOCK_TYPES.find((b) => b.type === type)?.label });
+    toast({
+      title: "Block added",
+      description: BLOCK_TYPES.find((b) => b.type === type)?.label,
+    });
   }
 
   async function handlePublish() {
@@ -170,12 +208,21 @@ export function FormEditor({ formId }: { formId?: string }) {
       throw new Error("Give the form a title before publishing.");
     }
     if (form.blocks.length === 0) {
-      toast({ title: "Cannot publish empty form", description: "Add at least one block first.", variant: "destructive" });
+      toast({
+        title: "Cannot publish empty form",
+        description: "Add at least one block first.",
+        variant: "destructive",
+      });
       return;
     }
+    const errors = formStructureErrors(form);
+    if (errors.length) throw new Error(errors.join(" "));
     publishFormDocument(form.id);
     await flushChanges();
-    toast({ title: "Form published", description: `v${form.version + 1} is now visible to supervisors.` });
+    toast({
+      title: "Form published",
+      description: `v${form.version + 1} is now visible to supervisors.`,
+    });
   }
 
   async function handleUnpublish() {
@@ -202,14 +249,21 @@ export function FormEditor({ formId }: { formId?: string }) {
         {/* Sticky editor toolbar */}
         <div className="sticky top-16 z-20 -mx-4 border-b border-border/60 bg-background/95 px-4 py-2 backdrop-blur sm:-mx-6 sm:px-6">
           <div className="flex flex-wrap items-center gap-2">
-            <Button variant="ghost" size="sm" onClick={back} className="gap-1 text-muted-foreground hover:text-foreground">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={back}
+              className="gap-1 text-muted-foreground hover:text-foreground"
+            >
               <X className="h-4 w-4" /> Exit
             </Button>
             <div className="hidden h-5 w-px bg-border/70 sm:block" />
             <div className="flex items-center gap-1.5">
               <FormStatusBadge status={form.status} />
               {form.version > 0 && (
-                <span className="text-[11px] text-muted-foreground">v{form.version}</span>
+                <span className="text-[11px] text-muted-foreground">
+                  v{form.version}
+                </span>
               )}
             </div>
             <div className="flex w-full flex-wrap items-center gap-1.5 sm:ml-auto sm:w-auto">
@@ -220,26 +274,58 @@ export function FormEditor({ formId }: { formId?: string }) {
                 onClick={() => setPreviewMode((v) => !v)}
                 className="gap-1.5"
               >
-                {showingPreview ? <Pencil className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
-                {form.status !== "draft" ? "Preview" : previewMode ? "Edit" : "Preview"}
+                {showingPreview ? (
+                  <Pencil className="h-3.5 w-3.5" />
+                ) : (
+                  <Eye className="h-3.5 w-3.5" />
+                )}
+                {form.status !== "draft"
+                  ? "Preview"
+                  : previewMode
+                    ? "Edit"
+                    : "Preview"}
               </Button>
               {form.status === "published" ? (
-                <Button variant="outline" size="sm" disabled={pending} aria-busy={pending} onClick={() => void run(handleUnpublish)} className="gap-1.5">
-                  <RotateCcw className="h-3.5 w-3.5" /> {pending ? "Saving…" : "Unpublish"}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={pending}
+                  aria-busy={pending}
+                  onClick={() => void run(handleUnpublish)}
+                  className="gap-1.5"
+                >
+                  <RotateCcw className="h-3.5 w-3.5" />{" "}
+                  {pending ? "Saving…" : "Unpublish"}
                 </Button>
               ) : (
-                <Button size="sm" disabled={pending || form.status !== "draft"} aria-busy={pending} onClick={() => void run(handlePublish)} className="gap-1.5">
-                  <Send className="h-3.5 w-3.5" /> {pending ? "Saving…" : "Publish"}
+                <Button
+                  size="sm"
+                  disabled={pending || form.status !== "draft"}
+                  aria-busy={pending}
+                  onClick={() => void run(handlePublish)}
+                  className="gap-1.5"
+                >
+                  <Send className="h-3.5 w-3.5" />{" "}
+                  {pending ? "Saving…" : "Publish"}
                 </Button>
               )}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon" className="size-11" aria-label="Form actions" disabled={pending}>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="size-11"
+                    aria-label="Form actions"
+                    disabled={pending}
+                  >
                     <MoreVertical className="h-4 w-4" />
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-44">
-                  <DropdownMenuItem disabled={pending} onClick={() => void run(handleArchive)}>
+                  <DropdownMenuItem
+                    disabled={pending}
+                    onClick={() => void run(handleArchive)}
+                  >
                     <Archive className="mr-2 h-3.5 w-3.5" /> Archive form
                   </DropdownMenuItem>
                 </DropdownMenuContent>
@@ -248,16 +334,36 @@ export function FormEditor({ formId }: { formId?: string }) {
           </div>
         </div>
 
-        <p role={actionError ? "alert" : "status"} className={actionError ? "text-sm text-destructive" : "text-xs text-muted-foreground"}>
-          {actionError || (pending || syncStatus === "saving" ? "Saving form changes…" : syncStatus === "error" ? "Changes were not saved. Reconnect before retrying." : "Form changes saved")}
+        <p
+          role={actionError ? "alert" : "status"}
+          className={
+            actionError
+              ? "text-sm text-destructive"
+              : "text-xs text-muted-foreground"
+          }
+        >
+          {actionError ||
+            (pending || syncStatus === "saving"
+              ? "Saving form changes…"
+              : syncStatus === "error"
+                ? "Changes were not saved. Reconnect before retrying."
+                : "Form changes saved")}
         </p>
-        {form.status !== "draft" && <p className="text-sm text-muted-foreground">{form.status === "published" ? "Published form — unpublish to edit the template." : "Archived form — read only."}</p>}
+        {form.status !== "draft" && (
+          <p className="text-sm text-muted-foreground">
+            {form.status === "published"
+              ? "Published form — unpublish to edit the template."
+              : "Archived form — read only."}
+          </p>
+        )}
         <div className="grid min-w-0 gap-3 xl:grid-cols-[180px_minmax(0,1fr)_180px]">
           {/* Left: outline */}
           <aside className="hidden min-w-0 xl:block">
             <SectionCard title="Outline" className="sticky top-36">
               {outlineItems.length === 0 ? (
-                <p className="text-[12px] text-muted-foreground">Headings you add will appear here.</p>
+                <p className="text-[12px] text-muted-foreground">
+                  Headings you add will appear here.
+                </p>
               ) : (
                 <ul className="space-y-1">
                   {outlineItems.map((b) => (
@@ -266,7 +372,7 @@ export function FormEditor({ formId }: { formId?: string }) {
                         href={`#block-${b.id}`}
                         className={cn(
                           "block rounded px-1.5 py-1 text-[12px] text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground",
-                          b.level === 1 && "font-semibold text-foreground"
+                          b.level === 1 && "font-semibold text-foreground",
                         )}
                       >
                         {b.text || "Untitled"}
@@ -281,27 +387,40 @@ export function FormEditor({ formId }: { formId?: string }) {
           {/* Center: title meta + blocks */}
           <div className="min-w-0 space-y-3">
             <SectionCard>
-              <fieldset disabled={pending || form.status !== "draft"} className="min-w-0 space-y-2.5">
+              <fieldset
+                disabled={pending || form.status !== "draft"}
+                className="min-w-0 space-y-2.5"
+              >
                 <div className="space-y-1">
-                  <Label htmlFor="form-title" className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                  <Label
+                    htmlFor="form-title"
+                    className="text-[11px] uppercase tracking-wide text-muted-foreground"
+                  >
                     Form title
                   </Label>
                   <Input
                     id="form-title"
                     value={form.title}
-                    onChange={(e) => updateFormMeta(form.id, { title: e.target.value })}
+                    onChange={(e) =>
+                      updateFormMeta(form.id, { title: e.target.value })
+                    }
                     className="h-9 text-[14.5px] font-semibold"
                     placeholder="Untitled form"
                   />
                 </div>
                 <div className="space-y-1">
-                  <Label htmlFor="form-desc" className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                  <Label
+                    htmlFor="form-desc"
+                    className="text-[11px] uppercase tracking-wide text-muted-foreground"
+                  >
                     Description
                   </Label>
                   <Textarea
                     id="form-desc"
                     value={form.description}
-                    onChange={(e) => updateFormMeta(form.id, { description: e.target.value })}
+                    onChange={(e) =>
+                      updateFormMeta(form.id, { description: e.target.value })
+                    }
                     placeholder="What is this form for? When is it used?"
                     rows={2}
                     className="text-[13px]"
@@ -309,25 +428,36 @@ export function FormEditor({ formId }: { formId?: string }) {
                 </div>
                 <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                   <div className="space-y-1">
-                    <Label htmlFor="form-cat" className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                    <Label
+                      htmlFor="form-cat"
+                      className="text-[11px] uppercase tracking-wide text-muted-foreground"
+                    >
                       Category
                     </Label>
                     <Select
                       value={form.category}
-                      onValueChange={(v) => updateFormMeta(form.id, { category: v as FormCategory })}
+                      onValueChange={(v) =>
+                        updateFormMeta(form.id, { category: v as FormCategory })
+                      }
                     >
                       <SelectTrigger id="form-cat" className="h-9">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        {Object.entries(FORM_CATEGORY_LABELS).map(([val, lbl]) => (
-                          <SelectItem key={val} value={val}>{lbl}</SelectItem>
-                        ))}
+                        {Object.entries(FORM_CATEGORY_LABELS).map(
+                          ([val, lbl]) => (
+                            <SelectItem key={val} value={val}>
+                              {lbl}
+                            </SelectItem>
+                          ),
+                        )}
                       </SelectContent>
                     </Select>
                   </div>
                   <div className="space-y-1">
-                    <Label className="text-[11px] uppercase tracking-wide text-muted-foreground">Blocks</Label>
+                    <Label className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                      Blocks
+                    </Label>
                     <div className="flex h-9 items-center rounded-md border border-input bg-muted/30 px-2.5 text-[13px] text-muted-foreground">
                       {form.blocks.length} total
                     </div>
@@ -350,11 +480,18 @@ export function FormEditor({ formId }: { formId?: string }) {
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="start" className="w-56">
                     {BLOCK_TYPES.map((b) => (
-                      <DropdownMenuItem key={b.type} onClick={() => handleAddBlock(b.type)}>
+                      <DropdownMenuItem
+                        key={b.type}
+                        onClick={() => handleAddBlock(b.type)}
+                      >
                         <b.icon className="mr-2 h-3.5 w-3.5" />
                         <div className="flex flex-col">
-                          <span className="text-[13px] font-medium">{b.label}</span>
-                          <span className="text-[11px] text-muted-foreground">{b.hint}</span>
+                          <span className="text-[13px] font-medium">
+                            {b.label}
+                          </span>
+                          <span className="text-[11px] text-muted-foreground">
+                            {b.hint}
+                          </span>
                         </div>
                       </DropdownMenuItem>
                     ))}
@@ -382,7 +519,10 @@ export function FormEditor({ formId }: { formId?: string }) {
 
             {/* Blocks (edit or preview) */}
             {showingPreview ? (
-              <SectionCard title="Live preview" description="How supervisors will see this form.">
+              <SectionCard
+                title="Live preview"
+                description="How supervisors will see this form."
+              >
                 <div className="space-y-3">
                   {form.blocks.map((b) => (
                     <FormBlockRenderer
@@ -390,11 +530,15 @@ export function FormEditor({ formId }: { formId?: string }) {
                       block={b}
                       interactive
                       values={previewValues}
-                      onValueChange={(id, v) => setPreviewValues((prev) => ({ ...prev, [id]: v }))}
+                      onValueChange={(id, v) =>
+                        setPreviewValues((prev) => ({ ...prev, [id]: v }))
+                      }
                     />
                   ))}
                   {form.blocks.length === 0 && (
-                    <p className="text-[12.5px] text-muted-foreground">No blocks yet — switch to Edit to add some.</p>
+                    <p className="text-[12.5px] text-muted-foreground">
+                      No blocks yet — switch to Edit to add some.
+                    </p>
                   )}
                 </div>
               </SectionCard>
@@ -404,15 +548,23 @@ export function FormEditor({ formId }: { formId?: string }) {
                 collisionDetection={closestCenter}
                 onDragEnd={handleDragEnd}
               >
-                <SortableContext items={form.blocks.map((b) => b.id)} strategy={verticalListSortingStrategy}>
+                <SortableContext
+                  items={form.blocks.map((b) => b.id)}
+                  strategy={verticalListSortingStrategy}
+                >
                   <div className="space-y-2">
                     {form.blocks.map((b, idx) => (
                       <SortableBlock
                         key={b.id}
                         block={b}
+                        earlierQuestions={form.blocks
+                          .slice(0, idx)
+                          .filter((q) => q.type === "fill-in" && !q.showIf)}
                         index={idx}
                         total={form.blocks.length}
-                        onChange={(patch) => updateFormBlock(form.id, b.id, patch)}
+                        onChange={(patch) =>
+                          updateFormBlock(form.id, b.id, patch)
+                        }
                         onRemove={() => removeFormBlock(form.id, b.id)}
                         onMoveUp={() => moveFormBlock(form.id, b.id, "up")}
                         onMoveDown={() => moveFormBlock(form.id, b.id, "down")}
@@ -422,7 +574,9 @@ export function FormEditor({ formId }: { formId?: string }) {
                     ))}
                     {form.blocks.length === 0 && (
                       <div className="rounded-lg border border-dashed border-border/70 bg-muted/20 p-6 text-center">
-                        <p className="text-[13px] text-muted-foreground">Start by inserting a block above.</p>
+                        <p className="text-[13px] text-muted-foreground">
+                          Start by inserting a block above.
+                        </p>
                       </div>
                     )}
                   </div>
@@ -435,13 +589,20 @@ export function FormEditor({ formId }: { formId?: string }) {
               <div className="flex justify-center pt-1">
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="sm" className="gap-1.5 text-muted-foreground">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="gap-1.5 text-muted-foreground"
+                    >
                       <Plus className="h-3.5 w-3.5" /> Add block at end
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="center" className="w-56">
                     {BLOCK_TYPES.map((b) => (
-                      <DropdownMenuItem key={b.type} onClick={() => handleAddBlock(b.type)}>
+                      <DropdownMenuItem
+                        key={b.type}
+                        onClick={() => handleAddBlock(b.type)}
+                      >
                         <b.icon className="mr-2 h-3.5 w-3.5" /> {b.label}
                       </DropdownMenuItem>
                     ))}
@@ -465,8 +626,12 @@ export function FormEditor({ formId }: { formId?: string }) {
                     >
                       <b.icon className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground" />
                       <div className="min-w-0">
-                        <div className="text-[12.5px] font-medium text-foreground">{b.label}</div>
-                        <div className="text-[11px] text-muted-foreground">{b.hint}</div>
+                        <div className="text-[12.5px] font-medium text-foreground">
+                          {b.label}
+                        </div>
+                        <div className="text-[11px] text-muted-foreground">
+                          {b.hint}
+                        </div>
                       </div>
                     </button>
                   </li>
@@ -486,6 +651,7 @@ export function FormEditor({ formId }: { formId?: string }) {
 
 function SortableBlock({
   block,
+  earlierQuestions,
   index,
   total,
   onChange,
@@ -496,6 +662,7 @@ function SortableBlock({
   onAddAfter,
 }: {
   block: FormBlock;
+  earlierQuestions: FormBlock[];
   index: number;
   total: number;
   onChange: (patch: Partial<FormBlock>) => void;
@@ -525,7 +692,9 @@ function SortableBlock({
       style={style}
       className={cn(
         "group relative rounded-lg border bg-card transition-shadow",
-        isDragging ? "z-10 border-primary/60 shadow-md" : "border-border/60 hover:border-border/90"
+        isDragging
+          ? "z-10 border-primary/60 shadow-md"
+          : "border-border/60 hover:border-border/90",
       )}
     >
       {/* Block chrome: drag handle + type badge + actions */}
@@ -542,18 +711,46 @@ function SortableBlock({
         <span className="rounded bg-muted/60 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
           {block.type}
         </span>
-        <span className="text-[10.5px] text-muted-foreground/70">#{index + 1}</span>
+        <span className="text-[10.5px] text-muted-foreground/70">
+          #{index + 1}
+        </span>
         <div className="ml-auto flex items-center gap-0.5">
-          <Button variant="ghost" size="icon" className="size-11" aria-label="Move block up" onClick={onMoveUp} disabled={index === 0}>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="size-11"
+            aria-label="Move block up"
+            onClick={onMoveUp}
+            disabled={index === 0}
+          >
             <ChevronUp className="h-3.5 w-3.5" />
           </Button>
-          <Button variant="ghost" size="icon" className="size-11" aria-label="Move block down" onClick={onMoveDown} disabled={index === total - 1}>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="size-11"
+            aria-label="Move block down"
+            onClick={onMoveDown}
+            disabled={index === total - 1}
+          >
             <ChevronDown className="h-3.5 w-3.5" />
           </Button>
-          <Button variant="ghost" size="icon" className="size-11" aria-label="Duplicate block" onClick={onDuplicate}>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="size-11"
+            aria-label="Duplicate block"
+            onClick={onDuplicate}
+          >
             <Copy className="h-3.5 w-3.5" />
           </Button>
-          <Button variant="ghost" size="icon" className="size-11 text-muted-foreground hover:text-destructive" aria-label="Remove block" onClick={onRemove}>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="size-11 text-muted-foreground hover:text-destructive"
+            aria-label="Remove block"
+            onClick={onRemove}
+          >
             <Trash2 className="h-3.5 w-3.5" />
           </Button>
         </div>
@@ -561,7 +758,64 @@ function SortableBlock({
 
       {/* Block body: inline editor specific to the block type */}
       <div className="px-3 py-2.5" id={`block-${block.id}`}>
-        <BlockInlineEditor block={block} onChange={onChange} onAddAfter={onAddAfter} />
+        <BlockInlineEditor
+          block={block}
+          onChange={onChange}
+          onAddAfter={onAddAfter}
+        />
+        {["fill-in", "rating-table"].includes(block.type) &&
+          earlierQuestions.length > 0 && (
+            <details className="mt-3 border-t pt-2">
+              <summary className="cursor-pointer text-xs text-muted-foreground">
+                Conditional question
+              </summary>
+              <label className="mt-2 block text-xs">
+                Show only when an earlier answer matches
+                <select
+                  className="mt-1 min-h-10 w-full rounded-md border bg-background px-2"
+                  value={block.showIf?.blockId ?? ""}
+                  onChange={(e) =>
+                    onChange({
+                      showIf: e.target.value
+                        ? {
+                            blockId: e.target.value,
+                            equals: block.showIf?.equals ?? "Yes",
+                          }
+                        : null,
+                    })
+                  }
+                >
+                  <option value="">Always show</option>
+                  {earlierQuestions.map((q) => (
+                    <option key={q.id} value={q.id}>
+                      {q.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              {block.showIf && (
+                <label className="mt-2 block text-xs">
+                  Matching answer
+                  <Input
+                    value={block.showIf.equals}
+                    maxLength={1000}
+                    onChange={(e) =>
+                      onChange({
+                        showIf: {
+                          blockId: block.showIf!.blockId,
+                          equals: e.target.value,
+                        },
+                      })
+                    }
+                  />
+                </label>
+              )}
+              <p className="mt-1 text-xs text-muted-foreground">
+                Matches ignore letter case and surrounding spaces. Hidden
+                questions are not required or included in answered exports.
+              </p>
+            </details>
+          )}
       </div>
     </div>
   );
@@ -581,7 +835,9 @@ function BlockInlineEditor({
       return (
         <div className="space-y-2">
           <div className="flex items-center gap-1.5">
-            <span className="text-[11px] uppercase tracking-wide text-muted-foreground">Level</span>
+            <span className="text-[11px] uppercase tracking-wide text-muted-foreground">
+              Level
+            </span>
             <div className="flex items-center gap-0.5">
               {([1, 2, 3] as const).map((lvl) => (
                 <Button
@@ -593,8 +849,7 @@ function BlockInlineEditor({
                 >
                   {lvl === 1 && <Heading1 className="h-3 w-3" />}
                   {lvl === 2 && <Heading2 className="h-3 w-3" />}
-                  {lvl === 3 && <Heading3 className="h-3 w-3" />}
-                  H{lvl}
+                  {lvl === 3 && <Heading3 className="h-3 w-3" />}H{lvl}
                 </Button>
               ))}
             </div>
@@ -609,7 +864,7 @@ function BlockInlineEditor({
                 ? "text-lg font-semibold"
                 : block.level === 2
                   ? "text-[15px] font-semibold"
-                  : "text-sm font-semibold"
+                  : "text-sm font-semibold",
             )}
           />
         </div>
@@ -652,16 +907,24 @@ function BlockInlineEditor({
         <div className="space-y-2">
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
             <div className="space-y-1">
-              <Label className="text-[11px] uppercase tracking-wide text-muted-foreground">Label</Label>
+              <Label className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                Label
+              </Label>
               <Input
                 value={block.label ?? ""}
                 onChange={(e) => onChange({ label: e.target.value })}
-                placeholder={block.type === "info-field" ? "e.g. Name, Date" : "e.g. Question"}
+                placeholder={
+                  block.type === "info-field"
+                    ? "e.g. Name, Date"
+                    : "e.g. Question"
+                }
                 className="h-8 text-[13px]"
               />
             </div>
             <div className="space-y-1">
-              <Label className="text-[11px] uppercase tracking-wide text-muted-foreground">Placeholder hint</Label>
+              <Label className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                Placeholder hint
+              </Label>
               <Input
                 value={block.placeholder ?? ""}
                 onChange={(e) => onChange({ placeholder: e.target.value })}
@@ -682,7 +945,9 @@ function BlockInlineEditor({
             </label>
           )}
           <div className="rounded-md border border-dashed border-border/60 p-2">
-            <div className="text-[11px] uppercase tracking-wide text-muted-foreground">Preview</div>
+            <div className="text-[11px] uppercase tracking-wide text-muted-foreground">
+              Preview
+            </div>
             <div className="mt-1">
               <FormBlockRenderer block={block} interactive={false} />
             </div>
@@ -697,7 +962,9 @@ function BlockInlineEditor({
       return (
         <div className="space-y-2">
           <div className="space-y-1">
-            <Label className="text-[11px] uppercase tracking-wide text-muted-foreground">Caption</Label>
+            <Label className="text-[11px] uppercase tracking-wide text-muted-foreground">
+              Caption
+            </Label>
             <Input
               value={block.caption ?? ""}
               onChange={(e) => onChange({ caption: e.target.value })}
@@ -706,7 +973,9 @@ function BlockInlineEditor({
             />
           </div>
           <div className="rounded-md border border-dashed border-border/60 p-2">
-            <div className="text-[11px] uppercase tracking-wide text-muted-foreground">Preview</div>
+            <div className="text-[11px] uppercase tracking-wide text-muted-foreground">
+              Preview
+            </div>
             <div className="mt-1">
               <FormBlockRenderer block={block} interactive={false} />
             </div>
@@ -735,7 +1004,9 @@ function RatingTableEditor({
     onChange({ scaleLabels: next });
   }
   function addScale() {
-    onChange({ scaleLabels: [...scaleLabels, `Option ${scaleLabels.length + 1}`] });
+    onChange({
+      scaleLabels: [...scaleLabels, `Option ${scaleLabels.length + 1}`],
+    });
   }
   function removeScale(idx: number) {
     onChange({ scaleLabels: scaleLabels.filter((_, i) => i !== idx) });
@@ -747,7 +1018,12 @@ function RatingTableEditor({
   }
   function addCriterion() {
     const id = `c-${Date.now()}`;
-    onChange({ criteria: [...criteria, { id, label: `New criterion ${criteria.length + 1}` }] });
+    onChange({
+      criteria: [
+        ...criteria,
+        { id, label: `New criterion ${criteria.length + 1}` },
+      ],
+    });
   }
   function removeCriterion(id: string) {
     onChange({ criteria: criteria.filter((c) => c.id !== id) });
@@ -778,7 +1054,12 @@ function RatingTableEditor({
               </Button>
             </div>
           ))}
-          <Button variant="outline" size="sm" className="h-7 gap-1 text-[11px]" onClick={addScale}>
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-7 gap-1 text-[11px]"
+            onClick={addScale}
+          >
             <Plus className="h-3 w-3" /> Column
           </Button>
         </div>
@@ -789,7 +1070,12 @@ function RatingTableEditor({
           <Label className="text-[11px] uppercase tracking-wide text-muted-foreground">
             Criteria rows ({criteria.length})
           </Label>
-          <Button variant="outline" size="sm" className="h-7 gap-1 text-[11px]" onClick={addCriterion}>
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-7 gap-1 text-[11px]"
+            onClick={addCriterion}
+          >
             <Plus className="h-3 w-3" /> Row
           </Button>
         </div>
@@ -813,13 +1099,17 @@ function RatingTableEditor({
             </div>
           ))}
           {criteria.length === 0 && (
-            <p className="text-[12px] text-muted-foreground">No criteria yet — add at least one row.</p>
+            <p className="text-[12px] text-muted-foreground">
+              No criteria yet — add at least one row.
+            </p>
           )}
         </div>
       </div>
 
       <div className="rounded-md border border-dashed border-border/60 p-2">
-        <div className="text-[11px] uppercase tracking-wide text-muted-foreground">Preview</div>
+        <div className="text-[11px] uppercase tracking-wide text-muted-foreground">
+          Preview
+        </div>
         <div className="mt-1">
           <FormBlockRenderer block={block} interactive={false} />
         </div>

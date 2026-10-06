@@ -1,3 +1,4 @@
+import { ratingResponseErrors, formBlockVisible } from "@/domain/form-templates";
 import type {
   Coordinator,
   Student,
@@ -133,6 +134,7 @@ export function responseErrors(
   values: Record<string, FormFieldValue>,
 ): string[] {
   return form.blocks.flatMap((b) => {
+    if(!formBlockVisible(b,values))return [];
     const value = values[b.id];
     if (
       ["fill-in", "signature"].includes(b.type) &&
@@ -140,11 +142,7 @@ export function responseErrors(
       !(typeof value === "string" && value.trim())
     )
       return [`Complete ${b.label ?? b.caption ?? "the required field"}.`];
-    if (
-      b.type === "rating-table" &&
-      b.criteria?.some((c) => !(typeof value === "object" && value[c.id]))
-    )
-      return ["Rate every criterion before submitting."];
+    if (b.type === "rating-table") return ratingResponseErrors(b, value);
     return [];
   });
 }

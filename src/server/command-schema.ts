@@ -87,6 +87,7 @@ const formMeta = z
   .strict();
 const blockPatch = z
   .object({
+    showIf: z.object({blockId:id,equals:z.string().max(1000)}).strict().nullable().transform(value=>value??undefined).optional(),
     text: optionalText,
     level: z.union([z.literal(1), z.literal(2), z.literal(3)]).optional(),
     label: optionalText,
@@ -222,7 +223,7 @@ const schemas: Partial<Record<MutationName, z.ZodType>> = {
       })
       .strict(),
   ]),
-  createFormDocument: z.tuple([formMeta]),
+  createFormDocument: z.tuple([formMeta.extend({ templateKey: z.enum(["journal", "site", "reflection", "feedback"]).optional() })]),
   updateFormMeta: z.tuple([id, formMeta.partial()]),
   updateFormBlock: z.tuple([id, id, blockPatch]),
   addFormBlock: z

@@ -21,8 +21,12 @@ Open http://localhost:3000. Use the visible **Testing accounts** buttons to try 
 
 No separate Kimai, HR, forms server, API key, or browser extension is needed for attendance, journals, evaluations, and built-in forms. Optional external tool links remain ordinary links.
 
+Existing installations: after pulling this report update, stop the server, run `npm ci` and `npx prisma migrate deploy`, then restart. Preserve/back up your database; do not reset it. See [Report Builder and form workflow guide](docs/REPORT_WORKSPACE.md).
+
 ## What changed
 
+- Report Builder: section templates, individual/combined dossiers, exact attendance bindings, evidence and editable versioned Word exports with grammarian-reviewed uploads.
+- Validated form starters, conditional questions, response recovery and persistent notification read state with optional sound.
 - Shared server persistence, hashed passwords, HTTP-only sessions, school/role ownership and retry-safe commands.
 - Fictional test accounts, recent attendance, journals in different states, forms, and an isolated school for permission tests.
 - All three login hero PNGs, subdued backgrounds, mobile-first sign-in and clear supervisor account creation.

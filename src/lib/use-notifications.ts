@@ -7,28 +7,11 @@ import {
   ClipboardList,
   Clock,
   FileText,
-  Timer,
-  UserPlus,
-  Users,
   type LucideIcon,
 } from "lucide-react";
 import { useAppStore } from "@/store/use-app-store";
-import {
-  allActiveTimeLogs,
-  completedTimeLogsForUser,
-  evaluationsForStudent,
-  evaluationsForSupervisor,
-  getStudent,
-  getSupervisor,
-  hoursPercent,
-  pendingJournalsForSupervisor,
-  relativeTime,
-  studentsForSupervisor,
-  studentsWithOverdueJournals,
-  totalCompletedTimeMs,
-  unevaluatedInterns,
-} from "@/lib/selectors";
-import type { Role, ViewKey, ViewParams } from "@/lib/types";
+import { assignmentAppliesTo } from "@/lib/selectors";
+import type { ViewKey, ViewParams } from "@/lib/types";
 
 export type NotificationCategory =
   | "urgent" // red — needs immediate attention (overdue, rejected)
@@ -100,307 +83,184 @@ export function getCategoryMeta(c: NotificationCategory) {
  *    low hours progress, active session)
  */
 export function useNotifications(): NotificationItem[] {
-  const role = useAppStore((s) => s.currentUser?.role) as Role | undefined;
-  const currentUser = useAppStore((s) => s.currentUser);
-  const students = useAppStore((s) => s.students);
-  const supervisors = useAppStore((s) => s.supervisors);
-  const journals = useAppStore((s) => s.journals);
-  const evaluations = useAppStore((s) => s.evaluations);
-  const timeLogs = useAppStore((s) => s.timeLogs);
-  const activity = useAppStore((s) => s.activity);
-
+  const state = useAppStore();
   return React.useMemo(() => {
-    if (!role || !currentUser) return [];
-
+    const actor = state.currentUser;
+    if (!actor) return [];
     const items: NotificationItem[] = [];
-
-    if (role === "coordinator") {
-      // 1. Overdue journals (urgent)
-      const overdue = studentsWithOverdueJournals(students, journals, 10);
-      overdue.slice(0, 4).forEach(({ student, daysOverdue }) => {
-        // `daysOverdue` can be `Infinity` when the student has no journals at
-        // all (see `daysSinceLastJournal`). `new Date(Date.now() - Infinity)`
-        // throws a RangeError("invalid date"), so we clamp to a large but
-        // finite value (180d) purely for timestamp ordering — the visible
-        // description still uses the literal "No journal submitted yet".
-        const daysForTimestamp = Number.isFinite(daysOverdue)
-          ? daysOverdue
-          : 180;
+    const students = state.students.filter(
+      (s) =>
+        actor.role === "coordinator" ||
+        (actor.role === "student"
+          ? s.id === actor.studentId
+          : s.supervisorId === actor.supervisorId),
+    );
+    const ids = new Set(students.map((s) => s.id));
+    for (const j of state.journals.filter((j) => ids.has(j.studentId))) {
+      if (actor.role !== "student" && j.status === "pending" && j.submittedAt)
         items.push({
-          id: `overdue-${student.id}`,
-          category: "urgent",
-          icon: AlertTriangle,
-          title: `${student.name} — journal overdue`,
-          description:
-            daysOverdue === Infinity
-              ? "No journal submitted yet this term."
-              : `${daysOverdue} days since last journal entry.`,
-          timestamp: new Date(
-            Date.now() - daysForTimestamp * 86400_000
-          ).toISOString(),
-          action: {
-            label: "View student",
-            view: "coordinator.student-view",
-            params: { studentId: student.id },
-          },
-        });
-      });
-
-      // 2. Pending journal approvals (approval)
-      const pending = journals.filter((j) => j.status === "pending");
-      if (pending.length > 0) {
-        items.push({
-          id: "pending-journals",
+          id: `journal:${j.id}:submitted:${j.submittedAt}`,
           category: "approval",
           icon: ClipboardList,
-          title: `${pending.length} journal${pending.length === 1 ? "" : "s"} awaiting approval`,
-          description: "Review and approve or reject submitted weekly journals.",
-          timestamp: pending[0]?.submittedAt ?? new Date().toISOString(),
-          action: { label: "Open journals", view: "coordinator.journals" },
+          title: "Journal ready for review",
+          description: `${students.find((s) => s.id === j.studentId)?.name} · ${j.date}`,
+          timestamp: j.submittedAt,
+          action: {
+            label: "Review journal",
+            view:
+              actor.role === "supervisor"
+                ? "supervisor.journal-review"
+                : "coordinator.journal-view",
+            params: { journalId: j.id },
+          },
         });
-      }
-
-      // 3. Students without supervisor (urgent)
-      const unassigned = students.filter(
-        (s) => !s.supervisorId && s.status === "active"
-      );
-      if (unassigned.length > 0) {
+      if (
+        actor.role === "student" &&
+        j.reviewedAt &&
+        ["approved", "rejected"].includes(j.status)
+      )
         items.push({
-          id: "unassigned-students",
-          category: "urgent",
-          icon: UserPlus,
-          title: `${unassigned.length} student${unassigned.length === 1 ? "" : "s"} without a supervisor`,
-          description: "Assign a company supervisor to begin tracking.",
-          timestamp: new Date().toISOString(),
-          action: { label: "Open students", view: "coordinator.students" },
+          id: `journal:${j.id}:${j.status}:${j.reviewedAt}`,
+          category: j.status === "approved" ? "success" : "urgent",
+          icon: j.status === "approved" ? CheckCircle2 : AlertTriangle,
+          title:
+            j.status === "approved"
+              ? "Journal approved"
+              : "Journal needs revision",
+          description: j.rejectionReason || `Journal dated ${j.date}`,
+          timestamp: j.reviewedAt,
+          action: {
+            label: "View journal",
+            view: "student.journal-view",
+            params: { journalId: j.id },
+          },
         });
-      }
-
-      // 4. Students currently on the clock (clock)
-      const activeStudents = allActiveTimeLogs(timeLogs).filter(
-        (t) => t.role === "student"
-      );
-      if (activeStudents.length > 0) {
-        const st = getStudent(students, activeStudents[0].userId);
+    }
+    for (const a of state.formAssignments.filter((a) =>
+      assignmentAppliesTo(a, actor),
+    )) {
+      const form = state.formDocuments.find((f) => f.id === a.formId);
+      if (form?.status === "published")
         items.push({
-          id: "active-clockins",
-          category: "clock",
-          icon: Timer,
-          title: `${activeStudents.length} student${activeStudents.length === 1 ? "" : "s"} currently on the clock`,
-          description: st
-            ? `${st.name} clocked in earliest.`
-            : "Live clock-in monitoring.",
-          timestamp: activeStudents[activeStudents.length - 1].clockInAt,
-          action: { label: "Open time tracking", view: "coordinator.time-monitor" },
-        });
-      }
-
-      // 5. Recent evaluations submitted (info)
-      const recentEvals = evaluations
-        .filter((e) => e.status === "submitted" && e.submittedAt)
-        .sort((a, b) =>
-          (a.submittedAt ?? "") < (b.submittedAt ?? "") ? 1 : -1
-        )
-        .slice(0, 1);
-      recentEvals.forEach((e) => {
-        const st = getStudent(students, e.studentId);
-        const sup = getSupervisor(supervisors, e.supervisorId);
-        items.push({
-          id: `eval-${e.id}`,
+          id: `assignment:${a.id}`,
           category: "info",
           icon: FileText,
-          title: `New evaluation submitted`,
-          description: `${sup?.name ?? "Supervisor"} evaluated ${st?.name ?? "a student"}.`,
-          timestamp: e.submittedAt ?? new Date().toISOString(),
+          title: "New form assignment",
+          description: `${form.title}${a.dueDate ? ` · Due ${a.dueDate}` : ""}`,
+          timestamp: a.createdAt,
+          action: {
+            label: "Open form",
+            view:
+              actor.role === "student"
+                ? "student.form-view"
+                : "supervisor.form-view",
+            params: { formId: a.formId },
+          },
+        });
+    }
+    for (const sub of state.formSubmissions) {
+      if (
+        actor.role === "coordinator" &&
+        ["submitted", "under_review"].includes(sub.status) &&
+        sub.submittedAt
+      )
+        items.push({
+          id: `form:${sub.id}:submitted:${sub.submittedAt}`,
+          category: "approval",
+          icon: FileText,
+          title: "Form response ready for review",
+          description: sub.formSnapshot?.title ?? "Assigned form",
+          timestamp: sub.submittedAt,
+          action: {
+            label: "Review responses",
+            view: "coordinator.forms",
+            params: { tab: "submissions" },
+          },
+        });
+      if (
+        sub.userId === actor.id &&
+        sub.reviewedAt &&
+        ["approved", "needs_revision"].includes(sub.status)
+      )
+        items.push({
+          id: `form:${sub.id}:${sub.status}:${sub.reviewedAt}`,
+          category: sub.status === "approved" ? "success" : "urgent",
+          icon: ClipboardList,
+          title:
+            sub.status === "approved"
+              ? "Form response approved"
+              : "Form response needs revision",
+          description:
+            sub.reviewNote ?? sub.formSnapshot?.title ?? "Review your response",
+          timestamp: sub.reviewedAt,
+          action: {
+            label: "Open form",
+            view:
+              actor.role === "student"
+                ? "student.form-view"
+                : "supervisor.form-view",
+            params: { formId: sub.formId },
+          },
+        });
+    }
+    if (actor.role === "student")
+      for (const e of state.evaluations.filter(
+        (e) =>
+          e.studentId === actor.studentId &&
+          e.status === "submitted" &&
+          e.submittedAt,
+      ))
+        items.push({
+          id: `evaluation:${e.id}:${e.submittedAt}`,
+          category: "success",
+          icon: CheckCircle2,
+          title: "Your evaluation is ready",
+          description: `${e.term} evaluation`,
+          timestamp: e.submittedAt!,
           action: {
             label: "View evaluation",
-            view: "coordinator.evaluation-view",
+            view: "student.evaluation-view",
             params: { evaluationId: e.id },
           },
         });
-      });
-
-      // 6. Recent activity feed (success) — top 2 recent entries
-      activity.slice(0, 2).forEach((a) => {
-        items.push({
-          id: `activity-${a.id}`,
-          category: "success",
-          icon: CheckCircle2,
-          title: a.message,
-          description: relativeTime(a.timestamp),
-          timestamp: a.timestamp,
-        });
-      });
-    }
-
-    if (role === "supervisor" && currentUser.supervisorId) {
-      const supId = currentUser.supervisorId;
-      const myInterns = studentsForSupervisor(students, supId);
-
-      // 1. Pending journals for my interns (approval)
-      const pending = pendingJournalsForSupervisor(journals, students, supId);
-      if (pending.length > 0) {
-        const firstSt = getStudent(students, pending[0].studentId);
-        items.push({
-          id: "sup-pending-journals",
-          category: "approval",
-          icon: ClipboardList,
-          title: `${pending.length} journal${pending.length === 1 ? "" : "s"} to review`,
-          description: firstSt
-            ? `${firstSt.name} submitted a journal.`
-            : "Review and approve submitted journals.",
-          timestamp: pending[0].submittedAt ?? new Date().toISOString(),
-          action: { label: "Open approval queue", view: "supervisor.journals" },
-        });
-      }
-
-      // 2. Unevaluated interns (urgent)
-      const unevaluated = unevaluatedInterns(students, evaluations, supId);
-      if (unevaluated.length > 0) {
-        items.push({
-          id: "sup-unevaluated",
-          category: "urgent",
-          icon: FileText,
-          title: `${unevaluated.length} intern${unevaluated.length === 1 ? "" : "s"} without an evaluation`,
-          description: "Submit their term evaluation to keep records current.",
-          timestamp: new Date().toISOString(),
-          action: { label: "Open evaluations", view: "supervisor.evaluations" },
-        });
-      }
-
-      // 3. Interns on the clock (clock)
-      const activeInterns = allActiveTimeLogs(timeLogs).filter((t) =>
-        myInterns.some((s) => s.id === t.userId)
-      );
-      if (activeInterns.length > 0) {
-        items.push({
-          id: "sup-active-clockins",
-          category: "clock",
-          icon: Timer,
-          title: `${activeInterns.length} intern${activeInterns.length === 1 ? "" : "s"} on the clock now`,
-          description: "Live monitoring of your team's hours.",
-          timestamp: activeInterns[activeInterns.length - 1].clockInAt,
-          action: { label: "Open time tracking", view: "supervisor.time-monitor" },
-        });
-      }
-
-      // 4. Low-hours interns (info)
-      const lowHours = myInterns.filter(
-        (s) => s.status === "active" && hoursPercent(s) < 25
-      );
-      if (lowHours.length > 0) {
-        const st = lowHours[0];
-        items.push({
-          id: "sup-low-hours",
-          category: "info",
-          icon: Clock,
-          title: `${st.name} is behind on hours`,
-          description: `Only ${hoursPercent(st)}% of required ${st.requiredHours}h completed.`,
-          timestamp: new Date().toISOString(),
-          action: {
-            label: "View intern",
-            view: "supervisor.intern-view",
-            params: { studentId: st.id },
-          },
-        });
-      }
-    }
-
-    if (role === "student" && currentUser.studentId) {
-      const st = getStudent(students, currentUser.studentId);
-      if (st) {
-        // 1. Rejected journals (urgent)
-        const rejected = journals.filter(
-          (j) => j.studentId === st.id && j.status === "rejected"
-        );
-        if (rejected.length > 0) {
-          const r = rejected[0];
+    for (const t of state.timeLogs.filter((t) => ids.has(t.userId)))
+      for (const c of t.corrections ?? []) {
+        if (actor.role === "supervisor" && c.status === "pending")
           items.push({
-            id: "stu-rejected",
-            category: "urgent",
-            icon: AlertTriangle,
-            title: `Journal for ${r.date} was rejected`,
-            description:
-              r.rejectionReason ?? "Review feedback and resubmit.",
-            timestamp: r.reviewedAt ?? r.submittedAt ?? new Date().toISOString(),
-            action: {
-              label: "View journal",
-              view: "student.journal-view",
-              params: { journalId: r.id },
-            },
-          });
-        }
-
-        // 2. Pending evaluation (info)
-        const myEvals = evaluationsForStudent(evaluations, st.id);
-        const submitted = myEvals.find((e) => e.status === "submitted");
-        if (submitted) {
-          items.push({
-            id: "stu-eval-ready",
-            category: "success",
-            icon: CheckCircle2,
-            title: "Your evaluation is ready to view",
-            description: `Term ${submitted.term} evaluation has been submitted.`,
-            timestamp: submitted.submittedAt ?? new Date().toISOString(),
-            action: {
-              label: "View evaluation",
-              view: "student.evaluation-view",
-              params: { evaluationId: submitted.id },
-            },
-          });
-        } else {
-          items.push({
-            id: "stu-eval-pending",
-            category: "info",
-            icon: FileText,
-            title: "Evaluation pending",
-            description: "Your supervisor hasn't submitted an evaluation yet.",
-            timestamp: new Date().toISOString(),
-          });
-        }
-
-        // 3. Hours progress (info / urgent)
-        const pct = hoursPercent(st);
-        if (pct < 50) {
-          items.push({
-            id: "stu-hours",
-            category: pct < 25 ? "urgent" : "info",
+            id: `correction:${c.id}:pending`,
+            category: "approval",
             icon: Clock,
-            title: `${pct}% of required hours completed`,
-            description: `${st.loggedHours}h of ${st.requiredHours}h — keep clocking in!`,
-            timestamp: new Date().toISOString(),
-            action: { label: "Open time clock", view: "student.time-clock" },
+            title: "Attendance correction requested",
+            description: c.reason,
+            timestamp: c.requestedAt,
+            action: {
+              label: "Review correction",
+              view: "supervisor.intern-view",
+              params: { studentId: t.userId },
+            },
           });
-        } else {
-          // success: milestone
+        if (actor.role === "student" && c.status !== "pending" && c.reviewedAt)
           items.push({
-            id: "stu-hours-milestone",
-            category: "success",
-            icon: CheckCircle2,
-            title: `${pct}% hours completed — great progress!`,
-            description: `${st.loggedHours}h of ${st.requiredHours}h logged.`,
-            timestamp: new Date().toISOString(),
+            id: `correction:${c.id}:${c.status}`,
+            category: c.status === "approved" ? "success" : "info",
+            icon: Clock,
+            title: `Attendance correction ${c.status}`,
+            description: c.reviewNote || c.reason,
+            timestamp: c.reviewedAt,
+            action: { label: "Open attendance", view: "student.time-clock" },
           });
-        }
-
-        // 4. On the clock (clock)
-        const completed = completedTimeLogsForUser(timeLogs, st.id);
-        const totalMs = totalCompletedTimeMs(timeLogs, st.id);
-        if (completed.length > 0) {
-          items.push({
-            id: "stu-sessions",
-            category: "clock",
-            icon: Timer,
-            title: `${completed.length} sessions · ${Math.round(totalMs / 3600_000)}h tracked`,
-            description: "View your weekly-grouped session history.",
-            timestamp: completed[0].clockInAt,
-            action: { label: "Open time clock", view: "student.time-clock" },
-          });
-        }
       }
-    }
-
-    // Sort newest first; stable for equal timestamps
-    return items.sort((a, b) => (a.timestamp < b.timestamp ? 1 : -1));
-  }, [role, currentUser, students, supervisors, journals, evaluations, timeLogs, activity]);
+    return items
+      .sort((a, b) => b.timestamp.localeCompare(a.timestamp))
+      .slice(0, 150);
+  }, [
+    state.currentUser,
+    state.students,
+    state.journals,
+    state.formAssignments,
+    state.formDocuments,
+    state.formSubmissions,
+    state.evaluations,
+    state.timeLogs,
+  ]);
 }

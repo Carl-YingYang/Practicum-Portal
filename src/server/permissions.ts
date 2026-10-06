@@ -1,3 +1,4 @@
+import { formStructureErrors } from "@/domain/form-templates";
 import type { PortalData } from "@/domain/portal/snapshot";
 import { validateCommandArguments, type Command } from "./command-schema";
 export { commandSchema } from "./command-schema";
@@ -136,7 +137,10 @@ export function authorizeCommand(
     if (log.role !== "student") deny();
     if (action === "requestTimeCorrection") {
       if (actor.role !== "student" || actor.studentId !== log.userId) deny();
-    } else if (actor.role !== "supervisor" || student.supervisorId !== actor.supervisorId) {
+    } else if (
+      actor.role !== "supervisor" ||
+      student.supervisorId !== actor.supervisorId
+    ) {
       deny("Only the assigned supervisor can review this correction.");
     }
     return;
@@ -335,6 +339,7 @@ export function authorizeCommand(
       "prefill",
       "options",
       "scoreMode",
+      "showIf",
     ]);
   if (
     [
@@ -353,6 +358,36 @@ export function authorizeCommand(
     ].includes(action)
   )
     exists(data.formDocuments, a[0]);
+  if (
+    [
+      "updateFormMeta",
+      "updateFormBlock",
+      "addFormBlock",
+      "removeFormBlock",
+      "moveFormBlock",
+      "reorderFormBlocks",
+      "duplicateFormBlock",
+      "publishFormDocument",
+    ].includes(action) &&
+    exists(data.formDocuments, a[0]).status !== "draft"
+  )
+    throw new HttpError(
+      409,
+      "Unpublish or duplicate the form before editing; existing response snapshots remain unchanged.",
+    );
+  if (
+    action === "deleteFormDocument" &&
+    data.formSubmissions.some((s) => s.formId === a[0])
+  )
+    throw new HttpError(
+      409,
+      "Archive this form to retain its saved responses.",
+    );
+  if (action === "publishFormDocument") {
+    const form = exists(data.formDocuments, a[0]);
+    const errors = formStructureErrors(form);
+    if (errors.length) throw new HttpError(400, errors.join(" "));
+  }
   if (action === "assignForm") {
     exists(data.formDocuments, input.formId);
     const users = [...data.students, ...data.supervisors, ...data.coordinators];

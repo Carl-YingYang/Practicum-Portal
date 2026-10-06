@@ -293,6 +293,7 @@ export interface AppState {
   }) => string;
   // --- form documents (coordinator-authored templates) ---
   createFormDocument: (input: {
+    templateKey?: string;
     title: string;
     description: string;
     category: FormCategory;

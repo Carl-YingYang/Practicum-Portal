@@ -1,4 +1,5 @@
 "use client";
+import { useNotificationPreferences } from "@/hooks/use-notification-preferences";
 
 import * as React from "react";
 import { useAppStore } from "@/store/use-app-store";
@@ -36,24 +37,14 @@ export function NotificationsDropdown() {
   const setOpen = useAppStore((s) => s.setNotificationsOpen);
   const isMobile = useIsMobile();
 
-  // Track read state locally (resets on reload — purely cosmetic for the MVP).
-  const [readIds, setReadIds] = React.useState<Set<string>>(new Set());
-  const unreadCount = notifications.filter((n) => !readIds.has(n.id)).length;
-  const hasUrgent = notifications.some(
-    (n) => n.category === "urgent" && !readIds.has(n.id),
-  );
-
-  const markAllRead = React.useCallback(() => {
-    setReadIds(new Set(notifications.map((n) => n.id)));
-  }, [notifications]);
-
-  const handleAction = (n: (typeof notifications)[number]) => {
-    if (n.action) {
-      navigate(n.action.view, n.action.params);
-    }
-    setReadIds((prev) => new Set(prev).add(n.id));
-    setOpen(false);
-  };
+  const accountId=useAppStore(s=>s.currentUser?.id);
+  const prefs=useNotificationPreferences(accountId,notifications);
+  const {readIds}=prefs;
+  const unreadCount=notifications.filter(n=>!readIds.has(n.id)).length;
+  const hasUrgent=notifications.some(n=>n.category==="urgent"&&!readIds.has(n.id));
+  const markAllRead=()=>prefs.markRead(notifications.map(n=>n.id));
+  const handleAction=(n:(typeof notifications)[number])=>{if(n.action)navigate(n.action.view,n.action.params);prefs.markRead([n.id]);setOpen(false);};
+  const soundSettings=<div className="space-y-2 border-t px-4 py-3 text-xs"><label className="flex min-h-9 items-center gap-2"><input type="checkbox" aria-label="Notification sound" checked={prefs.preferences.sound} disabled={!prefs.ready} onChange={e=>prefs.setSound(e.target.checked)}/>Notification sound</label><div className="flex items-center gap-3"><label className="flex min-w-0 flex-1 items-center gap-2">Volume<input aria-label="Notification volume" type="range" min="0" max="1" step="0.05" value={prefs.preferences.volume} disabled={!prefs.ready} onChange={e=>prefs.setVolume(Number(e.target.value))}/></label><button type="button" className="min-h-9 text-primary underline" onClick={prefs.testSound}>Test sound</button></div>{prefs.error&&<p role="alert">{prefs.error} <button className="underline" onClick={prefs.retry}>Retry settings save</button></p>}</div>;
 
   // Group by category for display
   const grouped = React.useMemo(() => {
@@ -135,7 +126,8 @@ export function NotificationsDropdown() {
           className="max-w-full"
           ariaLabel="Notifications"
         >
-          <NotificationsListHeader
+          {soundSettings}
+        <NotificationsListHeader
             unreadCount={unreadCount}
             hasUrgent={hasUrgent}
             onMarkAllRead={markAllRead}
@@ -165,6 +157,7 @@ export function NotificationsDropdown() {
         className="w-[min(92vw,380px)] p-0"
         sideOffset={8}
       >
+        {soundSettings}
         <NotificationsListHeader
           unreadCount={unreadCount}
           hasUrgent={hasUrgent}
@@ -340,6 +333,7 @@ function NotificationsList({
                         </span>
                       )}
                     </div>
+                    <time className="shrink-0 text-[10px] text-muted-foreground" dateTime={n.timestamp}>{new Date(n.timestamp).toLocaleDateString()}</time>
                     {isUnread && (
                       <span
                         className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-teal-500"

@@ -1,4 +1,7 @@
 "use client";
+import { useAccountUsers } from "@/lib/use-account-users";
+import { flushChanges } from "@/client/portal-client";
+import { formStarterTemplates } from "@/domain/form-templates";
 
 import * as React from "react";
 import {
@@ -19,7 +22,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Calendar } from "@/components/ui/calendar";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { useAppStore } from "@/store/use-app-store";
@@ -35,7 +37,6 @@ import {
   CalendarClock,
   FileText,
   Layers,
-  Sparkles,
 } from "lucide-react";
 import {
   type FormCategory,
@@ -112,6 +113,10 @@ export function CreateFormWizard({
   onOpenChange: (v: boolean) => void;
 }) {
   const { toast } = useToast();
+  const users = useAccountUsers().filter(
+    (u) => u.role !== "coordinator" && u.accountStatus !== "disabled",
+  );
+  const [recipients, setRecipients] = React.useState<string[]>([]);
   const createFormDocument = useAppStore((s) => s.createFormDocument);
   const publishFormDocument = useAppStore((s) => s.publishFormDocument);
   const assignForm = useAppStore((s) => s.assignForm);
@@ -124,7 +129,13 @@ export function CreateFormWizard({
   const [target, setTarget] =
     React.useState<FormAssignmentTarget>("all_supervisors");
   const [dueDate, setDueDate] = React.useState<Date | undefined>(undefined);
-  const [publishNow, setPublishNow] = React.useState(true);
+  const [publishNow, setPublishNow] = React.useState(false);
+  const [templateKey, setTemplateKey] = React.useState("");
+  const starter = formStarterTemplates.find((t) => t.key === templateKey);
+  const [pending, setPending] = React.useState(false);
+  const [error, setError] = React.useState("");
+  const savedDraftId = React.useRef<string | null>(null);
+  const [hasSavedDraft, setHasSavedDraft] = React.useState(false);
 
   // reset on close
   React.useEffect(() => {
@@ -136,7 +147,12 @@ export function CreateFormWizard({
         setCategory("evaluation");
         setTarget("all_supervisors");
         setDueDate(undefined);
-        setPublishNow(true);
+        setPublishNow(false);
+        setTemplateKey("");
+        setRecipients([]);
+        setError("");
+        savedDraftId.current = null;
+        setHasSavedDraft(false);
       }, 250);
       return () => clearTimeout(t);
     }
@@ -160,48 +176,79 @@ export function CreateFormWizard({
     else if (step === 2) setStep(1);
   }
 
-  function handleFinish(goToEditor: boolean) {
-    if (!title.trim()) {
-      toast({ title: "Title required", variant: "destructive" });
-      return;
-    }
-    const id = createFormDocument({
-      title: title.trim(),
-      description: description.trim(),
-      category,
-    });
+  async function handleFinish(goToEditor: boolean) {
+    if (pending) return;
+    setPending(true);
+    setError("");
+    try {
+      if (!title.trim()) {
+        toast({ title: "Title required", variant: "destructive" });
+        setPending(false);
+        return;
+      }
+      const id =
+        savedDraftId.current ??
+        createFormDocument({
+          title: title.trim(),
+          description: description.trim(),
+          category,
+          ...(templateKey ? { templateKey } : {}),
+        });
+      await flushChanges();
+      savedDraftId.current = id;
+      setHasSavedDraft(true);
 
-    let published = false;
-    if (publishNow) {
-      publishFormDocument(id);
-      published = true;
-      // only assign if we published (can't assign a draft meaningfully)
-      assignForm({
-        formId: id,
-        target,
-        dueDate: dueDate ? format(dueDate, "yyyy-MM-dd") : undefined,
+      if (
+        publishNow &&
+        !goToEditor &&
+        target === "specific_users" &&
+        !recipients.length
+      )
+        throw new Error("Choose at least one recipient before publishing.");
+      let published = false;
+      if (publishNow && !goToEditor) {
+        publishFormDocument(id);
+        await flushChanges();
+        published = true;
+        // only assign if we published (can't assign a draft meaningfully)
+        assignForm({
+          formId: id,
+          target,
+          targetUserIds: recipients,
+          dueDate: dueDate ? format(dueDate, "yyyy-MM-dd") : undefined,
+        });
+      }
+
+      await flushChanges();
+      onOpenChange(false);
+      toast({
+        title: published ? "Form published & assigned" : "Draft created",
+        description: published
+          ? `Assigned to ${targetOptions.find((t) => t.value === target)?.label.toLowerCase()}. You can review responses from the Forms & Reviews hub.`
+          : "Open the editor to add blocks, then publish to assign it.",
       });
-    }
 
-    onOpenChange(false);
-    toast({
-      title: published ? "Form published & assigned" : "Draft created",
-      description: published
-        ? `Assigned to ${targetOptions.find((t) => t.value === target)?.label.toLowerCase()}. You can review responses from the Forms & Reviews hub.`
-        : "Open the editor to add blocks, then publish to assign it.",
-    });
-
-    if (goToEditor) {
-      navigate("coordinator.form-editor", { formId: id });
-    } else {
-      navigate("coordinator.forms");
+      if (goToEditor) {
+        navigate("coordinator.form-editor", { formId: id });
+      } else {
+        navigate("coordinator.forms");
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not save form. Retry.");
+    } finally {
+      setPending(false);
     }
   }
 
   const selectedTarget = targetOptions.find((t) => t.value === target)!;
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog
+      open={open}
+      onOpenChange={(value) => {
+        if (!pending) onOpenChange(value);
+      }}
+    >
       <DialogContent className="sm:max-w-[560px] p-0 gap-0 overflow-y-auto">
         {/* Progress header */}
         <div className="border-b border-border/60 bg-muted/30 pl-5 pr-16 py-4">
@@ -244,16 +291,54 @@ export function CreateFormWizard({
             {step === 1 &&
               "Set the basics. You'll add questions in the editor next."}
             {step === 2 &&
-              "Choose how to proceed — refine in the editor now, or skip to assign and refine later."}
+              "Review the starter or create a draft to build in the editor."}
             {step === 3 &&
               "Pick who should fill this form and when it's due. Then publish to send it out."}
           </DialogDescription>
         </DialogHeader>
 
         <div className="px-5 py-3">
+          {error && (
+            <p role="alert" className="mb-3 text-sm text-destructive">
+              {error} Your fields are retained. Retry or open the saved draft in
+              the editor.
+            </p>
+          )}
           {/* STEP 1: Details */}
           {step === 1 && (
             <div className="space-y-3.5">
+              <label className="block text-sm">
+                Starter template
+                <select
+                  aria-label="Starter template"
+                  disabled={pending || hasSavedDraft}
+                  value={templateKey}
+                  className="mt-1 min-h-11 w-full rounded-md border bg-background px-3"
+                  onChange={(e) => {
+                    setTemplateKey(e.target.value);
+                    const t = formStarterTemplates.find(
+                      (t) => t.key === e.target.value,
+                    );
+                    if (t) {
+                      setTitle(t.title);
+                      setDescription(t.description);
+                      setCategory(t.category);
+                    }
+                    setPublishNow(false);
+                  }}
+                >
+                  <option value="">Blank form</option>
+                  {formStarterTemplates.map((t) => (
+                    <option key={t.key} value={t.key}>
+                      {t.title}
+                    </option>
+                  ))}
+                </select>
+                <span className="mt-1 block text-xs text-muted-foreground">
+                  Editable starters. Check official school wording and scoring
+                  before publishing.
+                </span>
+              </label>
               <div className="space-y-1.5">
                 <Label htmlFor="cfw-title">Form title</Label>
                 <Input
@@ -332,47 +417,42 @@ export function CreateFormWizard({
                 </div>
               </div>
 
-              <p className="text-xs text-muted-foreground leading-relaxed">
-                Your form starts with a single heading block. You have two
-                options:
-              </p>
-
-              <div className="grid grid-cols-1 gap-2">
-                <button
-                  type="button"
-                  onClick={() => setStep(3)}
-                  className="flex items-start gap-3 rounded-lg border border-border/60 p-3.5 text-left transition-colors hover:bg-muted/40"
-                >
-                  <Sparkles className="mt-0.5 h-4 w-4 text-amber-500 shrink-0" />
-                  <div className="min-w-0 flex-1">
-                    <div className="text-[13px] font-medium text-foreground">
-                      Assign & publish now, refine later
-                    </div>
-                    <div className="text-[11px] text-muted-foreground mt-0.5">
-                      Publish with a starter template, assign to your audience,
-                      then open the editor to add questions. Recommended — gets
-                      the workflow moving.
-                    </div>
-                  </div>
-                </button>
-                <button
-                  type="button"
-                  onClick={handleBack}
-                  className="flex items-start gap-3 rounded-lg border border-border/60 p-3.5 text-left transition-colors hover:bg-muted/40"
-                >
-                  <Layers className="mt-0.5 h-4 w-4 text-teal-600 shrink-0" />
-                  <div className="min-w-0 flex-1">
-                    <div className="text-[13px] font-medium text-foreground">
-                      Build in the editor first
-                    </div>
-                    <div className="text-[11px] text-muted-foreground mt-0.5">
-                      Open the full block editor, add all your questions and
-                      rating tables, then come back to publish. Best for complex
-                      forms.
-                    </div>
-                  </div>
-                </button>
+              <div className="rounded-lg border p-3 space-y-2 text-sm">
+                <h3 className="font-medium">
+                  {starter ? "Questions included" : "Start with a blank draft"}
+                </h3>
+                {starter ? (
+                  <ol className="list-decimal pl-5 space-y-2">
+                    {starter.blocks.map((b, i) => (
+                      <li key={i}>
+                        {b.label ?? b.caption ?? b.text ?? b.type}
+                        {b.required && (
+                          <span className="ml-1 text-xs text-muted-foreground">
+                            (required)
+                          </span>
+                        )}
+                      </li>
+                    ))}
+                  </ol>
+                ) : (
+                  <p className="text-muted-foreground">
+                    Add your questions in the editor before publishing.
+                  </p>
+                )}
               </div>
+              <p className="text-xs text-muted-foreground">
+                Review the wording and scoring in the editor, or continue to
+                choose recipients. New forms stay in draft unless you select
+                publish.
+              </p>
+              <Button
+                variant="outline"
+                disabled={pending}
+                onClick={() => void handleFinish(true)}
+              >
+                <Layers className="mr-2 size-4" />
+                Create draft &amp; open editor
+              </Button>
             </div>
           )}
 
@@ -420,11 +500,38 @@ export function CreateFormWizard({
                   })}
                 </div>
                 {target === "specific_users" && (
-                  <p className="rounded-md bg-amber-50 px-2.5 py-1.5 text-[11px] text-amber-800 ring-1 ring-inset ring-amber-200/70 dark:bg-amber-950/40 dark:text-amber-300 dark:ring-amber-900/50">
-                    Specific-user assignment opens a picker in the editor. For
-                    this demo we'll create the assignment record and you can
-                    refine recipients there.
-                  </p>
+                  <fieldset className="max-h-52 overflow-auto rounded-md border p-2">
+                    <legend className="px-1 text-xs">
+                      Recipients ({recipients.length})
+                    </legend>
+                    {users.map((u) => (
+                      <label
+                        key={u.id}
+                        className="flex min-h-11 items-center gap-3 p-2 text-sm"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={recipients.includes(u.id)}
+                          onChange={(e) =>
+                            setRecipients((ids) =>
+                              e.target.checked
+                                ? [...ids, u.id]
+                                : ids.filter((id) => id !== u.id),
+                            )
+                          }
+                        />
+                        <span className="min-w-0 break-words">
+                          {u.name}
+                          <span className="block text-xs text-muted-foreground">
+                            {u.role} · {u.email}
+                          </span>
+                        </span>
+                      </label>
+                    ))}
+                    {!users.length && (
+                      <p className="p-2 text-sm">No active recipients.</p>
+                    )}
+                  </fieldset>
                 )}
               </div>
 
@@ -468,6 +575,11 @@ export function CreateFormWizard({
               >
                 <Checkbox
                   id="cfw-publish"
+                  disabled={
+                    pending ||
+                    !templateKey ||
+                    (target === "specific_users" && !recipients.length)
+                  }
                   checked={publishNow}
                   onCheckedChange={(v) => setPublishNow(v === true)}
                   className="mt-0.5"
@@ -492,7 +604,7 @@ export function CreateFormWizard({
         <div className="flex items-center justify-between gap-2 border-t border-border/60 px-5 py-3">
           <div className="text-[11px] text-muted-foreground">
             {step === 1 && "You can edit all of this later."}
-            {step === 2 && "Skipping to assign creates a starter template."}
+            {step === 2 && "Review the included questions before publishing."}
             {step === 3 &&
               publishNow &&
               "Publishing sends the form to assigned users."}
@@ -520,18 +632,24 @@ export function CreateFormWizard({
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => handleFinish(true)}
+                  disabled={pending}
+                  onClick={() => void handleFinish(true)}
                   className="gap-1.5"
                 >
                   <Layers className="h-3.5 w-3.5" /> Create &amp; edit
                 </Button>
                 <Button
                   size="sm"
-                  onClick={() => handleFinish(false)}
+                  disabled={pending}
+                  onClick={() => void handleFinish(false)}
                   className="gap-1.5"
                 >
                   <CheckCircle2 className="h-3.5 w-3.5" />
-                  {publishNow ? "Publish & assign" : "Create draft"}
+                  {pending
+                    ? "Saving…"
+                    : publishNow
+                      ? "Publish & assign"
+                      : "Create draft"}
                 </Button>
               </>
             )}

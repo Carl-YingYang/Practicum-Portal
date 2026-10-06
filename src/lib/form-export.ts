@@ -1,3 +1,4 @@
+import { formBlockVisible } from "@/domain/form-templates";
 import type { FormDocument, FormFieldValue } from "./types";
 import { downloadPdfReport, type PdfSectionSpec } from "./client-pdf";
 
@@ -12,6 +13,7 @@ export async function downloadFormPdf(
     title: form.title,
     subtitle: `${respondent ?? "Form template"} · Version ${form.version}`,
     sections: form.blocks.flatMap<PdfSectionSpec>((b) => {
+      if(!formBlockVisible(b,values))return [];
       const value = values[b.id];
       if (b.type === "divider") return [];
       if (b.type === "rating-table")

@@ -1,3 +1,7 @@
+import {
+  formStarterTemplates,
+  formStructureErrors,
+} from "@/domain/form-templates";
 import { responseErrors } from "@/lib/prototype";
 import { assignmentAppliesTo } from "@/lib/selectors";
 import {
@@ -39,7 +43,7 @@ export function createFormsActions(
   const { logActivity, genTempPassword, buildDefaultBlock } =
     createHelpers(uuid);
   return {
-    createFormDocument: ({ title, description, category }) => {
+    createFormDocument: ({ title, description, category, templateKey }) => {
       const id = uuid();
       const now = new Date().toISOString();
       const doc: FormDocument = {
@@ -62,6 +66,11 @@ export function createFormsActions(
         publishedAt: null,
         version: 0,
       };
+      const starter = formStarterTemplates.find((t) => t.key === templateKey);
+      if (starter)
+        doc.blocks.push(
+          ...starter.blocks.map((b) => ({ ...structuredClone(b), id: uuid() })),
+        );
       set((s) => ({ formDocuments: [doc, ...s.formDocuments] }));
       return id;
     },
@@ -170,7 +179,10 @@ export function createFormsActions(
           return { ...d, blocks, updatedAt: new Date().toISOString() };
         }),
       })),
-    publishFormDocument: (id) =>
+    publishFormDocument: (id) => {
+      const form = get().formDocuments.find((f) => f.id === id);
+      if (!form || formStructureErrors(form).length)
+        throw new Error("Complete the form blocks before publishing.");
       set((s) => ({
         formDocuments: s.formDocuments.map((d) =>
           d.id === id
@@ -183,7 +195,8 @@ export function createFormsActions(
               }
             : d,
         ),
-      })),
+      }));
+    },
     unpublishFormDocument: (id) =>
       set((s) => ({
         formDocuments: s.formDocuments.map((d) =>
@@ -219,6 +232,7 @@ export function createFormsActions(
       if (!src) return "";
       const newId = uuid();
       const now = new Date().toISOString();
+      const blockIds = new Map(src.blocks.map((b) => [b.id, uuid()]));
       const copy: FormDocument = {
         ...src,
         id: newId,
@@ -230,7 +244,10 @@ export function createFormsActions(
         updatedAt: now,
         blocks: src.blocks.map((b) => ({
           ...b,
-          id: uuid(),
+          id: blockIds.get(b.id)!,
+          showIf: b.showIf
+            ? { ...b.showIf, blockId: blockIds.get(b.showIf.blockId)! }
+            : undefined,
           criteria: b.criteria
             ? b.criteria.map((c) => ({ ...c, id: uuid() }))
             : undefined,

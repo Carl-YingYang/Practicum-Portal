@@ -1,4 +1,6 @@
 "use client";
+import { ConfirmDialog } from "@/components/portal/shared/confirm-dialog";
+import { useFormDraft } from "@/hooks/use-form-draft";
 import { assignmentAppliesTo } from "@/lib/selectors";
 import { configuredTerm } from "@/lib/prototype";
 import * as React from "react";
@@ -105,36 +107,17 @@ export function StudentFormWorkspace({ formId }: { formId?: string }) {
     return submissionFor(submissions, formId, currentUser.id);
   }, [submissions, formId, currentUser]);
   const form = currentSubmission?.formSnapshot ?? liveForm;
-  const valuesRef = React.useRef<Record<string, FieldValue>>({});
-  const [values, setValues] = React.useState<Record<string, FieldValue>>({});
-  const [saveState, setSaveState] = React.useState<"idle" | "saving" | "saved">(
-    "idle",
+  const draft = useFormDraft(
+    formId,
+    currentUser?.id,
+    undefined,
+    currentSubmission,
   );
-  const saveTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
-  React.useEffect(() => {
-    valuesRef.current = currentSubmission?.values ?? {};
-    setValues(valuesRef.current);
-    setSaveState("idle");
-  }, [currentSubmission?.id]);
+  const { values, valuesRef, saveState } = draft;
+  const [submitOpen, setSubmitOpen] = React.useState(false);
+  const [resetOpen, setResetOpen] = React.useState(false);
   function handleValueChange(blockId: string, value: FieldValue) {
-    const next = { ...valuesRef.current, [blockId]: value };
-    valuesRef.current = next;
-    setValues(next);
-    if (!formId || !currentUser) return;
-    const subId = currentSubmission?.id ?? startFormResponse({ formId });
-    if (!subId) {
-      toast({
-        title: "Cannot start this response",
-        description: "Check the assignment and selected intern.",
-        variant: "destructive",
-      });
-      return;
-    }
-    saveSubmissionDraft(subId, next);
-    setSaveState("saving");
-    void flushChanges()
-      .then(() => setSaveState("saved"))
-      .catch(() => setSaveState("idle"));
+    draft.update(blockId, value);
   }
   if (!form) {
     return (
@@ -193,41 +176,31 @@ export function StudentFormWorkspace({ formId }: { formId?: string }) {
     window.print();
   }
   function handleDownload() {
-    if (form) void exportPdf(() => downloadFormPdf(form, valuesRef.current, currentUser?.name));
+    if (form)
+      void exportPdf(() =>
+        downloadFormPdf(form, valuesRef.current, currentUser?.name),
+      );
   }
   function handleReset() {
-    if (!currentSubmission) return;
-    valuesRef.current = {};
-    setValues({});
-    saveSubmissionDraft(currentSubmission.id, {});
-    toast({ title: "Responses cleared" });
+    setResetOpen(true);
   }
   async function handleSubmit() {
-    if (!currentSubmission) {
-      toast({
-        title: "Nothing to submit",
-        description: "Add at least one response first.",
-        variant: "destructive",
-      });
-      return;
-    }
-    if (!form) return;
+    await draft.save();
+    const currentSubmission = useAppStore
+      .getState()
+      .formSubmissions.find(
+        (s) =>
+          s.formId === formId &&
+          s.userId === currentUser?.id &&
+          (s.targetStudentId ?? undefined) === undefined,
+      );
+    if (!currentSubmission || !form)
+      throw new Error("Add at least one response first.");
     const errors = responseErrors(form, valuesRef.current);
-    if (errors.length) {
-      toast({
-        title: "Complete the form",
-        description: errors[0],
-        variant: "destructive",
-      });
-      return;
-    }
+    if (errors.length) throw new Error(errors.join(" "));
     saveSubmissionDraft(currentSubmission.id, valuesRef.current);
     submitFormResponse(currentSubmission.id);
-    try {
-      await flushChanges();
-    } catch {
-      return;
-    }
+    await flushChanges();
     toast({
       title: "Form submitted",
       description:
@@ -236,8 +209,29 @@ export function StudentFormWorkspace({ formId }: { formId?: string }) {
   }
   return (
     <div className="space-y-3">
+      <ConfirmDialog
+        open={submitOpen}
+        onOpenChange={setSubmitOpen}
+        title="Submit these responses?"
+        description="Check your answers before submitting. The coordinator can review them and request revisions; submitted responses are locked."
+        confirmLabel="Submit responses"
+        onConfirm={handleSubmit}
+      />
+      <ConfirmDialog
+        open={resetOpen}
+        onOpenChange={setResetOpen}
+        title="Clear these responses?"
+        description="This clears your current draft answers. Submitted responses are unchanged."
+        confirmLabel="Clear draft"
+        destructive
+        onConfirm={async () => {
+          await draft.reset();
+          toast({ title: "Responses cleared" });
+        }}
+      />
+
       {/* Sticky action bar */}
-      <div className="sticky top-0 z-20 -mx-4 border-b border-border/60 bg-background/95 px-4 py-2 backdrop-blur sm:-mx-6 sm:px-6">
+      <div className="sticky top-16 z-20 -mx-4 border-b border-border/60 bg-background/95 px-4 py-2 backdrop-blur sm:-mx-6 sm:px-6">
         <div className="flex flex-wrap items-center gap-2">
           <Button
             variant="ghost"
@@ -309,6 +303,29 @@ export function StudentFormWorkspace({ formId }: { formId?: string }) {
         </div>
       </div>
 
+      {draft.error && (
+        <div
+          role="alert"
+          className="rounded-lg border border-destructive/30 p-3 text-sm text-destructive"
+        >
+          {draft.error}
+          <Button
+            variant="outline"
+            onClick={() => void draft.save().catch(() => {})}
+          >
+            Retry save
+          </Button>
+        </div>
+      )}
+      {draft.recovery && (
+        <div className="flex flex-wrap items-center gap-2 rounded-lg border p-3 text-sm">
+          Previous local answers are available.
+          <Button onClick={draft.restore}>Restore answers</Button>
+          <Button variant="ghost" onClick={draft.discard}>
+            Discard local answers
+          </Button>
+        </div>
+      )}
       <PageHeader
         title={form.title}
         description={form.description || undefined}
@@ -439,7 +456,11 @@ export function StudentFormWorkspace({ formId }: { formId?: string }) {
           >
             <RotateCcw className="h-3.5 w-3.5" /> Clear
           </Button>
-          <Button size="sm" onClick={handleSubmit} className="gap-1.5">
+          <Button
+            size="sm"
+            onClick={() => setSubmitOpen(true)}
+            className="gap-1.5"
+          >
             <Send className="h-3.5 w-3.5" />
             {status === "needs_revision"
               ? "Resubmit responses"

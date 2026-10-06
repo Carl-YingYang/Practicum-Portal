@@ -69,6 +69,7 @@ const StudentFormWorkspace = dynamic(
  * Top-level router for the Student workspace. Reads `view` from the store
  * and renders the matching page component. Default falls back to dashboard.
  */
+const ReportWorkspace = dynamic(() => import("../reports/report-workspace").then(m => m.ReportWorkspace), { loading: () => <WorkspaceLoader /> });
 export function StudentWorkspace() {
   const view = useAppStore((s) => s.view);
   const viewParams = useAppStore((s) => s.viewParams);
@@ -92,6 +93,8 @@ export function StudentWorkspace() {
       return <EvaluationsList />;
     case "student.evaluation-view":
       return <EvaluationView />;
+    case "student.report-builder":
+      return <ReportWorkspace />;
     case "student.reports":
       return <StudentReports />;
     case "student.time-clock":

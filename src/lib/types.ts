@@ -543,6 +543,7 @@ export interface FormRatingCriterion {
   max?: string;
 }
 export interface FormBlock {
+  showIf?: { blockId: string; equals: string } | null;
   required?: boolean;
   id: string;
   type: FormBlockType;
@@ -679,6 +680,7 @@ export type ViewKey =
   | "student.journal-view"
   | "student.evaluations"
   | "student.evaluation-view"
+  | "student.report-builder"
   | "student.reports"
   | "student.time-clock"
   | "student.forms"
@@ -693,6 +695,7 @@ export type ViewKey =
   | "supervisor.evaluation-view"
   | "supervisor.journals"
   | "supervisor.journal-review"
+  | "supervisor.report-builder"
   | "supervisor.reports"
   | "supervisor.time-monitor"
   | "supervisor.time-clock"
@@ -711,6 +714,7 @@ export type ViewKey =
   | "coordinator.evaluation-view"
   | "coordinator.journals"
   | "coordinator.journal-view"
+  | "coordinator.report-builder"
   | "coordinator.reports"
   | "coordinator.time-monitor"
   | "coordinator.timesheets"
