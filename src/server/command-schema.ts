@@ -288,6 +288,19 @@ const schemas: Partial<Record<MutationName, z.ZodType>> = {
   clockIn: z.tuple([id, role, optionalText]).or(z.tuple([id, role])),
   clockOut: z.tuple([id, optionalText]).or(z.tuple([id])),
   deleteTimeLog: z.tuple([id]),
+  requestTimeCorrection: z.tuple([
+    id,
+    z.string().datetime({ offset: true }),
+    z.string().trim().min(5).max(1000),
+  ]),
+  reviewTimeCorrection: z
+    .tuple([
+      id,
+      id,
+      z.enum(["approved", "rejected"]),
+      z.string().trim().max(1000),
+    ])
+    .or(z.tuple([id, id, z.enum(["approved", "rejected"])])),
   addManualTimeLog: z.tuple([
     z
       .object({

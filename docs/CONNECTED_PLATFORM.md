@@ -102,3 +102,7 @@ See [the writing/workflow guide](WRITING_ASSISTANT.md) for the optional demo ass
 ## October 6 responsive and workflow polish
 
 See [the responsive/workflow guide](RESPONSIVE_POLISH.md) for bounded navigation scrolling, consistent detail highlights, coordinator creation access, real loading/action feedback, locked form previews, cadence labels, async PDF generation and print pagination verification. Carl's current login design and logo asset are preserved.
+
+## Account, loading and attendance follow-up
+
+See [the follow-up guide](ACCOUNT_ATTENDANCE_POLISH.md) for real shared password forms, guarded coordinator reset, minimal loaders, branding removal in the workspace header, offline-save recovery and supervisor-reviewed clock-out corrections. Corrections are stored in the existing JSON aggregate; no schema migration/reset is required.

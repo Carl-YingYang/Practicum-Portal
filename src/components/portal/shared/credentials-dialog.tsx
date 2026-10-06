@@ -29,14 +29,14 @@ interface CredentialsDialogProps {
   /** Prototype account id (User ID) — shown when provided. */
   userId?: string;
   onDone: () => void;
+  purpose?: "created" | "reset";
 }
 
 /**
  * CredentialsDialog — responsive one-time credentials reveal.
  *
- * Shown once after the Coordinator provisions an account (or resets its
- * password). Deliberately honest: this is mock prototype state, not a
- * secure credential delivery channel.
+ * Reveals newly generated credentials only after a confirmed server save.
+ * Existing passwords are never retrieved. Deliver these details privately.
  *
  * Per Responsive Contract §2.13:
  *  - Mobile (`< md`): BottomSheet (slides up, thumb-reachable copy buttons).
@@ -51,16 +51,19 @@ export function CredentialsDialog({
   role,
   userId,
   onDone,
+  purpose = "created",
 }: CredentialsDialogProps) {
   const isMobile = useIsMobile();
   const [copied, setCopied] = React.useState<string | null>(null);
 
-  const copy = (text: string, which: string, label: string) => {
-    navigator.clipboard?.writeText(text).then(() => {
+  const copy = async (text: string, which: string, label: string) => {
+    try {
+      if (!navigator.clipboard) throw new Error("Clipboard unavailable");
+      await navigator.clipboard.writeText(text);
       setCopied(which);
       toast.success(`Copied ${label}`);
       setTimeout(() => setCopied(null), 1500);
-    });
+    } catch { toast.error("Could not copy. Select and copy the value manually."); }
   };
 
   const copyAll = () => {
@@ -73,11 +76,8 @@ export function CredentialsDialog({
       "",
       "Note: this temporary password must be changed at first sign-in.",
     ];
-    navigator.clipboard?.writeText(lines.join("\n")).then(() => {
-      toast.success("All credentials copied", {
-        description: "Paste them into a secure message to the user.",
-      });
-    });
+    void copy(lines.join("\n"), "all", "credentials");
+
   };
 
   const rows: { key: string; label: string; value: string; mono?: boolean }[] =
@@ -140,8 +140,8 @@ export function CredentialsDialog({
         <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
         <span>
           Shown only once. The user must change this temporary password at
-          first sign-in. Prototype note: credentials are simulated in memory —
-          this is not a secure delivery channel.
+          first sign-in. Give these details privately to the account owner. If lost,
+          reset access to generate a replacement.
         </span>
       </div>
     </div>
@@ -170,7 +170,7 @@ export function CredentialsDialog({
       <BottomSheet
         open={open}
         onOpenChange={onOpenChange}
-        title="Account created — copy credentials"
+        title={purpose === "reset" ? "Access reset — copy credentials" : "Account created — copy credentials"}
         description={
           <>
             Login details for{" "}
@@ -198,7 +198,7 @@ export function CredentialsDialog({
           <div className="mb-2 flex h-11 w-11 items-center justify-center rounded-full bg-primary/10 text-primary">
             <KeyRound className="h-5 w-5" />
           </div>
-          <DialogTitle>Account created — copy credentials</DialogTitle>
+          <DialogTitle>{purpose === "reset" ? "Access reset — copy credentials" : "Account created — copy credentials"}</DialogTitle>
           <DialogDescription>
             Login details for{" "}
             <span className="font-medium text-foreground">{name}</span>. Hand

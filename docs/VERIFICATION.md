@@ -66,3 +66,13 @@ New visual evidence (viewport captures):
 - [360px testing scenarios](screenshots/testing-scenarios-mobile.png)
 
 This is deterministic demo UI and real local server workflow verification. No OmniRoute/provider request, account linking, live AI accuracy, usage billing, Safari/iOS or physical-device keyboard test is claimed. See [upgrade instructions and exact limitations](WRITING_ASSISTANT.md).
+
+## Account, loading and attendance follow-up — October 6, 2026
+
+Built on Carl's `bbee8f4` update. The fresh production build, TypeScript, all 21 unit tests and all eight integration/browser/export/development suites listed in [the detailed follow-up](ACCOUNT_ATTENDANCE_POLISH.md#verification) pass. ESLint has zero errors and 20 existing initialization warnings. `git diff --check` passes.
+
+The new account/clock browser suite verifies all-role password forms, delayed saves, offline clock-out rollback/reconnect, a 13-hour active-session warning, student request/assigned-supervisor approval, 320–768px intern tabs and mobile account reset. It waits for the reset sheet's animation before capturing its bounds and screenshot. Password/reset success waits for the server; only newly generated temporary credentials are revealed. Screenshots exclude temporary passwords.
+
+Current login source and SVG are unchanged from Carl's update. Earlier exact-height/single-screen mobile claims above describe older revisions; current tests allow natural vertical scrolling, require a single visible sign-in layout and reject horizontal page overflow. The workspace header no longer displays the Practo name/logo. The simple shared loader appears only while actual work is pending.
+
+Full scope, iterations, screenshot links and remaining limits: [ACCOUNT_ATTENDANCE_POLISH.md](ACCOUNT_ATTENDANCE_POLISH.md). Tests use disposable databases; no developer database reset or schema migration is needed. Only `practo/testing-platform` is authorized for publication.

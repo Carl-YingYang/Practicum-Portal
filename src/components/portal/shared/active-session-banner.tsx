@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { flushChanges } from "@/client/portal-client";
 import { useAppStore } from "@/store/use-app-store";
 import { Button } from "@/components/ui/button";
 import { Timer, X, Square } from "lucide-react";
@@ -38,11 +39,14 @@ export function ActiveSessionBanner() {
   const timeLogs = useAppStore((s) => s.timeLogs);
   const clockOut = useAppStore((s) => s.clockOut);
   const navigate = useAppStore((s) => s.navigate);
+  const [saving, setSaving] = React.useState(false);
+  const saveLock = React.useRef(false);
   const [dismissed, setDismissed] = React.useState(false);
   const now = useTicker(1000);
 
   // Only students have a practicum clock session.
-  const studentId = currentUser?.role === "student" ? currentUser.studentId : null;
+  const studentId =
+    currentUser?.role === "student" ? currentUser.studentId : null;
   const active = studentId ? activeTimeLog(timeLogs, studentId) : undefined;
 
   // Reset dismissal when the session ends or view changes to time-clock.
@@ -57,37 +61,55 @@ export function ActiveSessionBanner() {
 
   const sessionMs = elapsedMs(active, now);
 
-  const handleClockOut = () => {
-    clockOut(studentId!);
-    toast.success("Clocked out", {
-      description: `Session logged: ${formatTimer(sessionMs)}`,
-    });
+  const handleClockOut = async () => {
+    if (saveLock.current) return;
+    saveLock.current = true;
+    setSaving(true);
+    try {
+      clockOut(studentId!);
+      await flushChanges();
+      toast.success("Clocked out");
+    } catch {
+      /* The shared sync error exposes the failed save. */
+    } finally {
+      saveLock.current = false;
+      setSaving(false);
+    }
   };
 
   return (
     <div
       role="status"
-      aria-live="polite"
-      aria-atomic="true"
-      className="sticky top-0 z-30 border-b border-emerald-200/70 bg-gradient-to-r from-teal-50 to-emerald-50/60 px-4 py-2.5 backdrop-blur-sm dark:border-emerald-900/50 dark:from-teal-950/40 dark:to-emerald-950/30 sm:px-6"
+      aria-live="off"
+      className="relative z-10 border-b border-emerald-200/70 bg-gradient-to-r from-teal-50 to-emerald-50/60 px-4 py-2.5 backdrop-blur-sm dark:border-emerald-900/50 dark:from-teal-950/40 dark:to-emerald-950/30 sm:px-6"
     >
-      <div className="mx-auto flex w-full max-w-7xl items-center gap-3">
+      <div className="mx-auto flex w-full max-w-7xl flex-wrap items-center gap-2">
         <span className="relative flex h-2.5 w-2.5 shrink-0" aria-hidden="true">
-          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+          <span className="absolute inline-flex h-full w-full motion-safe:animate-ping rounded-full bg-emerald-400 opacity-75" />
           <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500" />
         </span>
         <div className="flex min-w-0 flex-1 items-center gap-2 text-sm">
-          <Timer className="h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" aria-hidden="true" />
+          <Timer
+            className="h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400"
+            aria-hidden="true"
+          />
           <span className="truncate text-foreground">
             <span className="font-semibold">On the clock</span>
-            <span className="mx-1.5 text-muted-foreground" aria-hidden="true">·</span>
+            <span className="mx-1.5 text-muted-foreground" aria-hidden="true">
+              ·
+            </span>
             <span
               className="font-mono font-semibold tabular-nums text-emerald-700 dark:text-emerald-300"
               aria-label={`Elapsed time ${formatTimer(sessionMs)}`}
             >
               {formatTimer(sessionMs)}
             </span>
-            <span className="mx-1.5 hidden text-muted-foreground sm:inline" aria-hidden="true">·</span>
+            <span
+              className="mx-1.5 hidden text-muted-foreground sm:inline"
+              aria-hidden="true"
+            >
+              ·
+            </span>
             <span className="hidden text-muted-foreground sm:inline">
               since {formatTime(active.clockInAt)}
             </span>
@@ -106,10 +128,11 @@ export function ActiveSessionBanner() {
             variant="destructive"
             size="sm"
             className="h-8"
+            disabled={saving}
             onClick={handleClockOut}
           >
             <Square className="h-3 w-3" fill="currentColor" />
-            Clock Out
+            {saving ? "Saving…" : "Clock Out"}
           </Button>
           <Button
             variant="ghost"

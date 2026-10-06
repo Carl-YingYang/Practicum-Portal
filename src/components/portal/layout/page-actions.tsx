@@ -25,7 +25,6 @@ import {
 import { useTheme } from "next-themes";
 import { ROLE_LABELS } from "@/lib/types";
 import { NotificationsDropdown } from "./notifications-dropdown";
-import { PractoBrand } from "@/components/portal/shared/practo-brand";
 interface PageActionsProps {
   onOpenTestingScenarios?: () => void;
   onOpenMobileNav: () => void;
@@ -49,8 +48,10 @@ export function PageActions({
   React.useEffect(() => setMounted(true), []);
   const role = currentUser?.role;
   return (
-    <header data-workspace-header className="sticky top-0 z-30 flex h-16 shrink-0 items-center justify-between gap-2 border-b border-border bg-background px-4 sm:px-6 lg:px-8">
-      <PractoBrand small className="text-[10px] font-semibold tracking-[.1em] text-muted-foreground" />
+    <header
+      data-workspace-header
+      className="sticky top-0 z-30 flex h-16 shrink-0 items-center justify-end gap-2 border-b border-border bg-background px-4 sm:px-6 lg:px-8"
+    >
       <div className="flex min-w-0 shrink-0 items-center gap-0.5 py-2">
         {/* Mobile: hamburger — opens the drawer */}
         <Button
@@ -129,7 +130,10 @@ export function PageActions({
                 <ChevronDown className="hidden h-3.5 w-3.5 shrink-0 text-muted-foreground md:block" />
               </button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-64 p-1.5">
+            <DropdownMenuContent
+              align="end"
+              className="w-64 max-w-[calc(100vw-2rem)] p-1.5"
+            >
               <div className="flex items-center justify-between gap-2 px-2 py-1.5">
                 <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
                   Signed in as
@@ -165,32 +169,37 @@ export function PageActions({
                   Testing scenarios
                 </DropdownMenuItem>
               )}
-              <DropdownMenuSeparator />
-              <DropdownMenuLabel className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                Prototype: switch demo role
-              </DropdownMenuLabel>
-              {demoUsers
-                .filter(
-                  (u, index) =>
-                    u.role !== role &&
-                    demoUsers.findIndex((other) => other.role === u.role) ===
-                      index,
-                )
-                .map((u) => (
-                  <DropdownMenuItem
-                    key={u.id}
-                    onClick={() => loginAs(u.id)}
-                    className="gap-2.5 rounded-md"
-                  >
-                    <Avatar name={u.name} size="sm" color={u.avatarColor} />
-                    <span className="flex min-w-0 flex-col">
-                      <span className="truncate text-sm">{u.name}</span>
-                      <span className="truncate text-xs text-muted-foreground">
-                        {ROLE_LABELS[u.role]}
-                      </span>
-                    </span>
-                  </DropdownMenuItem>
-                ))}
+              {demoUsers.length > 0 && (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuLabel className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                    Prototype: switch demo role
+                  </DropdownMenuLabel>
+                  {demoUsers
+                    .filter(
+                      (u, index) =>
+                        u.role !== role &&
+                        demoUsers.findIndex(
+                          (other) => other.role === u.role,
+                        ) === index,
+                    )
+                    .map((u) => (
+                      <DropdownMenuItem
+                        key={u.id}
+                        onClick={() => loginAs(u.id)}
+                        className="gap-2.5 rounded-md"
+                      >
+                        <Avatar name={u.name} size="sm" color={u.avatarColor} />
+                        <span className="flex min-w-0 flex-col">
+                          <span className="truncate text-sm">{u.name}</span>
+                          <span className="truncate text-xs text-muted-foreground">
+                            {ROLE_LABELS[u.role]}
+                          </span>
+                        </span>
+                      </DropdownMenuItem>
+                    ))}
+                </>
+              )}
 
               <DropdownMenuSeparator />
               {onResetDemo && (

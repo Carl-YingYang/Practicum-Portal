@@ -9,11 +9,110 @@ export function createAttendanceActions(
   uuid: () => string,
 ): Pick<
   AppState,
-  "clockIn" | "clockOut" | "deleteTimeLog" | "addManualTimeLog"
+  | "clockIn"
+  | "clockOut"
+  | "deleteTimeLog"
+  | "addManualTimeLog"
+  | "requestTimeCorrection"
+  | "reviewTimeCorrection"
 > {
-  const { logActivity, genTempPassword, buildDefaultBlock } =
-    createHelpers(uuid);
+  const { logActivity } = createHelpers(uuid);
   return {
+    requestTimeCorrection: (logId, clockOutAt, reason) => {
+      const state = get();
+      const log = state.timeLogs.find((t) => t.id === logId);
+      if (!log || log.role !== "student")
+        throw new Error("Student session not found.");
+      if (log.corrections?.some((c) => c.status === "pending"))
+        throw new Error("A correction is already awaiting review.");
+      if (reason.trim().length < 5)
+        throw new Error("Explain the correction in at least 5 characters.");
+      const invalid = validateTimeEntry(
+        state.timeLogs.filter((t) => t.id !== logId),
+        log.userId,
+        log.clockInAt,
+        clockOutAt,
+      );
+      if (invalid) throw new Error(invalid);
+      const id = uuid();
+      const correction = {
+        id,
+        requestedClockOutAt: clockOutAt,
+        originalClockOutAt: log.clockOutAt,
+        reason: reason.trim(),
+        requestedAt: new Date().toISOString(),
+        requestedBy: state.currentUser?.id ?? "",
+        status: "pending" as const,
+      };
+      set((s) => ({
+        timeLogs: s.timeLogs.map((t) =>
+          t.id === logId
+            ? { ...t, corrections: [...(t.corrections ?? []), correction] }
+            : t,
+        ),
+        activity: logActivity(
+          s.activity,
+          "time_correction_requested",
+          `${state.students.find((s) => s.id === log.userId)?.name ?? "Student"}: clock-out correction requested`,
+          s.currentUser?.id ?? "",
+        ),
+      }));
+      return id;
+    },
+    reviewTimeCorrection: (logId, correctionId, decision, note) => {
+      const state = get();
+      const log = state.timeLogs.find((t) => t.id === logId);
+      const correction = log?.corrections?.find((c) => c.id === correctionId);
+      if (!log || !correction || correction.status !== "pending")
+        throw new Error("This request is no longer pending.");
+      if (decision === "rejected" && !note?.trim())
+        throw new Error("Explain why this correction was rejected.");
+      if (decision === "approved") {
+        const invalid = validateTimeEntry(
+          state.timeLogs.filter((t) => t.id !== logId),
+          log.userId,
+          log.clockInAt,
+          correction.requestedClockOutAt,
+        );
+        if (invalid) throw new Error(invalid);
+      }
+      const timeLogs = state.timeLogs.map((t) =>
+        t.id !== logId
+          ? t
+          : {
+              ...t,
+              ...(decision === "approved"
+                ? {
+                    clockOutAt: correction.requestedClockOutAt,
+                    durationMs:
+                      Date.parse(correction.requestedClockOutAt) -
+                      Date.parse(t.clockInAt),
+                  }
+                : {}),
+              corrections: t.corrections?.map((c) =>
+                c.id !== correctionId
+                  ? c
+                  : {
+                      ...c,
+                      status: decision,
+                      reviewedAt: new Date().toISOString(),
+                      reviewedBy: state.currentUser?.id,
+                      reviewNote: note?.trim(),
+                    },
+              ),
+            },
+      );
+      set((s) => ({
+        timeLogs,
+        students: recalculateHours(s.students, timeLogs),
+        activity: logActivity(
+          s.activity,
+          "time_correction_reviewed",
+          `${state.students.find((s) => s.id === log.userId)?.name ?? "Student"}: clock-out correction ${decision}`,
+          s.currentUser?.id ?? "",
+        ),
+      }));
+    },
     clockIn: (userId, role, note) => {
       const active = get().timeLogs.find(
         (t) => t.userId === userId && t.clockOutAt === null,

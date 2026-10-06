@@ -34,6 +34,17 @@ interface AppShellProps {
  * from any view.
  */
 export function AppShell({ children }: AppShellProps) {
+  const [online, setOnline] = React.useState(true);
+  React.useEffect(() => {
+    const update = () => setOnline(navigator.onLine);
+    update();
+    window.addEventListener("online", update);
+    window.addEventListener("offline", update);
+    return () => {
+      window.removeEventListener("online", update);
+      window.removeEventListener("offline", update);
+    };
+  }, []);
   const [collapsed, setCollapsed] = React.useState(false);
   const [mobileNavOpen, setMobileNavOpen] = React.useState(false);
   const [paletteOpen, setPaletteOpen] = React.useState(false);
@@ -107,15 +118,17 @@ export function AppShell({ children }: AppShellProps) {
         <div
           aria-live="polite"
           role={syncStatus === "error" ? "alert" : "status"}
-          className="px-5 pt-1 text-xs text-muted-foreground sm:px-6 lg:px-8"
+          className="sticky top-16 z-20 border-b border-border/40 bg-background px-4 py-1 text-xs text-muted-foreground sm:px-6 lg:px-8"
         >
-          {syncStatus === "saving" ? (
+          {!online ? (
+            "Offline · reconnect before saving changes"
+          ) : syncStatus === "saving" ? (
             "Saving changes…"
           ) : syncStatus === "error" ? (
             <span className="text-destructive">
               {syncError}{" "}
               <button
-                className="underline"
+                className="inline-flex min-h-11 items-center px-2 underline"
                 onClick={() => void refreshPortal().catch(() => {})}
               >
                 Reconnect
@@ -132,14 +145,18 @@ export function AppShell({ children }: AppShellProps) {
         */}
         <main className="min-w-0 flex-1 px-4 pb-[calc(56px+env(safe-area-inset-bottom,0px)+1rem)] pt-4 sm:px-6 lg:px-8 lg:pb-6 lg:pt-6">
           <div className="mx-auto min-w-0 w-full max-w-7xl">
-            <div className="min-w-0" key={`${view}:${JSON.stringify(viewParams)}`}>{children}</div>
+            <div
+              className="min-w-0"
+              key={`${view}:${JSON.stringify(viewParams)}`}
+            >
+              {children}
+            </div>
           </div>
         </main>
         {/* Footer — desktop only. Sticky to bottom via mt-auto. Bottom tab bar
             replaces it on mobile (<lg). Clean: brand + user agreement link. */}
         <footer className="mt-auto hidden border-t border-border/60 bg-background/50 px-4 py-2.5 sm:px-6 lg:block lg:px-8">
-          <div className="mx-auto flex w-full max-w-7xl items-center justify-between gap-2 text-xs text-muted-foreground">
-            <p className="truncate">Practo</p>
+          <div className="mx-auto flex w-full max-w-7xl items-center justify-end gap-2 text-xs text-muted-foreground">
             <div className="flex items-center gap-4">
               <span>Connected test platform</span>
               {canReset && (

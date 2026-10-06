@@ -130,6 +130,17 @@ export function authorizeCommand(
     }
     return;
   }
+  if (["requestTimeCorrection", "reviewTimeCorrection"].includes(action)) {
+    const log = exists(data.timeLogs, a[0]);
+    const student = exists(data.students, log.userId);
+    if (log.role !== "student") deny();
+    if (action === "requestTimeCorrection") {
+      if (actor.role !== "student" || actor.studentId !== log.userId) deny();
+    } else if (actor.role !== "supervisor" || student.supervisorId !== actor.supervisorId) {
+      deny("Only the assigned supervisor can review this correction.");
+    }
+    return;
+  }
   if (
     ["clockIn", "clockOut", "addManualTimeLog", "deleteTimeLog"].includes(
       action,
@@ -146,6 +157,8 @@ export function authorizeCommand(
         : action === "clockIn"
           ? a[1]
           : actor.role);
+    if (action === "deleteTimeLog" && !coordinator && log?.corrections?.length)
+      deny("Sessions with correction requests are retained for review.");
     if (!coordinator && (target !== profileId || targetRole !== actor.role))
       deny();
     if (

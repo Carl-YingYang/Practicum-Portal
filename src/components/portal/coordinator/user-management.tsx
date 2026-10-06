@@ -249,8 +249,8 @@ export function UserManagement() {
     setAccountStatus(t.role, t.recordId, statusNext);
     try {
       await flushChanges();
-    } catch {
-      return;
+    } catch (error) {
+      throw error;
     }
     toast.success(
       statusNext === "disabled"
@@ -273,8 +273,8 @@ export function UserManagement() {
     );
     try {
       await flushChanges();
-    } catch {
-      return;
+    } catch (error) {
+      throw error;
     }
     setResetTarget(null);
     setResetCreds(result);
@@ -434,7 +434,7 @@ export function UserManagement() {
               }
             >
               <KeyRound className="h-4 w-4" />
-              Reset credentials…
+              Reset access…
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             {r.accountStatus === "disabled" ? (
@@ -542,7 +542,9 @@ export function UserManagement() {
                   <ShieldCheck className="h-4 w-4 text-muted-foreground" />
                   <div className="flex min-w-0 flex-col">
                     <span className="text-sm font-medium">Add Coordinator</span>
-                    <span className="truncate text-xs text-muted-foreground">Authorized university staff</span>
+                    <span className="truncate text-xs text-muted-foreground">
+                      Authorized university staff
+                    </span>
                   </div>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
@@ -649,6 +651,7 @@ export function UserManagement() {
           defaultSortDir="asc"
           mobileCard={(r) => (
             <MobileListCard
+              className="border-0 bg-transparent p-0 shadow-none"
               title={r.name}
               subtitle={
                 <span className="flex items-center gap-1.5">
@@ -670,10 +673,14 @@ export function UserManagement() {
                   <span className="truncate">{r.email}</span>
                 </span>
               }
-              status={<AccountStatusBadge status={r.accountStatus} />}
+              status={
+                <div className="flex items-center gap-1">
+                  <AccountStatusBadge status={r.accountStatus} />
+                  {columns.find((column) => column.key === "actions")?.cell(r)}
+                </div>
+              }
               meta={`${r.companyName}${r.idNumber ? ` · ${r.idNumber}` : ""}`}
               leading={<Avatar name={r.name} size="sm" />}
-              onClick={() => handleView(r)}
             />
           )}
           emptyState={
@@ -714,13 +721,13 @@ export function UserManagement() {
       <ConfirmDialog
         open={!!resetTarget}
         onOpenChange={(o) => !o && setResetTarget(null)}
-        title="Reset credentials?"
+        title="Reset account access?"
         description={
           resetTarget
             ? `A new one-time temporary password will be generated for ${resetTarget.name} (${resetTarget.email}). Their current password stops working and they must change it at next sign-in.`
             : ""
         }
-        confirmLabel="Reset credentials"
+        confirmLabel="Reset access"
         onConfirm={confirmReset}
       />
 
@@ -728,6 +735,7 @@ export function UserManagement() {
         <CredentialsDialog
           open={!!resetCreds}
           onOpenChange={(o) => !o && setResetCreds(null)}
+          purpose="reset"
           name={resetCreds.name}
           email={resetCreds.email}
           role={resetCreds.role}

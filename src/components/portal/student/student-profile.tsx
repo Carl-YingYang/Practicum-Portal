@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { ChangePasswordCard } from "@/components/portal/shared/change-password-card";
 import { PageHeader } from "@/components/portal/layout/page-header";
 import { SectionCard } from "@/components/portal/shared/section-card";
 import { ProgressRing } from "@/components/portal/shared/progress-ring";
@@ -12,11 +13,8 @@ import {
   hoursPercent,
 } from "@/lib/selectors";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
 import { SchoolIdentityCard } from "@/components/portal/shared/school-identity-card";
-import { toast } from "sonner";
 import {
   Building2,
   GraduationCap,
@@ -141,7 +139,6 @@ export function StudentProfile() {
               className="mt-4 w-full"
               onClick={() => {
                 logout();
-                toast.success("Signed out");
               }}
             >
               <LogOut className="h-4 w-4" /> Sign out
@@ -178,93 +175,6 @@ function DetailItem({
         {value}
       </dd>
     </div>
-  );
-}
-
-function ChangePasswordCard() {
-  const [current, setCurrent] = React.useState("");
-  const [next, setNext] = React.useState("");
-  const [confirm, setConfirm] = React.useState("");
-  const [error, setError] = React.useState<string | null>(null);
-
-  const handleSave = (e: React.FormEvent) => {
-    e.preventDefault();
-    setError(null);
-    if (!current || !next || !confirm) {
-      setError("All fields are required.");
-      return;
-    }
-    if (next.length < 8) {
-      setError("New password must be at least 8 characters.");
-      return;
-    }
-    if (next !== confirm) {
-      setError("New password and confirmation don't match.");
-      return;
-    }
-    // Mock — no real backend.
-    setCurrent("");
-    setNext("");
-    setConfirm("");
-    toast.success("Password updated", {
-      description: "Use your new password the next time you sign in.",
-    });
-  };
-
-  return (
-    <SectionCard
-      title="Change password"
-      description="Choose a strong password you don't use elsewhere."
-    >
-      <form className="space-y-4" onSubmit={handleSave}>
-        <div className="space-y-1.5">
-          <Label htmlFor="pw-current" className="text-sm font-medium">
-            Current password
-          </Label>
-          <Input
-            id="pw-current"
-            type="password"
-            value={current}
-            onChange={(e) => setCurrent(e.target.value)}
-            placeholder="••••••••"
-            className="h-11"
-            autoComplete="current-password"
-          />
-        </div>
-        <div className="space-y-1.5">
-          <Label htmlFor="pw-new" className="text-sm font-medium">
-            New password
-          </Label>
-          <Input
-            id="pw-new"
-            type="password"
-            value={next}
-            onChange={(e) => setNext(e.target.value)}
-            placeholder="At least 8 characters"
-            className="h-11"
-            autoComplete="new-password"
-          />
-        </div>
-        <div className="space-y-1.5">
-          <Label htmlFor="pw-confirm" className="text-sm font-medium">
-            Confirm new password
-          </Label>
-          <Input
-            id="pw-confirm"
-            type="password"
-            value={confirm}
-            onChange={(e) => setConfirm(e.target.value)}
-            placeholder="Re-enter new password"
-            className="h-11"
-            autoComplete="new-password"
-          />
-        </div>
-        {error && <p className="text-xs text-destructive">{error}</p>}
-        <Button type="submit" className="w-full">
-          Save new password
-        </Button>
-      </form>
-    </SectionCard>
   );
 }
 

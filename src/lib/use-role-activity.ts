@@ -45,6 +45,8 @@ function activityIcon(type: ActivityLog["type"]): { icon: LucideIcon; tone: stri
       return { icon: UserPlus, tone: "text-teal-700 bg-teal-50 dark:bg-teal-950/50" };
     case "supervisor_created":
       return { icon: UserSquare2, tone: "text-teal-700 bg-teal-50 dark:bg-teal-950/50" };
+    case "time_correction_requested":
+    case "time_correction_reviewed":
     case "time_clock_in":
       return { icon: Timer, tone: "text-teal-700 bg-teal-50 dark:bg-teal-950/50" };
     case "coordinator_action":

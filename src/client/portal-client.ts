@@ -46,6 +46,7 @@ const queue: PendingCommand[] = [];
 let processing: Promise<void> | null = null,
   initialization: Promise<void> | null = null;
 let appliedRevision = -1;
+let confirmedState: ServerState | null = null;
 async function request(path: string, body?: unknown): Promise<ServerState> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 20000);
@@ -61,7 +62,9 @@ async function request(path: string, body?: unknown): Promise<ServerState> {
     try {
       result = await response.json();
     } catch {
-      throw new Error("The server returned an incomplete response. Please retry.");
+      throw new Error(
+        "The server returned an incomplete response. Please retry.",
+      );
     }
     if (!result || typeof result !== "object")
       throw new Error("The server returned an invalid response. Please retry.");
@@ -90,6 +93,7 @@ function apply(result: ServerState, navigate = false) {
     result.revision < appliedRevision
   )
     return;
+  confirmedState = structuredClone(result);
   if (navigate) appliedRevision = -1;
   if (result.revision !== undefined) appliedRevision = result.revision;
   const currentUser = result.currentUser;
@@ -151,7 +155,7 @@ async function drain() {
     try {
       apply(await request("/api/auth/session"));
     } catch {
-      /* keep editor available */
+      if (confirmedState) apply(structuredClone(confirmedState));
     }
     const message =
       error instanceof Error ? error.message : "Changes could not be saved.";
@@ -169,7 +173,18 @@ export async function flushChanges() {
 export async function refreshPortal() {
   if (processing) return;
   const accountId = portalStore.getState().currentUser?.id;
-  const result = await request("/api/auth/session");
+  let result: ServerState;
+  try {
+    result = await request("/api/auth/session");
+  } catch (error) {
+    if (!processing && accountId === portalStore.getState().currentUser?.id)
+      portalStore.setState({
+        syncStatus: "error",
+        syncError:
+          "Connection unavailable. Reconnect to refresh saved records.",
+      });
+    throw error;
+  }
   if (processing || accountId !== portalStore.getState().currentUser?.id)
     return;
   apply(result);
@@ -204,15 +219,23 @@ export async function signOut() {
   await request("/api/auth/logout", {});
   apply({ currentUser: null }, true);
 }
+export async function updateOwnPassword(
+  currentPassword: string,
+  newPassword: string,
+) {
+  await flushChanges();
+  const firstLogin = portalStore.getState().currentUser?.mustChangePassword;
+  apply(
+    await request("/api/auth/password", { currentPassword, newPassword }),
+    !!firstLogin,
+  );
+}
 export async function changePassword(
   currentPassword: string,
   newPassword: string,
 ): Promise<FirstLoginPasswordResult> {
   try {
-    apply(
-      await request("/api/auth/password", { currentPassword, newPassword }),
-      true,
-    );
+    await updateOwnPassword(currentPassword, newPassword);
     return { ok: true };
   } catch (error) {
     toast.error(
@@ -287,7 +310,9 @@ portalStore.setState({
   hydrateSubscription: () => {},
   hydrateSchoolIdentity: () => {},
   logout: () => {
-    void signOut().catch((error) => toast.error(error.message));
+    void signOut()
+      .then(() => toast.success("Signed out"))
+      .catch((error) => toast.error(error.message));
   },
   resetPrototype: () => {
     void resetTestData().catch((error) => toast.error(error.message));

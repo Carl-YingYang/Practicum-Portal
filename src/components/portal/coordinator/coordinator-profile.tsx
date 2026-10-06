@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { ChangePasswordCard } from "@/components/portal/shared/change-password-card";
 import { useAppStore } from "@/store/use-app-store";
 import { ROLE_LABELS } from "@/lib/types";
 import { formatDate } from "@/lib/selectors";
@@ -9,73 +10,40 @@ import { SectionCard } from "@/components/portal/shared/section-card";
 import { Avatar } from "@/components/portal/shared/avatar";
 import { RoleBadge } from "@/components/portal/shared/badges";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Mail,
   ShieldCheck,
-  KeyRound,
   LogOut,
   Building2,
   Users,
   UserSquare2,
   ClipboardCheck,
   NotebookText,
-  Eye,
-  EyeOff,
 } from "lucide-react";
-import { toast } from "sonner";
 
 export function CoordinatorProfile() {
   const currentUser = useAppStore((s) => s.currentUser);
+  const coordinator = useAppStore((s) => s.coordinators.find(profile => profile.id === s.currentUser?.coordinatorId));
   const logout = useAppStore((s) => s.logout);
   const students = useAppStore((s) => s.students);
   const supervisors = useAppStore((s) => s.supervisors);
+  const companies = useAppStore((s) => s.companies);
   const evaluations = useAppStore((s) => s.evaluations);
   const journals = useAppStore((s) => s.journals);
-
-  const [current, setCurrent] = React.useState("");
-  const [next, setNext] = React.useState("");
-  const [confirm, setConfirm] = React.useState("");
-  const [showCurrent, setShowCurrent] = React.useState(false);
-  const [showNext, setShowNext] = React.useState(false);
 
   if (!currentUser) return null;
 
   const submittedEvals = evaluations.filter((e) => e.status === "submitted").length;
   const approvedJournals = journals.filter((j) => j.status === "approved").length;
 
-  const handleChangePassword = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!current || !next || !confirm) {
-      toast.error("Fill in all password fields.");
-      return;
-    }
-    if (next !== confirm) {
-      toast.error("New password and confirmation do not match.");
-      return;
-    }
-    if (next.length < 6) {
-      toast.error("New password must be at least 6 characters.");
-      return;
-    }
-    toast.success("Password updated", {
-      description: "Use your new password the next time you sign in.",
-    });
-    setCurrent("");
-    setNext("");
-    setConfirm("");
-  };
-
   const handleLogout = () => {
-    toast.success("Signed out");
     logout();
   };
 
   const stats = [
     { label: "Students", value: students.length, icon: Users },
     { label: "Supervisors", value: supervisors.length, icon: UserSquare2 },
-    { label: "Companies", value: 5, icon: Building2 },
+    { label: "Companies", value: companies.length, icon: Building2 },
     { label: "Submitted Evals", value: submittedEvals, icon: ClipboardCheck },
     { label: "Approved Journals", value: approvedJournals, icon: NotebookText },
   ];
@@ -117,7 +85,7 @@ export function CoordinatorProfile() {
                 </p>
                 <p className="flex items-center gap-2 text-muted-foreground">
                   <ShieldCheck className="h-4 w-4 shrink-0" />
-                  Account ID: <span className="font-mono">{currentUser.id}</span>
+                  Account ID: <span className="min-w-0 break-all font-mono">{currentUser.coordinatorId ?? currentUser.id}</span>
                 </p>
               </div>
             </div>
@@ -143,67 +111,7 @@ export function CoordinatorProfile() {
           </div>
         </SectionCard>
 
-        {/* Change password */}
-        <SectionCard
-          title="Change Password"
-          description="For this demo, password changes are not persisted."
-        >
-          <form onSubmit={handleChangePassword} className="space-y-3">
-            <div>
-              <Label className="mb-1.5">Current Password</Label>
-              <div className="relative">
-                <Input
-                  type={showCurrent ? "text" : "password"}
-                  value={current}
-                  onChange={(e) => setCurrent(e.target.value)}
-                  placeholder="••••••••"
-                  className="pr-9"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowCurrent((v) => !v)}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                  aria-label={showCurrent ? "Hide password" : "Show password"}
-                >
-                  {showCurrent ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                </button>
-              </div>
-            </div>
-            <div>
-              <Label className="mb-1.5">New Password</Label>
-              <div className="relative">
-                <Input
-                  type={showNext ? "text" : "password"}
-                  value={next}
-                  onChange={(e) => setNext(e.target.value)}
-                  placeholder="At least 6 characters"
-                  className="pr-9"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowNext((v) => !v)}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                  aria-label={showNext ? "Hide password" : "Show password"}
-                >
-                  {showNext ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                </button>
-              </div>
-            </div>
-            <div>
-              <Label className="mb-1.5">Confirm New Password</Label>
-              <Input
-                type={showNext ? "text" : "password"}
-                value={confirm}
-                onChange={(e) => setConfirm(e.target.value)}
-                placeholder="Re-enter new password"
-              />
-            </div>
-            <Button type="submit" className="w-full">
-              <KeyRound className="h-4 w-4" />
-              Update Password
-            </Button>
-          </form>
-        </SectionCard>
+        <ChangePasswordCard />
       </div>
 
       {/* Account meta */}
@@ -222,7 +130,7 @@ export function CoordinatorProfile() {
               Account created
             </p>
             <p className="mt-0.5 font-medium text-foreground">
-              {formatDate("2024-08-15T08:00:00.000Z")}
+              {coordinator?.createdAt ? formatDate(coordinator.createdAt) : "—"}
             </p>
           </div>
           <div>

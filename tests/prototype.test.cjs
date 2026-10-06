@@ -535,3 +535,41 @@ test("demo sign-in defaults only to local development and respects explicit envi
   );
   assert.equal(isDemoLoginEnabled({ appEnv: "testing" }), false);
 });
+
+test("clock-out correction keeps hours unchanged until approval and retains review history", () => {
+  const student = state().students[0];
+  store.setState({ timeLogs: [], currentUser: { id: "owner", role: "student", studentId: student.id } });
+  const logId = state().addManualTimeLog({ userId: student.id, role: "student", clockInAt: "2020-01-01T00:00:00Z", clockOutAt: "2020-01-01T08:00:00Z" });
+  const before = state().students.find(s => s.id === student.id).loggedHours;
+  const request = state().requestTimeCorrection(logId, "2020-01-01T06:00:00Z", "Forgot to stop the session on time.");
+  assert.equal(state().students.find(s => s.id === student.id).loggedHours, before);
+  assert.throws(() => state().requestTimeCorrection(logId, "2020-01-01T07:00:00Z", "Another request"), /awaiting review/);
+  store.setState({ currentUser: { id: "reviewer", role: "supervisor", supervisorId: student.supervisorId } });
+  state().reviewTimeCorrection(logId, request, "approved", "Confirmed actual end time");
+  const updated = state().timeLogs.find(t => t.id === logId);
+  assert.equal(updated.durationMs, 6 * 3600000);
+  assert.equal(Date.parse(updated.corrections[0].originalClockOutAt), Date.parse("2020-01-01T08:00:00Z"));
+  assert.equal(updated.corrections[0].reviewedBy, "reviewer");
+  assert.equal(state().students.find(s => s.id === student.id).loggedHours, 6);
+  assert.throws(() => state().reviewTimeCorrection(logId, request, "approved"), /no longer pending/);
+  const rejected = state().requestTimeCorrection(logId, "2020-01-01T05:00:00Z", "Propose another end time.");
+  assert.throws(() => state().reviewTimeCorrection(logId, rejected, "rejected", ""), /Explain why/);
+  state().reviewTimeCorrection(logId, rejected, "rejected", "Work continued until six");
+  assert.equal(state().timeLogs.find(t => t.id === logId).durationMs, 6 * 3600000);
+  assert.equal(state().timeLogs.find(t => t.id === logId).corrections.length, 2);
+});
+
+test("invalid corrections cannot change an active timer or create overlapping hours", () => {
+  const student = state().students[0];
+  const active = { id: "running", userId: student.id, role: "student", clockInAt: "2020-01-01T00:00:00Z", clockOutAt: null, durationMs: null, createdAt: "2020-01-01T00:00:00Z" };
+  store.setState({ timeLogs: [active, { ...active, id: "other", clockInAt: "2020-01-01T09:00:00Z", clockOutAt: "2020-01-01T10:00:00Z", durationMs: 3600000 }] });
+  assert.throws(() => state().requestTimeCorrection(active.id, "2020-01-01T10:00:00Z", "Forgot to stop"), /overlaps/);
+  assert.throws(() => state().requestTimeCorrection(active.id, "2030-01-01T00:00:00Z", "Forgot to stop"), /future/);
+  assert.throws(() => state().requestTimeCorrection(active.id, "2020-01-03T00:00:00Z", "Forgot to stop"), /24 hours/);
+  assert.throws(() => state().requestTimeCorrection(active.id, "2019-01-01T00:00:00Z", "Forgot to stop"), /after clock-in/);
+  const request = state().requestTimeCorrection(active.id, "2020-01-01T08:00:00Z", "Forgot to stop the clock.");
+  assert.equal(state().timeLogs[0].clockOutAt, null);
+  assert.equal(elapsedMs(state().timeLogs[0], Date.parse("2020-01-01T12:00:00Z")), 12 * 3600000);
+  state().reviewTimeCorrection(active.id, request, "approved");
+  assert.equal(state().timeLogs[0].clockOutAt, "2020-01-01T08:00:00Z");
+});

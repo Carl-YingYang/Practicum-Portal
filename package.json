@@ -22,7 +22,9 @@
     "test:login": "node tests/login-development.cjs",
     "test:workflow": "node tests/writing-workflow.cjs",
     "test:responsive": "node tests/responsive-polish.cjs",
-    "test:pdf": "node tests/pdf-layout.cjs"
+    "test:pdf": "node tests/pdf-layout.cjs",
+    "test:account-clock": "node tests/account-clock-integration.cjs",
+    "test:account-clock-ui": "node tests/account-clock-browser.cjs"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

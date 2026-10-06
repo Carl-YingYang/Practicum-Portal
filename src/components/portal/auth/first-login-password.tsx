@@ -20,15 +20,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-/**
- * FirstLoginPasswordChange — focused prototype gate shown after signing in
- * with a one-time temporary (Invited) password. The user sets a personal
- * password before reaching their dashboard.
- *
- * Honest scope: the "change" only mutates in-memory mock state so the flow is
- * demonstrable end-to-end. It is shaped to map 1:1 onto a future Supabase
- * Auth password update — no fake backend, no exposed secrets.
- */
+/** First-login gate: persist a personal password before opening the workspace. */
 interface Requirement {
   key: "length" | "uppercase" | "number";
   label: string;

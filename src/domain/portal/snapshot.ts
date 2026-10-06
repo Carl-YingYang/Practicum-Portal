@@ -61,6 +61,8 @@ export const mutationNames = [
   "clockIn",
   "clockOut",
   "deleteTimeLog",
+  "requestTimeCorrection",
+  "reviewTimeCorrection",
   "addManualTimeLog",
   "createFormDocument",
   "updateFormMeta",

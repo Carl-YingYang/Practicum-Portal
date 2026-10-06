@@ -1,4 +1,5 @@
 "use client";
+import { AttendanceCorrections } from "@/components/portal/shared/attendance-corrections";
 import { journalPeriodLabel } from "@/domain/journal-period";
 
 import { useMemo, useState, useEffect } from "react";
@@ -441,6 +442,7 @@ export function InternDetail() {
           </TabsContent>
 
           <TabsContent value="time" className="mt-4 min-w-0 w-full">
+            <AttendanceCorrections userId={student.id} review />
             <div className="grid min-w-0 grid-cols-1 gap-4 @min-[800px]/intern:grid-cols-3">
               <SectionCard title="This week" className="min-w-0">
                 <div className="flex items-center gap-3">

@@ -48,7 +48,17 @@ export default function RootLayout({
           <SchoolThemeProvider>
             {children}
             <Toaster />
-            <SonnerToaster position="top-right" richColors closeButton />
+            <SonnerToaster
+              position="bottom-right"
+              offset={16}
+              mobileOffset={{
+                bottom: "calc(72px + env(safe-area-inset-bottom, 0px))",
+                left: "16px",
+                right: "16px",
+              }}
+              richColors
+              closeButton
+            />
           </SchoolThemeProvider>
         </ThemeProvider>
       </body>

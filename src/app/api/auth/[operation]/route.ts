@@ -190,13 +190,25 @@ export async function POST(
           account.passwordHash,
         ))
       )
-        throw new HttpError(400, "Your temporary password is incorrect.");
+        throw new HttpError(400, "Your current password is incorrect.");
       const hash = await hashPassword(parsed.data.newPassword);
       await db.$transaction(async (tx) => {
         const school = await tx.portalSchool.update({
           where: { id: account.schoolId },
           data: { revision: { increment: 1 } },
         });
+        const live = await tx.portalAccount.findUnique({
+          where: { id: account.id },
+        });
+        if (
+          !live ||
+          live.status === "disabled" ||
+          live.passwordHash !== account.passwordHash
+        )
+          throw new HttpError(
+            409,
+            "Account access changed. Sign in again before changing your password.",
+          );
         const data = JSON.parse(school.stateJson) as PortalData;
         const profile = [
           ...data.students,

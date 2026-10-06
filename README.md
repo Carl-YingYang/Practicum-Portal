@@ -50,6 +50,8 @@ npm run test:browser
 npm run test:workflow
 npm run test:responsive
 npm run test:pdf
+npm run test:account-clock
+npm run test:account-clock-ui
 ```
 
 The login check uses a development build; run it before the production build used by the integration/browser checks. Install Chromium once with `npx playwright install chromium`. The PDF geometry check additionally requires Python and PyMuPDF; see the polish guide.
@@ -61,3 +63,5 @@ HTTP and browser tests create temporary databases and private in-memory credenti
 Deploy this single Next.js app on a Node host with a **persistent writable volume** for SQLite. Set an absolute `DATABASE_URL`, run `npm run db:setup`, then `npm run build` and `npm run start`. Set `APP_ORIGIN` to the public HTTPS origin when behind a reverse proxy. Production sessions use secure cookies; `COOKIE_SECURE=false` is only for local HTTP testing.
 
 Keep `APP_ENV=testing` and `ENABLE_DEMO_LOGIN=true` only for an intentionally disposable demonstration. For real accounts, use `APP_ENV=production` and disable demo login. Read the remaining deployment work in [CONNECTED_PLATFORM.md](docs/CONNECTED_PLATFORM.md#remaining-work). Ephemeral serverless filesystems need an external persistent database; this SQLite prototype does not provide persistence there.
+
+See [account, loading and attendance follow-up](docs/ACCOUNT_ATTENDANCE_POLISH.md) for personal passwords, coordinator reset access, confirmed clock saves and reviewed clock-out corrections.

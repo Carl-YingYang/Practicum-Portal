@@ -1,26 +1,34 @@
-import { PractoBrand } from "./practo-brand";
-import { Skeleton } from "@/components/ui/skeleton";
+import { Loader2 } from "lucide-react";
 
-/** Mounted only while bootstrap or a code-split workspace is loading. */
-export function WorkspaceLoader({ fullScreen = false }: { fullScreen?: boolean }) {
+/** Shown only while the session or a workspace module is actually pending. */
+export function WorkspaceLoader({
+  fullScreen = false,
+}: {
+  fullScreen?: boolean;
+}) {
   return (
     <div
       role="status"
       aria-label="Loading workspace"
-      aria-busy="true"
-      className={fullScreen ? "flex min-h-svh items-center justify-center bg-background px-5 py-8" : "py-5"}
+      aria-live="polite"
+      className={
+        fullScreen
+          ? "flex min-h-svh items-center justify-center bg-background px-6"
+          : "flex min-h-48 items-center justify-center px-4 py-8"
+      }
     >
-      <div className="mx-auto w-full max-w-3xl space-y-5">
-        <div className="flex flex-wrap items-center gap-3">
-          <PractoBrand className="text-xl font-bold tracking-tight" />
-          <p className="text-sm text-muted-foreground">Loading your workspace…</p>
+      <div className="flex w-full max-w-xs flex-col items-center gap-3 text-center">
+        <div
+          aria-hidden="true"
+          className="flex size-10 items-center justify-center rounded-full border border-border bg-muted/30"
+        >
+          <Loader2 className="size-4 animate-spin text-primary motion-reduce:animate-none" />
         </div>
-        <div aria-hidden="true" className="space-y-4">
-          <Skeleton className="h-7 w-2/3" />
-          <div className="grid gap-3 sm:grid-cols-3">
-            {[1, 2, 3].map((item) => <Skeleton key={item} className="h-24 w-full" />)}
-          </div>
-          <Skeleton className="h-40 w-full" />
+        <div>
+          <p className="text-sm font-medium text-foreground">
+            {fullScreen ? "Opening your workspace" : "Loading this page"}
+          </p>
+          <p className="mt-1 text-xs text-muted-foreground">Just a moment…</p>
         </div>
       </div>
     </div>

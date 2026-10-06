@@ -1,5 +1,7 @@
 "use client";
 import * as React from "react";
+import { flushChanges } from "@/client/portal-client";
+import { AttendanceCorrections } from "./attendance-corrections";
 import { useAppStore } from "@/store/use-app-store";
 import { PageHeader } from "@/components/portal/layout/page-header";
 import { SectionCard } from "@/components/portal/shared/section-card";
@@ -105,6 +107,9 @@ export function TimeClockView({ breadcrumb, description }: TimeClockViewProps) {
   const deleteTimeLog = useAppStore((s) => s.deleteTimeLog);
   const entity = resolveClockEntity(currentUser);
   const now = useTicker(1000);
+  const [saving, setSaving] = React.useState(false);
+  const [saveError, setSaveError] = React.useState("");
+  const saveLock = React.useRef(false);
   const [note, setNote] = React.useState("");
   const [outNote, setOutNote] = React.useState("");
   const [confirmDelete, setConfirmDelete] = React.useState<TimeLog | null>(
@@ -141,25 +146,48 @@ export function TimeClockView({ breadcrumb, description }: TimeClockViewProps) {
   const defaultDescription = isStudent
     ? "Track your practicum hours with clock-in and clock-out sessions."
     : `Track your ${roleLabel.toLowerCase()} work hours with clock-in and clock-out sessions.`;
-  const handleClockIn = () => {
-    clockIn(userId, role, note.trim() || undefined);
-    setNote("");
-    toast.success("Clocked in", {
-      description: `Started at ${formatTime(new Date().toISOString())}`,
+  async function saveClock(action: () => void, success: string) {
+    if (saveLock.current) return;
+    saveLock.current = true;
+    setSaving(true);
+    setSaveError("");
+    try {
+      action();
+      await flushChanges();
+      toast.success(success);
+      return true;
+    } catch (err) {
+      setSaveError(
+        err instanceof Error
+          ? err.message
+          : "Session could not be saved. Reconnect and retry.",
+      );
+      return false;
+    } finally {
+      saveLock.current = false;
+      setSaving(false);
+    }
+  }
+  const handleClockIn = () =>
+    void saveClock(() => {
+      clockIn(userId, role, note.trim() || undefined);
+    }, "Clocked in").then((ok) => {
+      if (ok) setNote("");
     });
-  };
-  const handleClockOut = () => {
-    const sessionMs = active ? elapsedMs(active, now) : 0;
-    clockOut(userId, outNote.trim() || undefined);
-    setOutNote("");
-    toast.success("Clocked out", {
-      description: `Session logged: ${formatDuration(sessionMs)}`,
+  const handleClockOut = () =>
+    void saveClock(() => {
+      clockOut(userId, outNote.trim() || undefined);
+    }, "Clocked out").then((ok) => {
+      if (ok) setOutNote("");
     });
-  };
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (!confirmDelete) return;
-    deleteTimeLog(confirmDelete.id);
-    toast.success("Session deleted");
+    const ok = await saveClock(
+      () => deleteTimeLog(confirmDelete.id),
+      "Session deleted",
+    );
+    if (!ok)
+      throw new Error("The session could not be deleted. Reconnect and retry.");
     setConfirmDelete(null);
   };
   const columns: Column<TimeLog>[] = [
@@ -211,6 +239,7 @@ export function TimeClockView({ breadcrumb, description }: TimeClockViewProps) {
           variant="ghost"
           size="icon"
           className="h-8 w-8 text-muted-foreground hover:text-destructive"
+          disabled={!!t.corrections?.length || saving}
           onClick={(e) => {
             e.stopPropagation();
             setConfirmDelete(t);
@@ -411,7 +440,7 @@ export function TimeClockView({ breadcrumb, description }: TimeClockViewProps) {
               <div className="mt-5 flex flex-col items-center text-center sm:mt-6">
                 {active ? (
                   <>
-                    <p className="font-mono text-5xl font-bold tabular-nums tracking-tight text-foreground sm:text-6xl">
+                    <p className="font-mono break-all text-4xl font-bold tabular-nums tracking-tight text-foreground sm:text-6xl">
                       {formatTimer(elapsedMs(active, now))}
                     </p>
                     <p className="mt-2 text-sm text-muted-foreground">
@@ -433,6 +462,24 @@ export function TimeClockView({ breadcrumb, description }: TimeClockViewProps) {
                 )}
               </div>
 
+              {active && elapsedMs(active, now) >= 12 * 3600000 && (
+                <p
+                  role="status"
+                  className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200"
+                >
+                  This session has been running for over 12 hours. If you forgot
+                  to stop it, request a clock-out correction below. Time keeps
+                  counting until clock-out or an approved correction.
+                </p>
+              )}
+              {saveError && (
+                <p
+                  role="alert"
+                  className="mt-3 break-words text-sm text-destructive"
+                >
+                  {saveError}
+                </p>
+              )}
               {/* action + note */}
               <div className="mt-6 flex flex-col gap-3 sm:mx-auto sm:max-w-md">
                 {!active && (
@@ -485,19 +532,21 @@ export function TimeClockView({ breadcrumb, description }: TimeClockViewProps) {
                     size="lg"
                     variant="destructive"
                     className="h-12 w-full text-base"
+                    disabled={saving}
                     onClick={handleClockOut}
                   >
                     <Square className="h-4 w-4" fill="currentColor" />
-                    Clock Out
+                    {saving ? "Saving…" : "Clock Out"}
                   </Button>
                 ) : (
                   <Button
                     size="lg"
                     className="h-12 w-full text-base"
+                    disabled={saving}
                     onClick={handleClockIn}
                   >
                     <Play className="h-4 w-4" fill="currentColor" />
-                    Clock In
+                    {saving ? "Saving…" : "Clock In"}
                   </Button>
                 )}
               </div>
@@ -637,6 +686,7 @@ export function TimeClockView({ breadcrumb, description }: TimeClockViewProps) {
                   variant="ghost"
                   size="icon"
                   className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                  disabled={!!t.corrections?.length || saving}
                   onClick={() => setConfirmDelete(t)}
                   aria-label="Delete session"
                 >
@@ -656,6 +706,8 @@ export function TimeClockView({ breadcrumb, description }: TimeClockViewProps) {
           </SectionCard>
         </div>
       )}
+
+      {isStudent && <AttendanceCorrections userId={userId} />}
 
       <ConfirmDialog
         open={!!confirmDelete}

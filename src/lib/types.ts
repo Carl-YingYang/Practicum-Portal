@@ -486,6 +486,19 @@ export interface TimeLog {
   durationMs: number | null; // finalised on clock-out
   note?: string;
   createdAt: string;
+  corrections?: TimeCorrection[];
+}
+export interface TimeCorrection {
+  id: string;
+  requestedClockOutAt: string;
+  originalClockOutAt: string | null;
+  reason: string;
+  requestedAt: string;
+  requestedBy: string;
+  status: "pending" | "approved" | "rejected";
+  reviewedAt?: string;
+  reviewedBy?: string;
+  reviewNote?: string;
 }
 export type ActivityType =
   | "coordinator_action"
@@ -497,7 +510,9 @@ export type ActivityType =
   | "student_created"
   | "supervisor_created"
   | "time_clock_in"
-  | "time_clock_out";
+  | "time_clock_out"
+  | "time_correction_requested"
+  | "time_correction_reviewed";
 export interface ActivityLog {
   id: string;
   type: ActivityType;

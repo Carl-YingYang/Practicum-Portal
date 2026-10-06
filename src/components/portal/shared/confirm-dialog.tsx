@@ -23,7 +23,7 @@ interface ConfirmDialogProps {
   description?: React.ReactNode;
   confirmLabel?: string;
   cancelLabel?: string;
-  onConfirm: () => void;
+  onConfirm: () => void | Promise<void>;
   destructive?: boolean;
   children?: React.ReactNode; // extra content (e.g., reason textarea)
 }
@@ -49,30 +49,68 @@ export function ConfirmDialog({
   children,
 }: ConfirmDialogProps) {
   const isMobile = useIsMobile();
+  const [saving, setSaving] = React.useState(false);
+  const [error, setError] = React.useState("");
+  const lock = React.useRef(false);
+  async function confirm(event?: React.MouseEvent) {
+    event?.preventDefault();
+    if (lock.current) return;
+    lock.current = true;
+    setSaving(true);
+    setError("");
+    try {
+      await onConfirm();
+      onOpenChange(false);
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "The change could not be saved. Please retry.",
+      );
+    } finally {
+      lock.current = false;
+      setSaving(false);
+    }
+  }
+  function changeOpen(next: boolean) {
+    if (lock.current) return;
+    setError("");
+    onOpenChange(next);
+  }
 
   if (isMobile) {
     return (
       <BottomSheet
         open={open}
-        onOpenChange={onOpenChange}
+        onOpenChange={changeOpen}
         title={title}
         description={description}
         maxHeight={90}
       >
         <div className="space-y-4 pb-4">
           {children}
+          {error && (
+            <p role="alert" className="text-sm text-destructive">
+              {error}
+            </p>
+          )}
           <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-            <Button variant="outline" onClick={() => onOpenChange(false)}>
+            <Button
+              disabled={saving}
+              variant="outline"
+              onClick={() => changeOpen(false)}
+            >
               {cancelLabel}
             </Button>
             <Button
-              onClick={onConfirm}
+              disabled={saving}
+              onClick={confirm}
               className={cn(
                 destructive &&
-                  "bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  "bg-destructive text-destructive-foreground hover:bg-destructive/90",
               )}
             >
-              {confirmLabel}
+              {saving ? "Saving…" : confirmLabel}
             </Button>
           </div>
         </div>
@@ -81,7 +119,7 @@ export function ConfirmDialog({
   }
 
   return (
-    <AlertDialog open={open} onOpenChange={onOpenChange}>
+    <AlertDialog open={open} onOpenChange={changeOpen}>
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>{title}</AlertDialogTitle>
@@ -92,16 +130,22 @@ export function ConfirmDialog({
           )}
         </AlertDialogHeader>
         {children}
+        {error && (
+          <p role="alert" className="text-sm text-destructive">
+            {error}
+          </p>
+        )}
         <AlertDialogFooter>
-          <AlertDialogCancel>{cancelLabel}</AlertDialogCancel>
+          <AlertDialogCancel disabled={saving}>{cancelLabel}</AlertDialogCancel>
           <AlertDialogAction
-            onClick={onConfirm}
+            disabled={saving}
+            onClick={confirm}
             className={cn(
               destructive &&
-                "bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                "bg-destructive text-destructive-foreground hover:bg-destructive/90",
             )}
           >
-            {confirmLabel}
+            {saving ? "Saving…" : confirmLabel}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
