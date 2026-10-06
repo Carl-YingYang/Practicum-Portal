@@ -8,7 +8,6 @@ import {
   FileText,
   Eye,
   Pencil,
-  Lock,
   Download,
   NotebookText,
   ClipboardCheck,
@@ -41,7 +40,6 @@ import {
   ScoreBadge,
   EvaluationStatusBadge,
   JournalStatusBadge,
-  Badge,
 } from "@/components/portal/shared/badges";
 import { SectionCard } from "@/components/portal/shared/section-card";
 import { DataTable, type Column } from "@/components/portal/shared/data-table";
@@ -52,7 +50,7 @@ import { CentralizedTimesheetLauncher } from "@/components/portal/shared/central
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { RATING_CRITERIA, RATING_ANCHORS } from "@/lib/types";
-import type { Journal, Evaluation } from "@/lib/types";
+import type { Journal } from "@/lib/types";
 
 export function InternDetail() {
   const viewParams = useAppStore((s) => s.viewParams);
@@ -184,158 +182,118 @@ export function InternDetail() {
   const activeLog = studentTimeLogs.find((t) => t.clockOutAt === null);
 
   return (
-    <div>
+    <div className="@container/intern min-w-0 w-full max-w-full">
       <PageHeader showBack breadcrumb="My Interns" />
 
-      {/* Profile header card — position + department in the header. */}
+      {/* Keep identity and progress compact at every available width. */}
       <SectionCard>
-        <div className="flex flex-col gap-5 sm:flex-row sm:items-center">
-          <Avatar name={student.name} size="xl" />
+        <div className="flex min-w-0 items-start gap-3">
+          <div className="shrink-0">
+            <Avatar name={student.name} size="lg" />
+          </div>
           <div className="min-w-0 flex-1">
-            <h2 className="text-xl font-bold tracking-tight text-foreground">
+            <h2 className="break-words text-lg font-bold tracking-tight text-foreground @min-[560px]/intern:text-xl">
               {student.name}
             </h2>
-            <p className="mt-0.5 text-sm text-foreground/80">
-              {student.position}
-            </p>
-            <p className="mt-0.5 truncate font-mono text-xs text-muted-foreground">
+            {student.position && (
+              <p className="mt-0.5 break-words text-sm text-foreground/80">
+                {student.position}
+              </p>
+            )}
+            <p className="mt-1 break-words font-mono text-xs text-muted-foreground">
               {student.studentNumber} · {student.course} · {student.department}
             </p>
-            <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
-              <span className="inline-flex min-w-0 items-center gap-1.5">
-                <Building2 className="h-4 w-4 shrink-0" />
-                <span className="truncate">{company?.name ?? "—"}</span>
+            <div className="mt-2 grid min-w-0 gap-1.5 text-xs text-muted-foreground @min-[560px]/intern:text-sm">
+              <span className="flex min-w-0 items-start gap-1.5">
+                <Building2 className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                <span className="min-w-0 break-words">{company?.name ?? "—"}</span>
               </span>
-              <span className="inline-flex min-w-0 items-center gap-1.5">
-                <ClipboardCheck className="h-4 w-4 shrink-0" />
-                <span className="truncate">{supervisor?.name ?? "Unassigned"}</span>
+              <span className="flex min-w-0 items-start gap-1.5">
+                <ClipboardCheck className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                <span className="min-w-0 break-words">{supervisor?.name ?? "Unassigned"}</span>
               </span>
             </div>
           </div>
-          <div className="flex shrink-0 flex-col items-center gap-2 sm:items-end">
-            <ProgressRing value={pct} size={92} label="complete" />
-            <p className="text-xs text-muted-foreground">
-              <span className="font-semibold text-foreground">
-                {student.loggedHours}h
-              </span>{" "}
-              / {student.requiredHours}h
+        </div>
+        <div className="mt-4 space-y-2 border-t border-border/50 pt-3">
+          <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
+            <p className="text-muted-foreground">
+              <span className="font-semibold tabular-nums text-foreground">{student.loggedHours}h</span>
+              {" "}/ {student.requiredHours}h
             </p>
+            <span className="font-semibold tabular-nums text-primary">{pct}% complete</span>
           </div>
+          <ProgressBar value={pct} />
         </div>
       </SectionCard>
 
-      {/* Primary actions — above the fold on desktop; duplicated in the
-          sticky bottom action bar on mobile (see below). */}
-      <div className="mt-4 hidden flex-wrap items-center gap-2 lg:flex">
-        {submittedEval ? (
-          <>
-            <Button disabled variant="outline">
-              <Lock className="h-4 w-4" />
-              Evaluation submitted
-            </Button>
-            <Button
-              variant="outline"
-              onClick={() =>
-                navigate("supervisor.evaluation-view", {
-                  evaluationId: submittedEval.id,
-                })
-              }
-            >
-              <Eye className="h-4 w-4" />
-              View evaluation
-            </Button>
-            <span className="text-xs text-muted-foreground">
-              A submitted evaluation already exists for this term.
-            </span>
-          </>
-        ) : (
-          <Button onClick={handleEvaluateClick}>
-            {draftEval ? (
-              <>
-                <Pencil className="h-4 w-4" />
-                Edit Evaluation
-              </>
-            ) : (
-              <>
-                <ClipboardCheck className="h-4 w-4" />
-                Evaluate
-              </>
-            )}
-          </Button>
-        )}
-        <Button variant="outline" onClick={() => setPdfOpen(true)}>
-          <Download className="h-4 w-4" />
-          Generate PDF
-        </Button>
-      </div>
-
-      {/* Sticky bottom action bar (mobile + tablet) — primary CTA flex-1.
-          Sits above the bottom tab bar (56px + safe area). */}
-      <div className="sticky bottom-[calc(56px+env(safe-area-inset-bottom,0px))] z-20 mt-6 -mx-5 flex gap-2 border-t border-border bg-background/95 p-3 backdrop-blur supports-[backdrop-filter]:bg-background/80 sm:-mx-6 sm:px-6 lg:hidden">
-        {submittedEval ? (
-          <Button
-            variant="outline"
-            className="flex-1"
-            onClick={() =>
-              navigate("supervisor.evaluation-view", {
-                evaluationId: submittedEval.id,
-              })
+      {/* One in-flow action row; no negative margins or overlapping sticky bar. */}
+      <div className="mt-4 flex min-w-0 w-full items-center gap-2">
+        <Button
+          variant={submittedEval ? "outline" : "default"}
+          className="h-11 min-w-0 flex-1 px-2 text-xs @min-[480px]/intern:flex-none @min-[480px]/intern:px-4 @min-[480px]/intern:text-sm"
+          onClick={() => {
+            if (submittedEval) {
+              navigate("supervisor.evaluation-view", { evaluationId: submittedEval.id });
+            } else {
+              handleEvaluateClick();
             }
-          >
-            <Eye className="h-4 w-4" />
-            View evaluation
-          </Button>
-        ) : (
-          <Button className="flex-1" onClick={handleEvaluateClick}>
-            {draftEval ? (
-              <>
-                <Pencil className="h-4 w-4" />
-                Edit Evaluation
-              </>
-            ) : (
-              <>
-                <ClipboardCheck className="h-4 w-4" />
-                Evaluate
-              </>
-            )}
-          </Button>
-        )}
-        <Button variant="outline" onClick={() => setPdfOpen(true)} aria-label="Generate PDF">
+          }}
+        >
+          {submittedEval ? <Eye className="h-4 w-4 shrink-0" /> : draftEval ? <Pencil className="h-4 w-4 shrink-0" /> : <ClipboardCheck className="h-4 w-4 shrink-0" />}
+          <span className="min-w-0 truncate">
+            {submittedEval ? "View evaluation" : draftEval ? "Edit evaluation" : "Evaluate"}
+          </span>
+        </Button>
+        <Button
+          variant="outline"
+          className="h-11 shrink-0 px-3"
+          onClick={() => setPdfOpen(true)}
+          aria-label="Generate intern report PDF"
+          title="Generate intern report PDF"
+        >
           <Download className="h-4 w-4" />
+          <span className="hidden @min-[480px]/intern:inline">Generate PDF</span>
         </Button>
       </div>
+      {submittedEval && (
+        <p className="mt-2 break-words text-xs text-muted-foreground">
+          Evaluation submitted. You can view the report; submitted evaluations are locked.
+        </p>
+      )}
 
-      {/* Tabs */}
-      <div className="mt-6">
-        <Tabs defaultValue="overview">
-          <TabsList>
-            <TabsTrigger value="overview">Overview</TabsTrigger>
-            <TabsTrigger value="journals">
-              Journals
-              <span className="ml-1 text-xs text-muted-foreground">
-                ({studentJournals.length})
-              </span>
+      {/* Container queries follow the available panel width, not just the viewport. */}
+      <div className="mt-5 min-w-0 w-full">
+        <Tabs defaultValue="overview" className="min-w-0 w-full">
+          <TabsList
+            aria-label="Intern details"
+            className="grid h-11 min-w-0 w-full grid-cols-4 gap-0.5"
+          >
+            <TabsTrigger value="overview" className="min-w-0 gap-1 px-1 text-xs @min-[640px]/intern:px-2 @min-[640px]/intern:text-sm">
+              <span className="truncate">Overview</span>
             </TabsTrigger>
-            <TabsTrigger value="evaluations">
-              Evaluations
-              <span className="ml-1 text-xs text-muted-foreground">
-                ({studentEvals.length})
-              </span>
+            <TabsTrigger value="journals" aria-label={`Journals (${studentJournals.length})`} className="min-w-0 gap-1 px-1 text-xs @min-[640px]/intern:px-2 @min-[640px]/intern:text-sm">
+              <span className="truncate">Journals</span>
+              <span className="hidden shrink-0 text-xs tabular-nums text-muted-foreground @min-[640px]/intern:inline">({studentJournals.length})</span>
             </TabsTrigger>
-            <TabsTrigger value="time">
-              Time Logs
-              <span className="ml-1 text-xs text-muted-foreground">
-                ({studentTimeLogs.length})
-              </span>
+            <TabsTrigger value="evaluations" aria-label={`Evaluations (${studentEvals.length})`} className="min-w-0 gap-1 px-1 text-xs @min-[640px]/intern:px-2 @min-[640px]/intern:text-sm">
+              <span className="truncate @min-[640px]/intern:hidden">Eval</span>
+              <span className="hidden truncate @min-[640px]/intern:inline">Evaluations</span>
+              <span className="hidden shrink-0 text-xs tabular-nums text-muted-foreground @min-[640px]/intern:inline">({studentEvals.length})</span>
+            </TabsTrigger>
+            <TabsTrigger value="time" aria-label={`Time logs (${studentTimeLogs.length})`} className="min-w-0 gap-1 px-1 text-xs @min-[640px]/intern:px-2 @min-[640px]/intern:text-sm">
+              <span className="truncate @min-[640px]/intern:hidden">Logs</span>
+              <span className="hidden truncate @min-[640px]/intern:inline">Time Logs</span>
+              <span className="hidden shrink-0 text-xs tabular-nums text-muted-foreground @min-[640px]/intern:inline">({studentTimeLogs.length})</span>
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="overview" className="mt-4">
-            <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+          <TabsContent value="overview" className="mt-4 min-w-0 w-full">
+            <div className="grid min-w-0 grid-cols-1 gap-4 @min-[720px]/intern:grid-cols-2">
               <SectionCard title="Hours progress">
-                <div className="flex items-center gap-5">
+                <div className="flex min-w-0 flex-col gap-4 @min-[400px]/intern:flex-row @min-[400px]/intern:items-center">
                   <ProgressRing value={pct} size={96} label="complete" />
-                  <div className="flex-1 space-y-3">
+                  <div className="min-w-0 w-full flex-1 space-y-3">
                     <div>
                       <p className="text-xs text-muted-foreground">Logged / Required</p>
                       <p className="text-lg font-semibold tabular-nums text-foreground">
@@ -356,7 +314,7 @@ export function InternDetail() {
               </SectionCard>
 
               <SectionCard title="Activity summary">
-                <dl className="grid grid-cols-2 gap-3">
+                <dl className="grid grid-cols-1 gap-3 @min-[360px]/intern:grid-cols-2">
                   <CountTile
                     label="Approved journals"
                     value={counts.approved}
@@ -386,9 +344,9 @@ export function InternDetail() {
             </div>
           </TabsContent>
 
-          <TabsContent value="journals" className="mt-4">
+          <TabsContent value="journals" className="mt-4 min-w-0 w-full">
             <SectionCard
-              title="Weekly journals"
+              title="Journals"
               description={`${studentJournals.length} journal(s) on file.`}
               noPadding
             >
@@ -396,13 +354,16 @@ export function InternDetail() {
                 <EmptyState
                   icon={NotebookText}
                   title="No journals yet"
-                  description="This intern hasn't submitted any weekly journals."
+                  description="This intern hasn't submitted any journals."
                 />
               ) : (
                 <DataTable
                   columns={journalColumns}
                   rows={studentJournals}
                   getRowId={(j) => j.id}
+                  onRowClick={(j) => {
+                    if (j.status === "pending") navigate("supervisor.journal-review", { journalId: j.id });
+                  }}
                   defaultSortKey="date"
                   defaultSortDir="desc"
                   rowAccent={(j) =>
@@ -414,12 +375,12 @@ export function InternDetail() {
                   }
                   mobileCard={(j) => (
                     <div className="space-y-2.5">
-                      <div className="flex items-start justify-between gap-2">
+                      <div className="flex flex-wrap items-start justify-between gap-2">
                         <div className="min-w-0">
                           <p className="text-sm font-semibold text-foreground">
                             {formatDate(j.date)}
                           </p>
-                          <p className="text-xs text-muted-foreground">
+                          <p className="break-words text-xs text-muted-foreground">
                             {journalPeriodLabel(j)} · {j.hours}h
                           </p>
                         </div>
@@ -440,7 +401,7 @@ export function InternDetail() {
             </SectionCard>
           </TabsContent>
 
-          <TabsContent value="evaluations" className="mt-4">
+          <TabsContent value="evaluations" className="mt-4 min-w-0 w-full">
             <SectionCard title="Evaluations" noPadding>
               {studentEvals.length === 0 ? (
                 <EmptyState
@@ -457,34 +418,21 @@ export function InternDetail() {
               ) : (
                 <ul className="divide-y divide-border">
                   {studentEvals.map((e) => (
-                    <li
-                      key={e.id}
-                      className="flex items-center gap-3 px-5 py-3"
-                    >
+                    <li key={e.id} className="flex min-w-0 flex-col gap-3 px-4 py-4 @min-[640px]/intern:flex-row @min-[640px]/intern:items-center">
                       <div className="min-w-0 flex-1">
-                        <p className="text-sm font-semibold text-foreground">
-                          {e.term} Term
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {e.status === "submitted"
-                            ? `Submitted ${formatDate(e.submittedAt)}`
-                            : `Draft · last updated ${formatDate(e.createdAt)}`}
+                        <p className="break-words text-sm font-semibold text-foreground">{e.term} Term</p>
+                        <p className="mt-0.5 break-words text-xs text-muted-foreground">
+                          {e.status === "submitted" ? `Submitted ${formatDate(e.submittedAt)}` : `Draft · last updated ${formatDate(e.createdAt)}`}
                         </p>
                       </div>
-                      <ScoreBadge score={averageScore(e)} />
-                      <EvaluationStatusBadge status={e.status} />
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() =>
-                          navigate("supervisor.evaluation-view", {
-                            evaluationId: e.id,
-                          })
-                        }
-                      >
-                        <Eye className="h-4 w-4" />
-                        View
-                      </Button>
+                      <div className="flex min-w-0 flex-wrap items-center gap-2">
+                        <ScoreBadge score={averageScore(e)} />
+                        <EvaluationStatusBadge status={e.status} />
+                        <Button variant="ghost" size="sm" onClick={() => navigate("supervisor.evaluation-view", { evaluationId: e.id })}>
+                          <Eye className="h-4 w-4" />
+                          View
+                        </Button>
+                      </div>
                     </li>
                   ))}
                 </ul>
@@ -492,15 +440,15 @@ export function InternDetail() {
             </SectionCard>
           </TabsContent>
 
-          <TabsContent value="time" className="mt-4">
-            <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-              <SectionCard title="This week" className="lg:col-span-1">
+          <TabsContent value="time" className="mt-4 min-w-0 w-full">
+            <div className="grid min-w-0 grid-cols-1 gap-4 @min-[800px]/intern:grid-cols-3">
+              <SectionCard title="This week" className="min-w-0">
                 <div className="flex items-center gap-3">
-                  <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-teal-50 text-teal-700 ring-1 ring-teal-100 dark:bg-teal-950/50 dark:text-teal-300 dark:ring-teal-900/60">
+                  <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-teal-50 text-teal-700 ring-1 ring-teal-100 dark:bg-teal-950/50 dark:text-teal-300 dark:ring-teal-900/60">
                     <Timer className="h-5 w-5" />
                   </span>
                   <div>
-                    <p className="font-mono text-2xl font-bold tabular-nums text-foreground">
+                    <p className="break-words font-mono text-xl font-bold tabular-nums text-foreground">
                       {formatDuration(weekMs)}
                     </p>
                     <p className="text-xs text-muted-foreground">Last 7 days</p>
@@ -508,18 +456,18 @@ export function InternDetail() {
                 </div>
                 {activeLog && (
                   <div className="mt-3 flex items-center gap-2 rounded-lg bg-emerald-50 px-3 py-2 text-xs text-emerald-800 ring-1 ring-emerald-100 dark:bg-emerald-950/30 dark:text-emerald-300 dark:ring-emerald-900/60">
-                    <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" />
+                    <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-500" />
                     Currently on the clock since {formatTime(activeLog.clockInAt)}
                   </div>
                 )}
               </SectionCard>
-              <SectionCard title="All-time tracked" className="lg:col-span-1">
+              <SectionCard title="All-time tracked" className="min-w-0">
                 <div className="flex items-center gap-3">
-                  <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-amber-50 text-amber-700 ring-1 ring-amber-100 dark:bg-amber-950/50 dark:text-amber-300 dark:ring-amber-900/60">
+                  <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-amber-50 text-amber-700 ring-1 ring-amber-100 dark:bg-amber-950/50 dark:text-amber-300 dark:ring-amber-900/60">
                     <Clock className="h-5 w-5" />
                   </span>
                   <div>
-                    <p className="font-mono text-2xl font-bold tabular-nums text-foreground">
+                    <p className="break-words font-mono text-xl font-bold tabular-nums text-foreground">
                       {formatDuration(totalMs)}
                     </p>
                     <p className="text-xs text-muted-foreground">
@@ -528,13 +476,13 @@ export function InternDetail() {
                   </div>
                 </div>
               </SectionCard>
-              <SectionCard title="Hours progress" className="lg:col-span-1">
+              <SectionCard title="Hours progress" className="min-w-0">
                 <div className="flex items-center gap-3">
-                  <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100 dark:bg-emerald-950/50 dark:text-emerald-300 dark:ring-emerald-900/60">
+                  <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100 dark:bg-emerald-950/50 dark:text-emerald-300 dark:ring-emerald-900/60">
                     <CheckCircle2 className="h-5 w-5" />
                   </span>
                   <div>
-                    <p className="font-mono text-2xl font-bold tabular-nums text-foreground">
+                    <p className="break-words font-mono text-xl font-bold tabular-nums text-foreground">
                       {student.loggedHours}h
                     </p>
                     <p className="text-xs text-muted-foreground">
@@ -576,7 +524,11 @@ export function InternDetail() {
                   />
                 </div>
               ) : (
-                <WeeklyGroupedSessions sessions={studentTimeLogs} />
+                <WeeklyGroupedSessions
+                  sessions={studentTimeLogs}
+                  className="min-w-0 [&>div>div]:flex-wrap [&>div>div>div]:min-w-0 [&>div>div>div]:flex-wrap [&_li>div>div]:flex-wrap [&_li>span]:shrink-0"
+                  emptyState={<div className="p-4 text-sm text-muted-foreground">No completed sessions yet. The active session will appear here after clock-out.</div>}
+                />
               )}
             </SectionCard>
           </TabsContent>
@@ -593,7 +545,7 @@ export function InternDetail() {
         <div className="space-y-4 text-slate-900">
           <div className="border-b border-slate-200 pb-3">
             <h1 className="text-xl font-bold">Practicum Intern Report</h1>
-            <p className="text-xs text-slate-500">Acme Corp · All terms</p>
+            <p className="text-xs text-slate-500">{company?.name ?? "Practicum Host"} · All terms</p>
           </div>
           <div className="grid grid-cols-2 gap-2 text-sm">
             <Field label="Name" value={student.name} />
@@ -697,13 +649,13 @@ function CountTile({
     teal: "bg-teal-50 text-teal-700 dark:bg-teal-950/60 dark:text-teal-300",
   }[tone];
   return (
-    <div className="flex items-center gap-3 rounded-lg border border-border bg-card p-3">
-      <span className={`flex h-9 w-9 items-center justify-center rounded-md ${toneClass}`}>
+    <div className="flex min-w-0 items-center gap-2 rounded-lg border border-border bg-card p-3">
+      <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-md ${toneClass}`}>
         <Icon className="h-4 w-4" />
       </span>
-      <div>
+      <div className="min-w-0">
         <p className="text-lg font-bold tabular-nums text-foreground">{value}</p>
-        <p className="text-xs text-muted-foreground">{label}</p>
+        <p className="break-words text-xs text-muted-foreground">{label}</p>
       </div>
     </div>
   );
