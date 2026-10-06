@@ -8,6 +8,13 @@ import { signIn, demoSignIn, initializePortal } from "@/client/portal-client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+
+const heroSubtitles = [
+  "Clock in. Learn something new. Make every hour count—with your work and progress in one place.",
+  "See the effort behind every entry. Give feedback that helps students grow beyond the classroom.",
+  "Less chasing updates. More seeing progress. Keep your students, supervisors, and requirements connected.",
+];
+
 export function LoginScreen() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -124,10 +131,19 @@ export function LoginScreen() {
                 All in one place.
               </span>
             </h1>
-            <p className="mt-6 max-w-md text-sm leading-7 text-muted-foreground">
-              A focused workspace for students, supervisors, and coordinators.
-              Keep attendance, journals, evaluations, and forms moving together.
-            </p>
+            <div className="mt-6 grid max-w-md text-sm leading-7 text-muted-foreground">
+              {heroSubtitles.map((subtitle, index) => (
+                <p
+                  key={subtitle}
+                  data-login-subtitle={index + 1}
+                  data-active={hero === index + 1}
+                  aria-hidden={hero !== index + 1}
+                  className={`col-start-1 row-start-1 transition-opacity duration-1000 ease-in-out motion-reduce:transition-none ${hero === index + 1 ? "opacity-100" : "opacity-0"}`}
+                >
+                  {subtitle}
+                </p>
+              ))}
+            </div>
           </div>
           <div className="relative mt-10 grid grid-cols-3 border-y border-border py-5 text-xs">
             <div>

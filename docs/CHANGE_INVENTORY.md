@@ -254,3 +254,19 @@ Starts from `b31510c` on `practo/testing-platform`. Scope and sequence are recor
 | `docs/screenshots/`                                                                                                                                                                                                                                 | Refreshed baseline and new contained hero, assistant, modal and scenario evidence                                                                                                                  |
 
 No live OmniRoute/provider connection, API key, billing integration, fabricated AI-generated accomplishments, or changes to another GitHub branch are part of this pass. Review history shows latest events; it is not a complete audit log. Unsaved reload recovery is not promised; only successfully saved server drafts are recoverable.
+
+## October 6 — synchronized login subtitles
+
+Based on Carl's `1abfb31` login update; his layout, hero opacity, image fit,
+single theme toggle, headline and role captions are preserved.
+
+| File | Change |
+| --- | --- |
+| `src/components/portal/auth/login-screen.tsx` | Three role-focused subtitles share the existing hero state and one-second fade; stacked paragraphs avoid height changes and hide inactive copy from assistive technology. |
+| `tests/browser-smoke.cjs` | Existing login-theme checks use Carl's single toggle. |
+| `tests/writing-workflow.cjs` | Existing hero-fit expectation matches Carl's centered cover images. |
+| `docs/LOGIN_SUBTITLE_ROTATION.md`, `docs/CONNECTED_PLATFORM.md`, this inventory | Copy, timing, scope and focused verification; signature implementation deferred and AI left for later. |
+
+Typecheck, targeted lint, a fresh production build and focused production-server
+browser checks passed. Full prior workflow suites were not rerun in this pass;
+the detailed check scope is in the subtitle guide.

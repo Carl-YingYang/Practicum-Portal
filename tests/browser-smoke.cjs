@@ -60,6 +60,22 @@ const { startServer } = require("./server-harness.cjs");
       );
     assert.equal(overflow, false, `${label} has horizontal overflow`);
   }
+  async function loginTheme(theme) {
+    const dark = await page
+      .locator("html")
+      .evaluate((root) => root.classList.contains("dark"));
+    if (dark !== (theme === "dark")) {
+      await page
+        .getByRole("button", { name: "Toggle color theme", exact: true })
+        .click();
+    }
+    await page.waitForFunction(
+      (theme) =>
+        document.documentElement.classList.contains("dark") ===
+        (theme === "dark"),
+      theme,
+    );
+  }
   try {
     await page.clock.install();
     await page.goto(app.baseURL);
@@ -101,7 +117,7 @@ const { startServer } = require("./server-harness.cjs");
       pausedHero,
     );
     for (const theme of ["light", "dark"]) {
-      await page.getByRole("button", { name: `Use ${theme} theme` }).click();
+      await loginTheme(theme);
       for (const width of [320, 360, 390, 768]) {
         await page.setViewportSize({ width, height: 640 });
         await noOverflow(`Login ${theme} at ${width}px`);
@@ -134,7 +150,7 @@ const { startServer } = require("./server-harness.cjs");
       false,
     );
     await page.setViewportSize({ width: 1440, height: 1000 });
-    await page.getByRole("button", { name: "Use light theme" }).click();
+    await loginTheme("light");
     await page.emulateMedia({ reducedMotion: "no-preference" });
     console.log(
       "PASS direct testing accounts, automatic heroes, reduced motion and single-screen mobile login in both themes",

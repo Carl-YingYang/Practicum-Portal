@@ -132,7 +132,7 @@ const { startServer } = require("./server-harness.cjs");
         .locator("img[data-login-hero]")
         .first()
         .evaluate((image) => getComputedStyle(image).objectFit),
-      "contain",
+      "cover",
     );
     const hero = await page
       .locator("img[data-login-hero]")
@@ -522,7 +522,7 @@ const { startServer } = require("./server-harness.cjs");
     await page.keyboard.press("Escape");
     assert.deepEqual(errors, []);
     console.log(
-      "PASS contained half-width hero, non-overlapping 44px modal close, responsive demo drawer in both themes, durable isolated preferences and testing scenario switches",
+      "PASS full-width half-screen hero, non-overlapping 44px modal close, responsive demo drawer in both themes, durable isolated preferences and testing scenario switches",
     );
   } finally {
     await browser.close();
