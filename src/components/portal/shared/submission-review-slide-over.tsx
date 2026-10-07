@@ -1,4 +1,5 @@
 "use client";
+import { responseForm } from "@/domain/forms/response-form";
 import { flushChanges } from "@/client/portal-client";
 import { useAsyncAction } from "@/hooks/use-async-action";
 import { usePdfExport } from "@/hooks/use-pdf-export";
@@ -60,7 +61,7 @@ export function SubmissionReviewSlideOver({
   const liveForm = useAppStore((s) =>
     s.formDocuments.find((d) => d.id === submission?.formId),
   );
-  const form = submission?.formSnapshot ?? liveForm;
+  const form = responseForm(liveForm, submission);
   const students = useAppStore((s) => s.students);
   const reviewSubmission = useAppStore((s) => s.reviewSubmission);
   const [reviewNote, setReviewNote] = React.useState("");
@@ -132,7 +133,9 @@ export function SubmissionReviewSlideOver({
   }
   function handleDownload() {
     if (form && submission)
-      void exportPdf(() => downloadFormPdf(form, submission.values, submitter?.name));
+      void exportPdf(() =>
+        downloadFormPdf(form, submission.values, submitter?.name),
+      );
   }
   return (
     <SlideOver
@@ -172,7 +175,11 @@ export function SubmissionReviewSlideOver({
       footer={
         isPendingReview ? (
           <div className="space-y-4">
-            {reviewError && <p role="alert" className="text-sm text-destructive">{reviewError} Retry your review.</p>}
+            {reviewError && (
+              <p role="alert" className="text-sm text-destructive">
+                {reviewError} Retry your review.
+              </p>
+            )}
             {decision && (
               <div className="space-y-2">
                 <Label
@@ -215,7 +222,8 @@ export function SubmissionReviewSlideOver({
                     onClick={() => void run(handleConfirm)}
                     aria-busy={pending}
                     disabled={
-                      pending || (decision === "request_revision" && !reviewNote.trim())
+                      pending ||
+                      (decision === "request_revision" && !reviewNote.trim())
                     }
                     className={cn(
                       "w-full sm:w-auto gap-1.5",
@@ -225,7 +233,11 @@ export function SubmissionReviewSlideOver({
                     )}
                   >
                     <CheckCircle2 className="h-4 w-4" />
-                    {pending ? "Saving review…" : decision === "approve" ? "Confirm approval" : "Confirm revision request"}
+                    {pending
+                      ? "Saving review…"
+                      : decision === "approve"
+                        ? "Confirm approval"
+                        : "Confirm revision request"}
                   </Button>
                 </>
               ) : (

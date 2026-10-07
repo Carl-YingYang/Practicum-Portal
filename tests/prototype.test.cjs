@@ -267,7 +267,7 @@ test("rejected journals reopen the same draft and can be resubmitted", () => {
   assert.equal(state().journals.find((j) => j.id === id).status, "pending");
 });
 
-test("specific recipients, required responses, template snapshots, locked reviews and cascade delete", () => {
+test("specific recipients, required responses, template snapshots, locked reviews and archive protection", () => {
   state().login("coordinator");
   const form = state().formDocuments.find((f) => f.status === "published");
   const user = accountUsers(state()).find((u) => u.studentId === "s1");
@@ -317,15 +317,12 @@ test("specific recipients, required responses, template snapshots, locked review
   state().reviewSubmission(id, "approve");
   state().reviewSubmission(id, "request_revision", "again");
   assert.equal(state().formSubmissions[0].status, "approved");
-  state().deleteFormDocument(form.id);
-  assert.equal(
-    state().formAssignments.filter((a) => a.formId === form.id).length,
-    0,
-  );
-  assert.equal(
-    state().formSubmissions.filter((a) => a.formId === form.id).length,
-    0,
-  );
+  assert.throws(() => state().deleteFormDocument(form.id), /Archive/);
+  assert.ok(state().formDocuments.some(f => f.id === form.id));
+  assert.ok(state().formSubmissions.some(s => s.id === id));
+  state().archiveFormDocument(form.id);
+  assert.equal(state().formDocuments.find(f => f.id === form.id).status, "archived");
+  assert.ok(state().formSubmissions.some(s => s.id === id));
 });
 
 test("domain stores are isolated and snapshots restore data without browser storage", () => {

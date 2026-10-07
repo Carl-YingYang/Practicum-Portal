@@ -248,6 +248,10 @@ export async function publishTemplate(
             errors.push(`${s.title}: select published forms.`);
       }
       if (errors.length) throw new HttpError(400, errors.join(" "));
+      const { buildFormatSample } = await import("./preflight");
+      const checked = await buildFormatSample(r.wordBytes, content, data);
+      if (checked.errors.length)
+        throw new HttpError(400, checked.errors.join(" "));
       const latest = await tx.practicumTemplateVersion.findFirst({
         where: { templateId: id },
         orderBy: { number: "desc" },

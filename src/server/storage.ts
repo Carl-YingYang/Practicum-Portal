@@ -1,3 +1,4 @@
+import { studentUploadPolicy } from "./storage/policy";
 import type { Prisma } from "@prisma/client";
 import { db } from "./database";
 import { HttpError } from "./security";
@@ -27,6 +28,7 @@ export async function storageUsage(
     templateBytes,
     files: assets._count,
     limitBytes: schoolBudget(),
+    studentUploads: studentUploadPolicy(),
     reportLimitBytes: REPORT_STORAGE_BYTES,
   };
 }

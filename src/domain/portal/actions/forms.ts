@@ -1,3 +1,4 @@
+import { responseForm, formDraftSignature } from "@/domain/forms/response-form";
 import {
   formStarterTemplates,
   formStructureErrors,
@@ -32,6 +33,9 @@ export function createFormsActions(
   | "unpublishFormDocument"
   | "archiveFormDocument"
   | "deleteFormDocument"
+  | "restoreFormDocument"
+  | "purgeFormDocument"
+  | "replaceFormDraft"
   | "duplicateFormDocument"
   | "assignForm"
   | "unassignForm"
@@ -183,7 +187,19 @@ export function createFormsActions(
       const form = get().formDocuments.find((f) => f.id === id);
       if (!form || formStructureErrors(form).length)
         throw new Error("Complete the form blocks before publishing.");
+      const published = {
+        ...form,
+        status: "published" as FormStatus,
+        version: form.version + 1,
+        publishedAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
       set((s) => ({
+        formSubmissions: s.formSubmissions.map((sub) =>
+          sub.formId === id && responseForm(published, sub) === published
+            ? { ...sub, formSnapshot: structuredClone(published) }
+            : sub,
+        ),
         formDocuments: s.formDocuments.map((d) =>
           d.id === id
             ? {
@@ -221,12 +237,74 @@ export function createFormsActions(
             : d,
         ),
       })),
-    deleteFormDocument: (id) =>
+    deleteFormDocument: (id) => {
+      const s = get();
+      if (
+        s.formSubmissions.some((sub) => sub.formId === id) ||
+        s.formAssignments.some((a) => a.formId === id) ||
+        s.formDocuments.some((f) => f.origin?.formId === id)
+      )
+        throw new Error("Archive a used form instead.");
+      set({
+        formDocuments: s.formDocuments.map((f) =>
+          f.id === id
+            ? {
+                ...f,
+                status: "archived" as const,
+                trashedAt: new Date().toISOString(),
+              }
+            : f,
+        ),
+      });
+    },
+    restoreFormDocument: (id) =>
       set((s) => ({
-        formDocuments: s.formDocuments.filter((d) => d.id !== id),
-        formAssignments: s.formAssignments.filter((a) => a.formId !== id),
-        formSubmissions: s.formSubmissions.filter((sub) => sub.formId !== id),
+        formDocuments: s.formDocuments.map((f) =>
+          f.id === id && f.trashedAt
+            ? {
+                ...f,
+                trashedAt: undefined,
+                status: "draft" as const,
+                updatedAt: new Date().toISOString(),
+              }
+            : f,
+        ),
       })),
+    purgeFormDocument: (id) => {
+      const s = get();
+      if (
+        !s.formDocuments.find((f) => f.id === id)?.trashedAt ||
+        s.formSubmissions.some((sub) => sub.formId === id) ||
+        s.formAssignments.some((a) => a.formId === id) ||
+        s.formDocuments.some((f) => f.origin?.formId === id)
+      )
+        throw new Error(
+          "Only unused items in Trash can be permanently deleted.",
+        );
+      set({ formDocuments: s.formDocuments.filter((f) => f.id !== id) });
+    },
+    replaceFormDraft: (id, expected, content) => {
+      const form = get().formDocuments.find((f) => f.id === id);
+      if (
+        !form ||
+        form.status !== "draft" ||
+        form.trashedAt ||
+        form.origin ||
+        formDraftSignature(form) !== expected
+      )
+        throw new Error("Draft changed; reload before undoing.");
+      set((s) => ({
+        formDocuments: s.formDocuments.map((f) =>
+          f.id === id
+            ? {
+                ...f,
+                ...structuredClone(content),
+                updatedAt: new Date().toISOString(),
+              }
+            : f,
+        ),
+      }));
+    },
     duplicateFormDocument: (id) => {
       const src = get().formDocuments.find((d) => d.id === id);
       if (!src) return "";
@@ -235,6 +313,7 @@ export function createFormsActions(
       const blockIds = new Map(src.blocks.map((b) => [b.id, uuid()]));
       const copy: FormDocument = {
         ...src,
+        trashedAt: undefined,
         origin: undefined,
         id: newId,
         title: `${src.title} (Copy)`,
@@ -360,6 +439,12 @@ export function createFormsActions(
             ? {
                 ...sub,
                 values,
+                formSnapshot: structuredClone(
+                  responseForm(
+                    s.formDocuments.find((f) => f.id === sub.formId),
+                    sub,
+                  ),
+                ),
                 // editing a needs-revision response reopens it to in_progress
                 status:
                   sub.status === "needs_revision" ? "in_progress" : sub.status,
@@ -370,9 +455,10 @@ export function createFormsActions(
       })),
     submitFormResponse: (submissionId) => {
       const sub = get().formSubmissions.find((s) => s.id === submissionId);
-      const form =
-        sub?.formSnapshot ??
-        get().formDocuments.find((f) => f.id === sub?.formId);
+      const form = responseForm(
+        get().formDocuments.find((f) => f.id === sub?.formId),
+        sub,
+      );
       if (!sub || !form || responseErrors(form, sub.values).length) return;
       set((s) => ({
         formSubmissions: s.formSubmissions.map((sub) =>
@@ -381,6 +467,7 @@ export function createFormsActions(
           ["in_progress", "needs_revision"].includes(sub.status)
             ? {
                 ...sub,
+                formSnapshot: structuredClone(form),
                 status: "submitted" as const,
                 submittedAt: new Date().toISOString(),
                 updatedAt: new Date().toISOString(),

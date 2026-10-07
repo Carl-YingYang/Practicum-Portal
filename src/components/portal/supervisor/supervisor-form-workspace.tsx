@@ -1,4 +1,6 @@
 "use client";
+import { FormExportActions } from "../shared/form-export-actions";
+import { responseForm } from "@/domain/forms/response-form";
 import { ConfirmDialog } from "@/components/portal/shared/confirm-dialog";
 import { useFormDraft } from "@/hooks/use-form-draft";
 import { assignmentAppliesTo } from "@/lib/selectors";
@@ -169,7 +171,7 @@ export function SupervisorFormWorkspace({
     context?.cycle,
   ]);
   // local values mirror the submission's values (so typing feels instant)
-  const form = currentSubmission?.formSnapshot ?? liveForm;
+  const form = responseForm(liveForm, currentSubmission);
   const draft = useFormDraft(
     formId,
     currentUser?.id,
@@ -406,7 +408,10 @@ export function SupervisorFormWorkspace({
             {students.find((s) => s.id === context.studentId)?.name} ·{" "}
             {context.cycle || "Current practicum"}
           </p>
-          <p className="mt-1 break-words text-xs font-medium">{context.reportTitle} · {context.sectionTitle} · format v{context.templateVersion}</p>
+          <p className="mt-1 break-words text-xs font-medium">
+            {context.reportTitle} · {context.sectionTitle} · format v
+            {context.templateVersion}
+          </p>
           <p className="text-xs text-muted-foreground">
             Assigned format · Rubric v{form.origin?.version ?? form.version} ·
             Answers belong to this report requirement.
@@ -423,6 +428,19 @@ export function SupervisorFormWorkspace({
             Back to assigned report
           </Button>
         </div>
+      )}
+
+      <FormExportActions
+        form={form}
+        values={values}
+        submissionId={currentSubmission?.id}
+        beforeExport={draft.save}
+      />
+      {!form.origin && (
+        <p className="text-xs text-muted-foreground">
+          Form v{form.version} · Never-submitted drafts follow publication.
+          Submitted responses retain their original version.
+        </p>
       )}
 
       {/* Meta strip */}

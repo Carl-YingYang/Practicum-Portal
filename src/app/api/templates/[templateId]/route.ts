@@ -1,3 +1,4 @@
+import { templatePreflight } from "@/server/templates/preflight";
 import { linkForm } from "@/server/templates/link-form";
 import { assignTemplate } from "@/server/templates/assignments";
 import {
@@ -28,6 +29,21 @@ export async function GET(request: Request, ctx: Context) {
       id = (await ctx.params).templateId,
       url = new URL(request.url),
       kind = url.searchParams.get("file");
+    if (kind === "sample") {
+      const record = await templateResponse(id, account);
+      const result = await templatePreflight(id, account, record.revision);
+      if (result.errors.length || !result.bytes)
+        throw new HttpError(400, result.errors.join(" "));
+      return new Response(new Uint8Array(result.bytes), {
+        headers: {
+          "Content-Type":
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+          "Content-Disposition":
+            "attachment; filename=practicum-format-sample.docx",
+          "Cache-Control": "no-store",
+        },
+      });
+    }
     if (!kind && url.searchParams.has("version"))
       return Response.json(
         await publishedTemplate(id, url.searchParams.get("version")!, account),
@@ -87,6 +103,16 @@ export async function POST(request: Request, ctx: Context) {
     const body = await jsonBody(request);
     if (!body || typeof body !== "object")
       throw new HttpError(400, "Choose a template action.");
+    if (body.action === "preflight") {
+      const { bytes: _bytes, ...result } = await templatePreflight(
+        id,
+        account,
+        body.revision,
+      );
+      return Response.json(result, {
+        headers: { "Cache-Control": "no-store" },
+      });
+    }
     if (body.action === "link") {
       const { action: _action, ...input } = body;
       return Response.json(await linkForm(id, account, input));

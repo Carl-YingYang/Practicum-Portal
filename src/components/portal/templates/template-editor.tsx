@@ -1,4 +1,7 @@
 "use client";
+import { TemplateAssignment } from "./template-assignment";
+import { FormatPreflight } from "./format-preflight";
+import { ConfirmDialog } from "../shared/confirm-dialog";
 import { useState } from "react";
 import { useAppStore } from "@/store/use-app-store";
 import { refreshPortal } from "@/client/portal-client";
@@ -27,14 +30,13 @@ export function TemplateEditor({
     { report: record, content } = draft;
   const [pending, setPending] = useState(false),
     [error, setError] = useState(""),
-    [message, setMessage] = useState(""),
-    [version, setVersion] = useState(initial.versions[0]?.id ?? ""),
-    [students, setStudents] = useState<string[]>([]),
-    [due, setDue] = useState("");
+    [message, setMessage] = useState("");
+  const [checkedRevision, setCheckedRevision] = useState<number | null>(null),
+    [publishOpen, setPublishOpen] = useState(false);
   const disabled = pending || record.archived;
   const problems = templateErrors(content, record.slots);
   async function run(action: (saved: TemplateRecord) => Promise<void>) {
-    if (pending) return;
+    if (pending) return false;
     setPending(true);
     setError("");
     setMessage("");
@@ -44,14 +46,16 @@ export function TemplateEditor({
         `/api/templates/${record.id}`,
       );
       await action(saved);
+      return true;
     } catch (e) {
       setError((e as Error).message);
+      return false;
     } finally {
       setPending(false);
     }
   }
   async function operation(action: string) {
-    await run(async (saved) => {
+    return run(async (saved) => {
       const next = await reportRequest<TemplateRecord>(
         `/api/templates/${record.id}`,
         "POST",
@@ -59,7 +63,6 @@ export function TemplateEditor({
       );
       draft.accept(next);
       if (action === "publish") {
-        setVersion(next.versions[0].id);
         setMessage(
           `Published version ${next.versions[0].number}. Existing assignments stay on their version.`,
         );
@@ -110,6 +113,28 @@ export function TemplateEditor({
         </span>
       </div>
       <h1 className="text-2xl font-semibold">Template setup</h1>
+      <div className="flex flex-wrap gap-2">
+        <Button
+          variant="outline"
+          disabled={disabled || draft.saving || !draft.canUndo}
+          onClick={draft.undo}
+        >
+          Undo
+        </Button>
+        <Button
+          variant="outline"
+          disabled={disabled || draft.saving || !draft.canRedo}
+          onClick={draft.redo}
+        >
+          Redo
+        </Button>
+        <a className="rounded-md border p-2 text-sm" href="#format-checks">
+          Check format
+        </a>
+        <a className="rounded-md border p-2 text-sm" href="#assign-students">
+          Assign students
+        </a>
+      </div>
       <p className="text-sm text-muted-foreground">
         Configure the professor’s blank format, keep the filled sample as a
         reference, then publish and assign a frozen version.
@@ -175,6 +200,41 @@ export function TemplateEditor({
       </fieldset>
       <section className="min-w-0 space-y-4 rounded-xl border bg-card p-4">
         <h2 className="font-semibold">Word format & reference</h2>
+        <details className="rounded-lg border p-3">
+          <summary className="cursor-pointer font-medium">
+            How to prepare the Word format
+          </summary>
+          <ol className="mt-2 list-inside list-decimal space-y-2 text-sm">
+            <li>
+              Download the starter. Keep page size, header/footer and static
+              text in Word.
+            </li>
+            <li>
+              Use account fields inside ordinary paragraphs. Put each section
+              placeholder on its own body paragraph, outside table cells.
+            </li>
+            <li>
+              Add/remove sections here, then use Update Word section
+              placeholders. Keep a copy of your Word file before changing its
+              mapping.
+            </li>
+            <li>
+              Run Check format, generate Sample Word, inspect pagination and
+              tables in Word, then publish and assign.
+            </li>
+          </ol>
+          <a
+            href="/templates/practicum-pilot.docx"
+            className="mt-3 inline-block text-sm text-primary underline"
+            download
+          >
+            Download starter Word
+          </a>
+          <p className="mt-2 text-xs">
+            Settings undo covers sections and instructions. Uploaded files and
+            layout synchronization are separate file operations.
+          </p>
+        </details>
         <p className="text-sm text-muted-foreground">
           Edit page layout, header/footer, logos and fixed instructions in Word.
           Dynamic sections use a placeholder on its own paragraph. The content
@@ -319,6 +379,11 @@ export function TemplateEditor({
           Add custom section
         </Button>
       </fieldset>
+      <FormatPreflight
+        record={record}
+        save={draft.save}
+        onReady={setCheckedRevision}
+      />
       <section className="space-y-3 rounded-xl border bg-card p-4">
         <h2 className="font-semibold">Publish a version</h2>
         {problems.length ? (
@@ -342,102 +407,40 @@ export function TemplateEditor({
             Save draft
           </Button>
           <Button
-            disabled={disabled || problems.length > 0}
-            onClick={() => void operation("publish")}
+            disabled={
+              disabled ||
+              problems.length > 0 ||
+              draft.dirty ||
+              checkedRevision !== record.revision
+            }
+            onClick={() => setPublishOpen(true)}
           >
             Publish new version
           </Button>
         </div>
       </section>
-      <section className="space-y-4 rounded-xl border bg-card p-4">
-        <h2 className="font-semibold">Assign a published version</h2>
-        <p className="text-sm text-muted-foreground">
-          Creates blank personal reports and assigns linked forms. Repeating the
-          same version/student assignment reopens the existing report.
-        </p>
-        <fieldset
-          disabled={disabled || !record.versions.length}
-          className="grid min-w-0 gap-4 sm:grid-cols-2"
-        >
-          <label className="text-sm">
-            Published version
-            <select
-              aria-label="Published version"
-              className="mt-1 min-h-10 w-full min-w-0 rounded-md border bg-background px-2"
-              value={version}
-              onChange={(e) => setVersion(e.target.value)}
-            >
-              <option value="">Choose a version</option>
-              {record.versions.map((v) => (
-                <option key={v.id} value={v.id}>
-                  v{v.number} · {v.title} · {v.assignments} assigned
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="text-sm">
-            Due date (optional)
-            <Input
-              type="date"
-              value={due}
-              onChange={(e) => setDue(e.target.value)}
-            />
-          </label>
-          <fieldset className="max-h-64 space-y-2 overflow-y-auto sm:col-span-2">
-            <legend className="mb-2 text-sm">Students</legend>
-            {state.students.map((s) => (
-              <label
-                key={s.id}
-                className="flex min-w-0 items-start gap-2 text-sm"
-              >
-                <input
-                  type="checkbox"
-                  checked={students.includes(s.id)}
-                  onChange={(e) =>
-                    setStudents(
-                      e.target.checked
-                        ? [...students, s.id]
-                        : students.filter((id) => id !== s.id),
-                    )
-                  }
-                />
-                <span className="break-words">
-                  {s.name} · {s.studentNumber}
-                </span>
-              </label>
-            ))}
-          </fieldset>
-          <Button
-            disabled={disabled || !version || !students.length}
-            onClick={() =>
-              void run(async () => {
-                const result = await reportRequest<{ reportIds: string[] }>(
-                  `/api/templates/${record.id}`,
-                  "POST",
-                  {
-                    action: "assign",
-                    versionId: version,
-                    studentIds: students,
-                    dueDate: due || null,
-                  },
-                );
-                draft.accept(
-                  await reportRequest<TemplateRecord>(
-                    `/api/templates/${record.id}`,
-                  ),
-                );
-                await refreshPortal();
-                setMessage(
-                  `${result.reportIds.length} report assignment(s) ready. Open Submission Reviews to inspect them.`,
-                );
-                setStudents([]);
-              })
-            }
-          >
-            Assign reports
-          </Button>
-        </fieldset>
-      </section>
+      <p className="text-xs text-muted-foreground">
+        Publish unlocks after structural checks pass for the saved draft.
+        Assignment is a separate recipient review below.
+      </p>
+      <ConfirmDialog
+        open={publishOpen}
+        onOpenChange={setPublishOpen}
+        title="Publish this checked format?"
+        description="Inspect Sample Word in Microsoft Word first, including page breaks, tables and header/footer. Publication creates a fixed version. Existing reports retain their version."
+        confirmLabel="Publish new version"
+        onConfirm={async () => {
+          if (draft.dirty || checkedRevision !== record.revision)
+            throw Error("The draft changed. Run Check format again.");
+          if (!(await operation("publish")))
+            throw Error("Publication failed. Check the error and retry.");
+        }}
+      />
+      <TemplateAssignment
+        record={record}
+        beforeAssign={draft.save}
+        onUpdated={draft.accept}
+      />
       {!record.archived && (
         <details className="rounded-xl border p-4">
           <summary className="cursor-pointer text-sm">

@@ -1,4 +1,7 @@
 "use client";
+import { useFormEditorHistory } from "@/hooks/use-form-editor-history";
+import { ConfirmDialog } from "../shared/confirm-dialog";
+import { FormExportActions } from "../shared/form-export-actions";
 import { isRatingHeading } from "@/domain/form-templates";
 import { formStructureErrors } from "@/domain/form-templates";
 
@@ -145,6 +148,7 @@ export function FormEditor({ formId }: { formId?: string }) {
   const canBack = useAppStore((s) => s.history.length > 0);
 
   const form = useAppStore((s) => s.formDocuments.find((d) => d.id === formId));
+  const editorHistory = useFormEditorHistory(form);
   const updateFormMeta = useAppStore((s) => s.updateFormMeta);
   const updateFormBlock = useAppStore((s) => s.updateFormBlock);
   const addFormBlock = useAppStore((s) => s.addFormBlock);
@@ -156,6 +160,9 @@ export function FormEditor({ formId }: { formId?: string }) {
   const unpublishFormDocument = useAppStore((s) => s.unpublishFormDocument);
   const archiveFormDocument = useAppStore((s) => s.archiveFormDocument);
 
+  const [confirmation, setConfirmation] = React.useState<
+    "publish" | "archive" | null
+  >(null);
   const [previewMode, setPreviewMode] = React.useState(false);
   const [previewValues, setPreviewValues] = React.useState<
     Record<string, string | Record<string, string>>
@@ -223,7 +230,7 @@ export function FormEditor({ formId }: { formId?: string }) {
     await flushChanges();
     toast({
       title: "Form published",
-      description: `v${form.version + 1} is now visible to supervisors.`,
+      description: `v${form.version + 1} is available to assigned recipients. Never-submitted ordinary drafts follow this version; submitted answers and report rubrics stay unchanged.`,
     });
   }
 
@@ -249,6 +256,40 @@ export function FormEditor({ formId }: { formId?: string }) {
     <TooltipProvider delayDuration={250}>
       <div className="space-y-3">
         <FormReportLink formId={form.id} />
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={
+              pending ||
+              editorHistory.busy ||
+              form.status !== "draft" ||
+              !editorHistory.canUndo
+            }
+            onClick={() => void editorHistory.undo()}
+          >
+            Undo
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={
+              pending ||
+              editorHistory.busy ||
+              form.status !== "draft" ||
+              !editorHistory.canRedo
+            }
+            onClick={() => void editorHistory.redo()}
+          >
+            Redo
+          </Button>
+          <FormExportActions form={form} values={previewValues} sample />
+        </div>
+        {editorHistory.error && (
+          <p role="alert" className="text-sm text-destructive">
+            {editorHistory.error}
+          </p>
+        )}
         {/* Sticky editor toolbar */}
         <div className="sticky top-16 z-20 -mx-4 border-b border-border/60 bg-background/95 px-4 py-2 backdrop-blur sm:-mx-6 sm:px-6">
           <div className="flex flex-wrap items-center gap-2">
@@ -305,7 +346,7 @@ export function FormEditor({ formId }: { formId?: string }) {
                   size="sm"
                   disabled={pending || form.status !== "draft"}
                   aria-busy={pending}
-                  onClick={() => void run(handlePublish)}
+                  onClick={() => setConfirmation("publish")}
                   className="gap-1.5"
                 >
                   <Send className="h-3.5 w-3.5" />{" "}
@@ -327,7 +368,7 @@ export function FormEditor({ formId }: { formId?: string }) {
                 <DropdownMenuContent align="end" className="w-44">
                   <DropdownMenuItem
                     disabled={pending}
-                    onClick={() => void run(handleArchive)}
+                    onClick={() => setConfirmation("archive")}
                   >
                     <Archive className="mr-2 h-3.5 w-3.5" /> Archive form
                   </DropdownMenuItem>
@@ -355,7 +396,7 @@ export function FormEditor({ formId }: { formId?: string }) {
         {form.status !== "draft" && (
           <p className="text-sm text-muted-foreground">
             {form.status === "published"
-              ? "Published form — unpublish to edit the template."
+              ? "Published form — unpublish to edit. Republish updates ordinary unsubmitted drafts; submitted answers and assigned report versions retain their rubric."
               : "Archived form — read only."}
           </p>
         )}
@@ -644,6 +685,26 @@ export function FormEditor({ formId }: { formId?: string }) {
           </aside>
         </div>
       </div>
+      <ConfirmDialog
+        open={confirmation !== null}
+        onOpenChange={(open) => {
+          if (!open) setConfirmation(null);
+        }}
+        title={
+          confirmation === "archive"
+            ? "Archive this form?"
+            : "Publish this form?"
+        }
+        description={
+          confirmation === "archive"
+            ? "Recipients cannot start new responses. Saved answers and report rubrics remain available."
+            : "Never-submitted ordinary drafts will use this version. Submitted responses and assigned report rubrics keep their original version. Check the sample before publishing."
+        }
+        confirmLabel={
+          confirmation === "archive" ? "Archive form" : "Publish form"
+        }
+        onConfirm={confirmation === "archive" ? handleArchive : handlePublish}
+      />
     </TooltipProvider>
   );
 }

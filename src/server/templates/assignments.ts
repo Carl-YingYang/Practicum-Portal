@@ -181,6 +181,10 @@ export async function assignTemplate(
   const ids: string[] = [];
   await db.$transaction(
     async (tx) => {
+      await tx.portalSchool.update({
+        where: { id: account.schoolId },
+        data: { revision: { increment: 0 } },
+      });
       const r = await draft(id, account, tx);
       if (r.archived) throw new HttpError(409, "This template is archived.");
       const { data } = await professor(account, tx),
@@ -191,7 +195,7 @@ export async function assignTemplate(
       const config = templateSchema.parse(JSON.parse(version.schemaJson));
       for (const studentId of parsed.data.studentIds) {
         const student = data.students.find((s) => s.id === studentId);
-        if (!student)
+        if (!student || student.status !== "active")
           throw new HttpError(400, "A selected student is unavailable.");
         const owner = await tx.portalAccount.findFirst({
           where: {

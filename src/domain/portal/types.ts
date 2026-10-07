@@ -333,6 +333,16 @@ export interface AppState {
   unpublishFormDocument: (id: string) => void;
   archiveFormDocument: (id: string) => void;
   deleteFormDocument: (id: string) => void;
+  restoreFormDocument: (id: string) => void;
+  purgeFormDocument: (id: string) => void;
+  replaceFormDraft: (
+    id: string,
+    expected: string,
+    content: Pick<
+      FormDocument,
+      "title" | "description" | "category" | "blocks"
+    >,
+  ) => void;
   duplicateFormDocument: (id: string) => string;
   // --- form assignments & submissions (fill / review layer) ---
   /** Assign a published form to an audience (optionally with a due date). */

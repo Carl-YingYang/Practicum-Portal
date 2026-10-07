@@ -11,6 +11,11 @@ type Usage = {
   reportBytes: number;
   limitBytes: number;
   reportLimitBytes: number;
+  studentUploads?: {
+    imagesEnabled: boolean;
+    limitBytes: number;
+    maxImages: number;
+  };
 };
 const mb = (bytes: number) => (bytes / 1024 / 1024).toFixed(1);
 export function PracticumWorkspace() {
@@ -27,6 +32,7 @@ export function PracticumWorkspace() {
   const [error, setError] = useState(""),
     [busy, setBusy] = useState(false),
     [demo, setDemo] = useState<{
+      hours?: number;
       reportId: string;
       student: string;
       supervisor: string;
@@ -175,12 +181,37 @@ export function PracticumWorkspace() {
           >
             {busy ? "Preparing sample…" : "Prepare guided sample"}
           </Button>
+          <Button
+            variant="outline"
+            disabled={busy}
+            onClick={async () => {
+              setBusy(true);
+              setError("");
+              try {
+                setDemo(
+                  await reportRequest(
+                    "/api/practicum/completed-demo",
+                    "POST",
+                    {},
+                  ),
+                );
+                await refreshPortal();
+                await load();
+              } catch (e) {
+                setError((e as Error).message);
+              } finally {
+                setBusy(false);
+              }
+            }}
+          >
+            Prepare completed demo
+          </Button>
           {demo && (
             <div role="status" className="space-y-2 text-sm">
               <p>
-                Ready for {demo.student} and {demo.supervisor}. Student:
-                introduction and reflection → Supervisor: evaluation →
-                Coordinator: approve responses, review sections, export Word.
+                {demo.hours
+                  ? `Completed example: ${demo.student} and ${demo.supervisor}. ${demo.hours} recorded hours, approved journals and forms, reviewed sections and a Word export are ready to inspect.`
+                  : `Ready for ${demo.student} and ${demo.supervisor}. Student: introduction and reflection → Supervisor: evaluation → Coordinator: approve responses, review sections, export Word.`}
               </p>
               <Button
                 variant="outline"
@@ -190,7 +221,7 @@ export function PracticumWorkspace() {
                   })
                 }
               >
-                Open guided report
+                {demo.hours ? "Open completed report" : "Open guided report"}
               </Button>
             </div>
           )}
@@ -203,6 +234,25 @@ export function PracticumWorkspace() {
             {mb(summary.usage.usedBytes)} MB of {mb(summary.usage.limitBytes)}{" "}
             MB used
           </p>
+          <p className="text-xs text-muted-foreground">
+            Student image uploads:{" "}
+            {summary.usage.studentUploads?.imagesEnabled
+              ? "Enabled for testing"
+              : "Disabled"}{" "}
+            · {mb(summary.usage.studentUploads?.limitBytes ?? 0)} MB
+            uploaded-file budget per student ·{" "}
+            {summary.usage.studentUploads?.maxImages ?? 0} images maximum. These
+            limits include uploads across their reports.
+          </p>
+          {summary.usage.usedBytes / summary.usage.limitBytes >= 0.7 && (
+            <p role="status" className="text-sm text-amber-700">
+              Storage is{" "}
+              {Math.round(
+                (summary.usage.usedBytes / summary.usage.limitBytes) * 100,
+              )}
+              % full. Review unused evidence before adding more files.
+            </p>
+          )}
           <progress
             aria-label="School file storage"
             className="h-2 w-full"

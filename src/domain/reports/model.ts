@@ -58,6 +58,11 @@ export interface ReportAssetInfo {
   order: number;
 }
 export interface ReportRecord {
+  uploadPolicy?: {
+    imagesEnabled: boolean;
+    limitBytes: number;
+    maxImages: number;
+  };
   id: string;
   ownerId: string;
   retiredSections?: { section: ReportSection; version: number }[];

@@ -2,7 +2,8 @@ import type { PortalAccount } from "@prisma/client";
 import { randomUUID } from "node:crypto";
 import { createHash } from "node:crypto";
 import { reserveStorage, REPORT_STORAGE_BYTES } from "@/server/storage";
-import sharp from "sharp";
+import { normalizeImage } from "@/server/storage/normalize-image";
+import { studentUploadPolicy } from "@/server/storage/policy";
 import JSZip from "jszip";
 import { db } from "@/server/database";
 import { HttpError } from "@/server/security";
@@ -41,27 +42,11 @@ export async function uploadReportAsset(
     }
   } else {
     try {
-      const image = sharp(bytes, { limitInputPixels: 40000000 }).rotate();
-      const info = await image.metadata();
-      if (!["png", "jpeg"].includes(info.format ?? "")) throw new Error();
-      const normalized = await image
-        .resize({
-          width: 2000,
-          height: 2000,
-          fit: "inside",
-          withoutEnlargement: true,
-        })
-        .toFormat(
-          info.format as "png" | "jpeg",
-          info.format === "jpeg"
-            ? { quality: 85, mozjpeg: true }
-            : { compressionLevel: 9 },
-        )
-        .toBuffer({ resolveWithObject: true });
-      bytes = normalized.data;
-      mime = info.format === "png" ? "image/png" : "image/jpeg";
-      width = normalized.info.width;
-      height = normalized.info.height;
+      const normalized = await normalizeImage(bytes);
+      bytes = normalized.bytes;
+      mime = normalized.mime;
+      width = normalized.width;
+      height = normalized.height;
     } catch {
       throw new HttpError(
         400,
@@ -126,6 +111,40 @@ export async function uploadReportAsset(
       })
     )
       return;
+    if (r.actor.role === "student") {
+      const policy = studentUploadPolicy();
+      if (mime.startsWith("image/") && !policy.imagesEnabled)
+        throw new HttpError(
+          403,
+          "Image uploads are disabled for this pilot. Use written content or ask your coordinator about required evidence.",
+        );
+      const usage = await tx.reportAsset.aggregate({
+        where: {
+          report: { ownerId: account.id, schoolId: account.schoolId },
+          kind: { in: ["evidence", "reviewed"] },
+        },
+        _sum: { size: true },
+      });
+      if ((usage._sum.size ?? 0) + bytes.length > policy.limitBytes)
+        throw new HttpError(
+          413,
+          "Student upload budget reached. Remove unused evidence or ask the coordinator; saved files are retained.",
+        );
+      if (
+        mime.startsWith("image/") &&
+        (await tx.reportAsset.count({
+          where: {
+            report: { ownerId: account.id, schoolId: account.schoolId },
+            kind: "evidence",
+            mime: { startsWith: "image/" },
+          },
+        })) >= policy.maxImages
+      )
+        throw new HttpError(
+          413,
+          "Student image limit reached. Replace unused evidence rather than uploading repeated photos.",
+        );
+    }
     await reserveStorage(tx, account.schoolId, bytes.length);
     const totals = await tx.reportAsset.aggregate({
       where: { reportId: id },

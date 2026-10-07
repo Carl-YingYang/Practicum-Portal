@@ -1,3 +1,4 @@
+import { responseForm, formDraftSignature } from "@/domain/forms/response-form";
 import { formStructureErrors } from "@/domain/form-templates";
 import type { PortalData } from "@/domain/portal/snapshot";
 import { validateCommandArguments, type Command } from "./command-schema";
@@ -257,7 +258,11 @@ export function authorizeCommand(
         )
           deny("This requirement is no longer assigned to you.");
       }
-      const form = sub.formSnapshot ?? exists(data.formDocuments, sub.formId);
+      const form = responseForm(
+        data.formDocuments.find((f) => f.id === sub.formId),
+        sub,
+      );
+      if (!form) deny("This form is unavailable.");
       if (
         action === "submitFormResponse" &&
         responseErrors(form, sub.values).length
@@ -363,6 +368,9 @@ export function authorizeCommand(
       "unpublishFormDocument",
       "archiveFormDocument",
       "deleteFormDocument",
+      "restoreFormDocument",
+      "purgeFormDocument",
+      "replaceFormDraft",
     ].includes(action) &&
     exists(data.formDocuments, a[0]).origin
   )
@@ -403,6 +411,9 @@ export function authorizeCommand(
       "unpublishFormDocument",
       "archiveFormDocument",
       "deleteFormDocument",
+      "restoreFormDocument",
+      "purgeFormDocument",
+      "replaceFormDraft",
       "duplicateFormDocument",
     ].includes(action)
   )
@@ -417,21 +428,58 @@ export function authorizeCommand(
       "reorderFormBlocks",
       "duplicateFormBlock",
       "publishFormDocument",
+      "replaceFormDraft",
     ].includes(action) &&
     exists(data.formDocuments, a[0]).status !== "draft"
   )
     throw new HttpError(
       409,
-      "Unpublish or duplicate the form before editing; existing response snapshots remain unchanged.",
+      "Unpublish or duplicate before editing. Submitted and report-version responses keep their original rubric.",
     );
   if (
-    action === "deleteFormDocument" &&
-    data.formSubmissions.some((s) => s.formId === a[0])
+    ["deleteFormDocument", "purgeFormDocument"].includes(action) &&
+    (data.formSubmissions.some((s) => s.formId === a[0]) ||
+      data.formAssignments.some((s) => s.formId === a[0]) ||
+      data.formDocuments.some((f) => f.origin?.formId === a[0]))
   )
     throw new HttpError(
       409,
       "Archive this form to retain its saved responses.",
     );
+  if (
+    [
+      "updateFormMeta",
+      "updateFormBlock",
+      "addFormBlock",
+      "removeFormBlock",
+      "moveFormBlock",
+      "reorderFormBlocks",
+      "duplicateFormBlock",
+      "publishFormDocument",
+      "unpublishFormDocument",
+      "assignForm",
+      "replaceFormDraft",
+    ].includes(action) &&
+    exists(data.formDocuments, action === "assignForm" ? input.formId : a[0])
+      .trashedAt
+  )
+    throw new HttpError(409, "Restore this form from Trash first.");
+  if (
+    ["restoreFormDocument", "purgeFormDocument"].includes(action) &&
+    !exists(data.formDocuments, a[0]).trashedAt
+  )
+    throw new HttpError(409, "Choose a form in Trash.");
+  if (action === "replaceFormDraft") {
+    const form = exists(data.formDocuments, a[0]);
+    if (formDraftSignature(form) !== a[1])
+      throw new HttpError(
+        409,
+        "Draft changed in another session. Reload before undoing.",
+      );
+    const blocks = (a[2] as { blocks: { id: string }[] }).blocks;
+    if (new Set(blocks.map((b) => b.id)).size !== blocks.length)
+      throw new HttpError(400, "Block IDs must be unique.");
+  }
   if (action === "publishFormDocument") {
     const form = exists(data.formDocuments, a[0]);
     const errors = formStructureErrors(form);

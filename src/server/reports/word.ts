@@ -26,7 +26,7 @@ import {
   type FileChild,
 } from "docx";
 import type { ReportAsset } from "@prisma/client";
-import type { FormBlock, FormFieldValue } from "@/lib/types";
+import type { FormDocument, FormBlock, FormFieldValue } from "@/lib/types";
 import type { ReportContent } from "@/domain/reports/model";
 import type { PortalData } from "@/domain/portal/snapshot";
 import { accountUsers } from "@/lib/prototype";
@@ -256,8 +256,8 @@ export async function buildReportWord(
   sectionIds?: string[],
 ) {
   const children: FileChild[] = [];
-  const students = content.studentIds.map(
-    (id) => data.students.find((s) => s.id === id)!,
+  const students = content.studentIds.map((id) =>
+    data.students.find((s) => s.id === id)!,
   );
   const company = data.companies.find((c) => c.id === students[0]?.companyId);
   const full = !sectionIds;
@@ -428,8 +428,8 @@ export async function buildSectionBlocks(
   definitions?: import("@/domain/templates/model").TemplateSection[],
 ): Promise<FileChild[]> {
   const children: FileChild[] = [];
-  const students = content.studentIds.map(
-    (id) => data.students.find((s) => s.id === id)!,
+  const students = content.studentIds.map((id) =>
+    data.students.find((s) => s.id === id)!,
   );
   const included = content.sections.filter(
     (s) => s.included && (!sectionIds || sectionIds.includes(s.id)),
@@ -539,33 +539,7 @@ export async function buildSectionBlocks(
           data.formDocuments.find((f) => f.id === sub.formId);
         if (!form) continue;
         children.push(heading(`${form.title} · Version ${form.version}`, 2));
-        for (const block of form.blocks) {
-          if (!formBlockVisible(block, sub.values)) continue;
-          if (
-            block.id === form.blocks[0]?.id &&
-            block.type === "heading" &&
-            block.text?.trim() === form.title.trim()
-          )
-            continue;
-          const value = sub.values[block.id];
-          if (block.type === "heading")
-            children.push(heading(block.text ?? "", 2));
-          else if (block.type === "rating-table")
-            children.push(formRatingTable(block, value));
-          else if (block.type === "signature")
-            children.push(
-              p(
-                `${block.caption ?? "Signature over printed name"}: ____________________`,
-              ),
-            );
-          else if (["fill-in", "info-field"].includes(block.type))
-            children.push(
-              p(
-                `${block.label ?? "Field"}: ${typeof value === "string" ? value : ""}`,
-              ),
-            );
-          else if (block.text) children.push(...narrative(block.text));
-        }
+        children.push(...formWordBlocks(form, sub.values));
       }
       for (const e of data.evaluations.filter(
         (e) =>
@@ -663,6 +637,40 @@ export async function buildSectionBlocks(
           ),
         );
     }
+  }
+  return children;
+}
+
+export function formWordBlocks(
+  form: FormDocument,
+  values: Record<string, FormFieldValue>,
+) {
+  const children: FileChild[] = [];
+  for (const block of form.blocks) {
+    if (!formBlockVisible(block, values)) continue;
+    if (
+      block.id === form.blocks[0]?.id &&
+      block.type === "heading" &&
+      block.text?.trim() === form.title.trim()
+    )
+      continue;
+    const value = values[block.id];
+    if (block.type === "heading") children.push(heading(block.text ?? "", 2));
+    else if (block.type === "rating-table")
+      children.push(formRatingTable(block, value));
+    else if (block.type === "signature")
+      children.push(
+        p(
+          `${block.caption ?? "Signature over printed name"}: ____________________`,
+        ),
+      );
+    else if (["fill-in", "info-field"].includes(block.type))
+      children.push(
+        p(
+          `${block.label ?? "Field"}: ${typeof value === "string" ? value : ""}`,
+        ),
+      );
+    else if (block.text) children.push(...narrative(block.text));
   }
   return children;
 }

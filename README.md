@@ -2,6 +2,8 @@
 
 Practicum management for students, supervisors and coordinators. The `practo/testing-platform` branch now uses one Next.js application with a seeded SQLite database, server sessions and authorized APIs. White is the default surface; charcoal is optional, with school colors used as secondary accents.
 
+The latest form workflow adds safe Trash/Restore, editing history, checked sample Word output, batch assignment and a finished demo. See [Form workflow and verification](docs/FORM_WORKFLOW.md) for instructions, resource limits and migration boundaries.
+
 This is a testing prototype. Use fictional data. Demo access and shared reset are explicitly gated by server environment flags.
 
 ## Run locally

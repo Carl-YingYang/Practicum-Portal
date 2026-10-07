@@ -588,6 +588,8 @@ export type FormCategory =
   | "program"
   | "other";
 export interface FormDocument {
+  /** Recoverable unused library item; excluded from assignment and editing. */
+  trashedAt?: string;
   /** Shared immutable definition pinned to a published practicum format. */
   origin?: {
     formId: string;

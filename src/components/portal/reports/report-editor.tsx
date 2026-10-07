@@ -901,13 +901,33 @@ export function ReportEditor({
               <h3 className="text-sm font-semibold">
                 Evidence and attachments
               </h3>
+              {report.uploadPolicy && (
+                <p className="text-xs text-muted-foreground">
+                  Student upload budget:{" "}
+                  {(report.uploadPolicy.limitBytes / 1024 / 1024).toFixed(0)} MB
+                  across reports · {report.uploadPolicy.maxImages} images
+                  maximum.{" "}
+                  {report.uploadPolicy.imagesEnabled
+                    ? "Upload only required evidence."
+                    : "Student image uploads are disabled for this pilot."}
+                </p>
+              )}
               {sectionEditable && (
                 <label className="block text-xs text-muted-foreground">
-                  PNG, JPEG, PDF or DOCX · up to 32 MB per file
+                  {state.currentUser?.role === "student" &&
+                  report.uploadPolicy?.imagesEnabled === false
+                    ? "PDF or DOCX"
+                    : "PNG, JPEG, PDF or DOCX"}{" "}
+                  · up to 32 MB per file
                   <input
                     type="file"
                     disabled={pending}
-                    accept="image/png,image/jpeg,.pdf,.docx"
+                    accept={
+                      state.currentUser?.role === "student" &&
+                      report.uploadPolicy?.imagesEnabled === false
+                        ? ".pdf,.docx"
+                        : "image/png,image/jpeg,.pdf,.docx"
+                    }
                     className="mt-2 block w-full min-w-0 rounded-md border p-2 text-sm"
                     onChange={(e) => {
                       void upload(e.target.files?.[0], "evidence", section.id);

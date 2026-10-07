@@ -258,6 +258,15 @@ const schemas: Partial<Record<MutationName, z.ZodType>> = {
   unpublishFormDocument: z.tuple([id]),
   archiveFormDocument: z.tuple([id]),
   deleteFormDocument: z.tuple([id]),
+  restoreFormDocument: z.tuple([id]),
+  purgeFormDocument: z.tuple([id]),
+  replaceFormDraft: z.tuple([
+    id,
+    z.string().max(500000),
+    formMeta.extend({
+      blocks: z.array(blockPatch.extend({ id, type: blockType })).max(100),
+    }),
+  ]),
   duplicateFormDocument: z.tuple([id]),
   assignForm: z.tuple([
     z

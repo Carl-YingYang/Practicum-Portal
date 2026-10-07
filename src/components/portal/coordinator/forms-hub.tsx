@@ -1,4 +1,5 @@
 "use client";
+import { ConfirmDialog } from "../shared/confirm-dialog";
 
 import * as React from "react";
 import { flushChanges } from "@/client/portal-client";
@@ -116,6 +117,12 @@ export function FormsHub() {
   const submissions = useAppStore((s) => s.formSubmissions);
   const supervisors = useAppStore((s) => s.supervisors);
   const students = useAppStore((s) => s.students);
+  const restoreFormDocument = useAppStore((s) => s.restoreFormDocument);
+  const purgeFormDocument = useAppStore((s) => s.purgeFormDocument);
+  const [confirmAction, setConfirmAction] = React.useState<{
+    form: FormDocument;
+    action: "delete" | "purge" | "archive";
+  } | null>(null);
   const deleteFormDocument = useAppStore((s) => s.deleteFormDocument);
   const duplicateFormDocument = useAppStore((s) => s.duplicateFormDocument);
   const publishFormDocument = useAppStore((s) => s.publishFormDocument);
@@ -154,7 +161,7 @@ export function FormsHub() {
     FormCategory | "all"
   >("all");
   const [statusFilter, setStatusFilter] = React.useState<
-    "all" | "draft" | "published" | "archived"
+    "all" | "draft" | "published" | "archived" | "trash"
   >("all");
 
   // filters for the Submissions tab
@@ -205,6 +212,8 @@ export function FormsHub() {
       | "unpublish"
       | "archive"
       | "delete"
+      | "restore"
+      | "purge"
       | "assign"
       | "preview"
       | "responses",
@@ -237,14 +246,23 @@ export function FormsHub() {
         toast({ title: "Reverted to draft" });
         break;
       case "archive":
-        archiveFormDocument(form.id);
-        await flushChanges();
-        toast({ title: "Form archived" });
-        break;
       case "delete":
-        deleteFormDocument(form.id);
+      case "purge":
+        setConfirmAction({
+          form,
+          action:
+            action === "delete" &&
+            (submissions.some((s) => s.formId === form.id) ||
+              assignments.some((a) => a.formId === form.id) ||
+              forms.some((f) => f.origin?.formId === form.id))
+              ? "archive"
+              : action,
+        });
+        break;
+      case "restore":
+        restoreFormDocument(form.id);
         await flushChanges();
-        toast({ title: "Form deleted" });
+        toast({ title: "Form restored as draft" });
         break;
       case "assign":
         setAssignTarget(form);
@@ -264,12 +282,18 @@ export function FormsHub() {
   const filteredForms = React.useMemo(() => {
     const q = search.trim().toLowerCase();
     return forms
-      .filter((f) => !f.origin)
+      .filter(
+        (f) =>
+          !f.origin &&
+          (statusFilter === "trash" ? !!f.trashedAt : !f.trashedAt),
+      )
       .filter((f) =>
         categoryFilter === "all" ? true : f.category === categoryFilter,
       )
       .filter((f) =>
-        statusFilter === "all" ? true : f.status === statusFilter,
+        statusFilter === "all" || statusFilter === "trash"
+          ? true
+          : f.status === statusFilter,
       )
       .filter((f) =>
         q
@@ -341,6 +365,48 @@ export function FormsHub() {
 
   return (
     <div className="space-y-4">
+      <ConfirmDialog
+        open={!!confirmAction}
+        onOpenChange={(open) => {
+          if (!open) setConfirmAction(null);
+        }}
+        title={
+          confirmAction?.action === "archive"
+            ? "Archive this form?"
+            : confirmAction?.action === "purge"
+              ? "Permanently delete this unused form?"
+              : "Move this form to Trash?"
+        }
+        description={
+          confirmAction
+            ? `${confirmAction.form.title} · ${assignments.filter((a) => a.formId === confirmAction.form.id).length} assignment(s), ${submissions.filter((s) => s.formId === confirmAction.form.id).length} response(s). ${confirmAction.action === "archive" ? "Saved answers and report rubrics are retained. This form stops accepting new starts." : confirmAction.action === "purge" ? "This cannot be undone. The server checks that the item is still unused." : "You can restore it from the Trash filter. Nothing is permanently deleted."}`
+            : ""
+        }
+        confirmLabel={
+          confirmAction?.action === "archive"
+            ? "Archive form"
+            : confirmAction?.action === "purge"
+              ? "Delete permanently"
+              : "Move to Trash"
+        }
+        destructive
+        onConfirm={async () => {
+          if (!confirmAction) return;
+          const { form, action } = confirmAction;
+          if (action === "archive") archiveFormDocument(form.id);
+          else if (action === "purge") purgeFormDocument(form.id);
+          else deleteFormDocument(form.id);
+          await flushChanges();
+          toast({
+            title:
+              action === "archive"
+                ? "Form archived"
+                : action === "purge"
+                  ? "Unused form permanently deleted"
+                  : "Form moved to Trash",
+          });
+        }}
+      />
       <PageHeader
         title="Forms & Reviews"
         breadcrumb="Forms"
@@ -465,6 +531,7 @@ export function FormsHub() {
                     <SelectItem value="draft">Draft</SelectItem>
                     <SelectItem value="published">Published</SelectItem>
                     <SelectItem value="archived">Archived</SelectItem>
+                    <SelectItem value="trash">Trash</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -954,6 +1021,8 @@ function FormCard({
       | "unpublish"
       | "archive"
       | "delete"
+      | "restore"
+      | "purge"
       | "assign"
       | "preview"
       | "responses",
@@ -974,6 +1043,27 @@ function FormCard({
     students,
   );
   const formAssignments = assignmentsForForm(assignments, form.id);
+  if (form.trashedAt)
+    return (
+      <section className="min-w-0 space-y-3 rounded-lg border p-4">
+        <h3 className="break-words font-semibold">{form.title}</h3>
+        <p className="text-xs text-muted-foreground">
+          In Trash · Restore before editing or assigning.
+        </p>
+        <div className="flex flex-wrap gap-2">
+          <Button disabled={pending} onClick={() => onAction("restore")}>
+            Restore draft
+          </Button>
+          <Button
+            disabled={pending}
+            variant="outline"
+            onClick={() => onAction("purge")}
+          >
+            Delete permanently
+          </Button>
+        </div>
+      </section>
+    );
 
   return (
     <div className="group relative flex min-w-0 flex-col gap-2 overflow-hidden rounded-lg border border-border/60 bg-card p-4 transition-shadow hover:shadow-sm">
@@ -1057,7 +1147,7 @@ function FormCard({
               onClick={() => onAction("delete")}
               className="text-destructive focus:text-destructive"
             >
-              <Trash2 className="mr-2 h-3.5 w-3.5" /> Delete
+              <Trash2 className="mr-2 h-3.5 w-3.5" /> Move to Trash
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

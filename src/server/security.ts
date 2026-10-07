@@ -108,6 +108,16 @@ export async function jsonBody(request: Request) {
 }
 export function failure(error: unknown) {
   const status = error instanceof HttpError ? error.status : 500;
+  if (!(error instanceof HttpError)) {
+    const code =
+      error &&
+      typeof error === "object" &&
+      "code" in error &&
+      typeof error.code === "string"
+        ? error.code
+        : "UNEXPECTED";
+    console.error("[Portal] request failed:", code);
+  }
   // Do not expose Prisma messages, passwords, connection strings or stack traces.
   return Response.json(
     {

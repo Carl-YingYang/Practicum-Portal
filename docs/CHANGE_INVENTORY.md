@@ -2,6 +2,17 @@
 
 Base: `d8d6a7e`; branch: `practo/testing-platform`. See [implementation details](CONNECTED_PLATFORM.md) for behavior and [verification](VERIFICATION.md) for results.
 
+## 7 October 2026 — form quality and local architecture
+
+- Safe unused-form Trash/Restore and confirmed permanent deletion; archive preserves used forms and published-format references.
+- Consistent republished ordinary drafts; submitted and report-pinned rubrics retain grading history. Scoreless rating headings remain scoreless in UI and Word.
+- Bounded Undo/Redo, canonical content signatures and conflict-safe draft replay. Blank/sample/answered Word and PDF actions are visible.
+- Word starter instructions, server structural preflight and fictional sample generation before publication. Recipient filtering/select-all, confirmation and retry-safe batches of 25.
+- Separate completed demo student/supervisor: 250 recorded hours, approved journals/forms, submitted evaluation, reviewed report and real Word export.
+- Student upload byte/image limits and optional image gate, shared normalization, revision-checked snapshot access, efficient account sync and local write queue after reproducing SQLite contention.
+- No Supabase connection or schema migration; future normalized entities/private object-storage work is documented. Existing login assets and existing accounts remain unchanged.
+- Details and measured checks: [FORM_WORKFLOW.md](FORM_WORKFLOW.md); research/plan: [FORM_WORKFLOW_PLAN.md](FORM_WORKFLOW_PLAN.md).
+
 ## Main changes
 
 | Area | Improvements |

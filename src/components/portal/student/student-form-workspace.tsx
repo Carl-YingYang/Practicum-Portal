@@ -1,4 +1,6 @@
 "use client";
+import { FormExportActions } from "../shared/form-export-actions";
+import { responseForm } from "@/domain/forms/response-form";
 import { ConfirmDialog } from "@/components/portal/shared/confirm-dialog";
 import { useFormDraft } from "@/hooks/use-form-draft";
 import { assignmentAppliesTo } from "@/lib/selectors";
@@ -126,7 +128,7 @@ export function StudentFormWorkspace({
       assignmentId,
     );
   }, [submissions, formId, currentUser, assignmentId]);
-  const form = currentSubmission?.formSnapshot ?? liveForm;
+  const form = responseForm(liveForm, currentSubmission);
   const draft = useFormDraft(
     formId,
     currentUser?.id,
@@ -363,7 +365,10 @@ export function StudentFormWorkspace({
             {students.find((s) => s.id === context.studentId)?.name} ·{" "}
             {context.cycle || "Current practicum"}
           </p>
-          <p className="mt-1 break-words text-xs font-medium">{context.reportTitle} · {context.sectionTitle} · format v{context.templateVersion}</p>
+          <p className="mt-1 break-words text-xs font-medium">
+            {context.reportTitle} · {context.sectionTitle} · format v
+            {context.templateVersion}
+          </p>
           <p className="text-xs text-muted-foreground">
             Assigned format · Rubric v{form.origin?.version ?? form.version} ·
             Answers belong to this report requirement.
@@ -379,6 +384,13 @@ export function StudentFormWorkspace({
           </Button>
         </div>
       )}
+
+      <FormExportActions
+        form={form}
+        values={values}
+        submissionId={currentSubmission?.id}
+        beforeExport={draft.save}
+      />
 
       <div className="flex flex-wrap items-center gap-3 rounded-lg border border-border/60 bg-card px-3.5 py-2 text-[11.5px] text-muted-foreground">
         <span className="inline-flex items-center gap-1">

@@ -1,3 +1,5 @@
+import { studentUploadPolicy } from "@/server/storage/policy";
+import { decodeSchoolState } from "@/server/persistence/school-state";
 import type { PortalAccount, Prisma } from "@prisma/client";
 import { randomUUID, createHash } from "node:crypto";
 import { db } from "@/server/database";
@@ -48,7 +50,7 @@ export async function reportContext(account: PortalAccount, tx: Database = db) {
     where: { id: account.schoolId },
   });
   if (!school) throw new HttpError(404, "School not found.");
-  const data = JSON.parse(school.stateJson) as PortalData;
+  const data = decodeSchoolState(school.stateJson);
   return { data, actor: actorFor(data, live) };
 }
 export function canReadReport(
@@ -216,6 +218,7 @@ export async function reportResponse(
       kind: a.kind as "evidence" | "export" | "reviewed",
       createdAt: a.createdAt.toISOString(),
     })),
+    uploadPolicy: studentUploadPolicy(),
     canEdit: r.canEdit,
     canReview: r.canReview,
     updatedAt: r.record.updatedAt.toISOString(),

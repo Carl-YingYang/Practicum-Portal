@@ -89,6 +89,16 @@ const { startServer } = require("./server-harness.cjs");
     await page
       .getByLabel("Template name", { exact: true })
       .fill("Browser Official Format");
+    await page.getByRole("button", { name: "Undo", exact: true }).click();
+    assert.equal(
+      await page.getByLabel("Template name", { exact: true }).inputValue(),
+      "Practicum Report",
+    );
+    await page.getByRole("button", { name: "Redo", exact: true }).click();
+    assert.equal(
+      await page.getByLabel("Template name", { exact: true }).inputValue(),
+      "Browser Official Format",
+    );
     await page
       .getByRole("button", { name: "Add custom section", exact: true })
       .click();
@@ -169,6 +179,14 @@ const { startServer } = require("./server-harness.cjs");
       )
       .waitFor();
     await page
+      .getByRole("button", { name: "Check format", exact: true })
+      .click();
+    await page.getByText(/Structural checks passed/).waitFor();
+    await page
+      .getByRole("button", { name: "Publish new version", exact: true })
+      .click();
+    await page
+      .getByRole("dialog")
       .getByRole("button", { name: "Publish new version", exact: true })
       .click();
     await page
@@ -179,11 +197,15 @@ const { startServer } = require("./server-harness.cjs");
       .waitFor();
     await page.getByLabel("Sample Student 1 ·", { exact: false }).check();
     await page
+      .getByRole("button", { name: "Review 1 recipients", exact: true })
+      .click();
+    await page
+      .getByRole("dialog")
       .getByRole("button", { name: "Assign reports", exact: true })
       .click();
     await page
       .getByText(
-        "1 report assignment(s) ready. Open Submission Reviews to inspect them.",
+        "1 official report(s) ready. Each student's linked forms also go to the assigned supervisor. Open Review & export to inspect them.",
         { exact: true },
       )
       .waitFor();

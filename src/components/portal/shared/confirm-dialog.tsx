@@ -98,6 +98,7 @@ export function ConfirmDialog({
             <Button
               disabled={saving}
               variant="outline"
+              autoFocus
               onClick={() => changeOpen(false)}
             >
               {cancelLabel}

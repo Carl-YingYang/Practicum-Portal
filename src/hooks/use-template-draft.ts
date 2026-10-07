@@ -1,4 +1,5 @@
 "use client";
+import { createEditorHistory } from "@/domain/editor-history";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { registerNavigationGuard } from "@/client/navigation-guard";
 import { reportRequest } from "@/client/reports";
@@ -16,6 +17,12 @@ export function useTemplateDraft(initial: TemplateRecord, accountId: string) {
     serial = useRef(0),
     inFlight = useRef<Promise<void> | null>(null),
     mounted = useRef(true);
+  const [availability, setAvailability] = useState({
+    canUndo: false,
+    canRedo: false,
+  });
+  const history = useRef(createEditorHistory(initial.content));
+  const replaying = useRef(false);
   const recoveryKey = `practo:template-draft:${accountId}:${initial.id}`;
   const [recovery, setRecovery] = useState<TemplateContent | null>(null);
   useEffect(() => {
@@ -38,6 +45,20 @@ export function useTemplateDraft(initial: TemplateRecord, accountId: string) {
   }, [recoveryKey, initial.content]);
   const change = useCallback(
     (next: TemplateContent) => {
+      if (!replaying.current) {
+        const focus = document.activeElement;
+        history.current.record(
+          next,
+          focus instanceof HTMLInputElement ||
+            focus instanceof HTMLTextAreaElement
+            ? focus.getAttribute("aria-label") || focus.id || "text"
+            : "",
+        );
+      }
+      setAvailability({
+        canUndo: history.current.canUndo,
+        canRedo: history.current.canRedo,
+      });
       latest.current = next;
       dirty.current = true;
       serial.current++;
@@ -120,6 +141,8 @@ export function useTemplateDraft(initial: TemplateRecord, accountId: string) {
     return () => window.removeEventListener("beforeunload", leave);
   }, []);
   const accept = useCallback((next: TemplateRecord) => {
+    history.current.reset(next.content);
+    setAvailability({ canUndo: false, canRedo: false });
     savedRevision.current = next.revision;
     latest.current = next.content;
     dirty.current = false;
@@ -130,6 +153,23 @@ export function useTemplateDraft(initial: TemplateRecord, accountId: string) {
   }, []);
   return {
     report,
+    ...availability,
+    undo: () => {
+      const next = history.current.undo();
+      if (next) {
+        replaying.current = true;
+        change(next);
+        replaying.current = false;
+      }
+    },
+    redo: () => {
+      const next = history.current.redo();
+      if (next) {
+        replaying.current = true;
+        change(next);
+        replaying.current = false;
+      }
+    },
     content,
     change,
     save,

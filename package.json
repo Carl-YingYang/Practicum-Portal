@@ -32,7 +32,9 @@
     "test:templates-ui": "node tests/template-browser.cjs",
     "test:templates-doc": "node tests/template-document.cjs",
     "test:connected": "node --test tests/connected-unit.test.cjs && node tests/connected-workflow.cjs",
-    "test:connected-ui": "node tests/connected-browser.cjs"
+    "test:connected-ui": "node tests/connected-browser.cjs",
+    "test:form-quality": "node --test tests/form-quality.test.cjs && node tests/form-quality-integration.cjs && node tests/form-quality-browser.cjs",
+    "test:upload-policy": "node tests/upload-policy.cjs && node tests/upload-policy.cjs --disabled"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
