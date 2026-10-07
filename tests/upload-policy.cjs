@@ -32,8 +32,7 @@ const { startServer } = require("./server-harness.cjs");
         201,
       ),
       path = `/api/reports/${r.id}`;
-    assert.equal(r.uploadPolicy.imagesEnabled, !disabled);
-    assert.equal(r.uploadPolicy.maxImages, 1);
+    assert.equal(r.uploadPolicy.imagesEnabled, false);
     const section = r.content.sections.find((s) => s.kind === "evidence");
     async function upload(
       buffer,
@@ -57,28 +56,72 @@ const { startServer } = require("./server-harness.cjs");
     })
       .png()
       .toBuffer();
-    await upload(image, "photo.png", "image/png", disabled ? 403 : 200);
+    const revision = r.revision;
+    await upload(image, "photo.png", "image/png", 403);
+    await upload(
+      image,
+      "pretend.docx",
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      403,
+    );
+    await upload(
+      Buffer.from("%PDF-1.4\n"),
+      "photo.pdf",
+      "application/pdf",
+      403,
+    );
+    const after = await json(await c.get(path));
+    assert.equal(after.revision, revision);
+    assert.equal(after.assets.length, 0);
+    const content = structuredClone(r.content);
+    content.sections.find((s) => s.id === section.id).included = true;
+    content.sections.find((s) => s.id === section.id).body =
+      "Project presentation — add photograph in offline Word.";
+    r = await json(
+      await c.put(path, { data: { revision: r.revision, content } }),
+    );
+    r = await json(
+      await c.post(path + "/export", {
+        data: { revision: r.revision, allowIncomplete: true },
+      }),
+    );
+    const asset = r.assets.find(
+      (a) => a.kind === "export" && a.mime.includes("wordprocessingml"),
+    );
+    const bytes = await (await c.get(path + `/assets/${asset.id}`)).body();
+    const JSZip = require("jszip");
+    const xml = await (
+      await JSZip.loadAsync(bytes)
+    )
+      .file("word/document.xml")
+      .async("string");
     if (!disabled) {
-      await upload(image);
-      assert.equal(r.assets.filter((a) => a.kind === "evidence").length, 1);
-      const revision = r.revision;
-      const other = await sharp({
-        create: { width: 500, height: 400, channels: 3, background: "#486f52" },
-      })
-        .png()
-        .toBuffer();
-      await upload(other, "other.png", "image/png", 413);
-      const oversized = Buffer.alloc(2 * 1024 * 1024, 32);
-      oversized.write("%PDF-1.4\n");
-      await upload(oversized, "large.pdf", "application/pdf", 413);
-      const after = await json(await c.get(path));
-      assert.equal(after.revision, revision);
-      assert.equal(after.assets.length, r.assets.length);
+      require("fs").mkdirSync("docs/verification", { recursive: true });
+      require("fs").writeFileSync(
+        "docs/verification/placeholder-evidence.docx",
+        bytes,
+      );
     }
+    assert.ok(xml.includes("IMAGE PLACEHOLDER"));
+    assert.ok(xml.includes("Project presentation"));
+    r = await json(
+      await c.post(path + "/assets", {
+        multipart: {
+          revision: String(r.revision),
+          sectionId: r.versions.at(-1).id,
+          kind: "reviewed",
+          file: {
+            name: "reviewed.docx",
+            mimeType:
+              "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            buffer: bytes,
+          },
+        },
+      }),
+    );
+    assert.ok(r.assets.some((a) => a.kind === "reviewed"));
     console.log(
-      disabled
-        ? "Student image gate passed: server rejects images when disabled."
-        : "Upload policy passed: image-count limit, duplicate reuse, student byte budget and atomic rejection without losing saved assets.",
+      `Student evidence prohibition passed (${disabled ? "legacy false flag" : "legacy true flag cannot bypass"}): images, disguised binaries, PDF rejected atomically; placeholder Word and grammarian return work.`,
     );
   } catch (e) {
     console.error(app.serverOutput());

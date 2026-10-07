@@ -101,6 +101,8 @@ export function StudentFormWorkspace({
       : undefined;
     return buildFormAutoFillContext({
       studentName: student?.name,
+      department: student?.department,
+      position: student?.position,
       studentNumber: student?.studentNumber,
       course: student?.course,
       section: student?.section,

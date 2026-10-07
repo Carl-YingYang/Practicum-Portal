@@ -1,4 +1,5 @@
 "use client";
+import { SupervisorResponse } from "../shared/supervisor-response";
 import { useState } from "react";
 import { useAppStore } from "@/store/use-app-store";
 import { snapshot } from "@/domain/portal/snapshot";
@@ -725,43 +726,55 @@ export function ReportEditor({
             )}
             {!!definition?.formIds.length && (
               <div className="flex flex-wrap gap-2">
-                {definition.formIds.map((fid) => (
-                  <Button
-                    key={fid}
-                    disabled={
-                      pending ||
-                      (state.currentUser?.role !== "coordinator" &&
-                        definition.respondent !== state.currentUser?.role)
-                    }
-                    variant="outline"
-                    size="sm"
-                    className="h-auto min-h-11 min-w-0 max-w-full whitespace-normal break-words text-left"
-                    onClick={() =>
-                      state.navigate(
-                        state.currentUser?.role === "student"
-                          ? "student.form-view"
-                          : state.currentUser?.role === "supervisor"
-                            ? "supervisor.form-view"
-                            : "coordinator.forms",
-                        {
-                          formId: fid,
-                          ...(state.currentUser?.role === "coordinator"
-                            ? { tab: "submissions" }
-                            : {}),
-                          assignmentId:
-                            report.binding?.assignments?.[section.template]?.[
-                              fid
-                            ],
-                          studentId: section.studentId ?? undefined,
-                        },
-                      )
-                    }
-                  >
-                    Open{" "}
-                    {state.formDocuments.find((f) => f.id === fid)?.title ??
-                      "assigned form"}
-                  </Button>
-                ))}
+                {definition.formIds.map((fid) =>
+                  state.currentUser?.role === "student" &&
+                  definition.respondent === "supervisor" ? (
+                    <div key={fid} className="w-full min-w-0">
+                      <SupervisorResponse
+                        formId={fid}
+                        assignmentId={
+                          report.binding?.assignments?.[section.template]?.[fid]
+                        }
+                      />
+                    </div>
+                  ) : (
+                    <Button
+                      key={fid}
+                      disabled={
+                        pending ||
+                        (state.currentUser?.role !== "coordinator" &&
+                          definition.respondent !== state.currentUser?.role)
+                      }
+                      variant="outline"
+                      size="sm"
+                      className="h-auto min-h-11 min-w-0 max-w-full whitespace-normal break-words text-left"
+                      onClick={() =>
+                        state.navigate(
+                          state.currentUser?.role === "student"
+                            ? "student.form-view"
+                            : state.currentUser?.role === "supervisor"
+                              ? "supervisor.form-view"
+                              : "coordinator.forms",
+                          {
+                            formId: fid,
+                            ...(state.currentUser?.role === "coordinator"
+                              ? { tab: "submissions" }
+                              : {}),
+                            assignmentId:
+                              report.binding?.assignments?.[section.template]?.[
+                                fid
+                              ],
+                            studentId: section.studentId ?? undefined,
+                          },
+                        )
+                      }
+                    >
+                      Open{" "}
+                      {state.formDocuments.find((f) => f.id === fid)?.title ??
+                        "assigned form"}
+                    </Button>
+                  ),
+                )}
               </div>
             )}
             <p className="rounded-lg bg-muted/40 p-3 text-sm text-muted-foreground">
@@ -785,9 +798,11 @@ export function ReportEditor({
               />
             ) : (
               <label className="block text-sm">
-                {section.kind === "narrative"
-                  ? "Section content"
-                  : "Additional notes"}
+                {section.kind === "evidence"
+                  ? "Image placeholder description / caption"
+                  : section.kind === "narrative"
+                    ? "Section content"
+                    : "Additional notes"}
                 <Textarea
                   disabled={pending}
                   aria-label={
@@ -798,7 +813,11 @@ export function ReportEditor({
                   className="mt-2 min-h-64 resize-y leading-relaxed"
                   value={section.body}
                   maxLength={100000}
-                  placeholder="Write your own content. Use # headings, **bold**, - bullets, or a Markdown table."
+                  placeholder={
+                    section.kind === "evidence"
+                      ? "Describe the photo that belongs here and write its caption. No upload is needed."
+                      : "Write your own content. Use # headings, **bold**, - bullets, or a Markdown table."
+                  }
                   onChange={(e) => editSection({ body: e.target.value })}
                 />
                 <span className="mt-1 block text-xs text-muted-foreground">
@@ -901,33 +920,22 @@ export function ReportEditor({
               <h3 className="text-sm font-semibold">
                 Evidence and attachments
               </h3>
-              {report.uploadPolicy && (
-                <p className="text-xs text-muted-foreground">
-                  Student upload budget:{" "}
-                  {(report.uploadPolicy.limitBytes / 1024 / 1024).toFixed(0)} MB
-                  across reports · {report.uploadPolicy.maxImages} images
-                  maximum.{" "}
-                  {report.uploadPolicy.imagesEnabled
-                    ? "Upload only required evidence."
-                    : "Student image uploads are disabled for this pilot."}
+              {state.currentUser?.role === "student" && (
+                <p className="rounded-lg border border-dashed bg-muted/20 p-3 text-sm text-muted-foreground">
+                  Images stay out of this pilot. Describe the image and its
+                  caption in the section content; Word will reserve a
+                  placeholder. Add the actual photo later in your final offline
+                  Word document, if required.
                 </p>
               )}
-              {sectionEditable && (
+              {sectionEditable && state.currentUser?.role !== "student" && (
                 <label className="block text-xs text-muted-foreground">
-                  {state.currentUser?.role === "student" &&
-                  report.uploadPolicy?.imagesEnabled === false
-                    ? "PDF or DOCX"
-                    : "PNG, JPEG, PDF or DOCX"}{" "}
-                  · up to 32 MB per file
+                  Coordinator / supervisor attachment · PNG, JPEG, PDF or DOCX ·
+                  up to 32 MB
                   <input
                     type="file"
                     disabled={pending}
-                    accept={
-                      state.currentUser?.role === "student" &&
-                      report.uploadPolicy?.imagesEnabled === false
-                        ? ".pdf,.docx"
-                        : "image/png,image/jpeg,.pdf,.docx"
-                    }
+                    accept="image/png,image/jpeg,.pdf,.docx"
                     className="mt-2 block w-full min-w-0 rounded-md border p-2 text-sm"
                     onChange={(e) => {
                       void upload(e.target.files?.[0], "evidence", section.id);

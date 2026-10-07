@@ -25,6 +25,11 @@ export async function uploadReportAsset(
     );
   if (!["evidence", "reviewed"].includes(kind))
     throw new HttpError(400, "Unsupported upload type.");
+  if (account.role === "student" && kind === "evidence")
+    throw new HttpError(
+      403,
+      "Student evidence uploads are disabled. Add a written image placeholder instead. Grammarian-reviewed Word files can still be returned through the exported version.",
+    );
   let bytes: Buffer = Buffer.from(await file.arrayBuffer()),
     mime = "",
     width: number | null = null,
@@ -78,6 +83,11 @@ export async function uploadReportAsset(
     const r = await lockReport(tx, id, account, revision);
     if (!r.canEdit)
       throw new HttpError(403, "Only the author/coordinator uploads evidence.");
+    if (r.actor.role === "student" && kind === "evidence")
+      throw new HttpError(
+        403,
+        "Student evidence uploads are disabled. Add a written image placeholder instead. Grammarian-reviewed Word files can still be returned through the exported version.",
+      );
     if (
       kind === "evidence" &&
       r.state.binding &&
@@ -113,11 +123,6 @@ export async function uploadReportAsset(
       return;
     if (r.actor.role === "student") {
       const policy = studentUploadPolicy();
-      if (mime.startsWith("image/") && !policy.imagesEnabled)
-        throw new HttpError(
-          403,
-          "Image uploads are disabled for this pilot. Use written content or ask your coordinator about required evidence.",
-        );
       const usage = await tx.reportAsset.aggregate({
         where: {
           report: { ownerId: account.id, schoolId: account.schoolId },
@@ -129,20 +134,6 @@ export async function uploadReportAsset(
         throw new HttpError(
           413,
           "Student upload budget reached. Remove unused evidence or ask the coordinator; saved files are retained.",
-        );
-      if (
-        mime.startsWith("image/") &&
-        (await tx.reportAsset.count({
-          where: {
-            report: { ownerId: account.id, schoolId: account.schoolId },
-            kind: "evidence",
-            mime: { startsWith: "image/" },
-          },
-        })) >= policy.maxImages
-      )
-        throw new HttpError(
-          413,
-          "Student image limit reached. Replace unused evidence rather than uploading repeated photos.",
         );
     }
     await reserveStorage(tx, account.schoolId, bytes.length);

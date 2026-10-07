@@ -217,6 +217,21 @@ export async function assignTemplate(
           ids.push(existing.reportId);
           continue;
         }
+        if (
+          config.sections.some((s) => s.respondent === "supervisor") &&
+          !(await tx.portalAccount.findFirst({
+            where: {
+              schoolId: account.schoolId,
+              role: "supervisor",
+              profileId: student.supervisorId ?? "",
+              status: "active",
+            },
+          }))
+        )
+          throw new HttpError(
+            400,
+            `${student.name} needs an active supervisor account before receiving this format.`,
+          );
         const reportId = randomUUID();
         const binding = bindingFor(version, config, parsed.data.dueDate);
         binding.reportId = reportId;

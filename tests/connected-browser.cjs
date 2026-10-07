@@ -212,6 +212,20 @@ const { startServer } = require("./server-harness.cjs");
     await ready();
     await login("supervisor");
     await nav("Shared Forms");
+    await page.getByText(/interns? still need your responses/).waitFor();
+    await page.getByRole("button", { name: /^To do \(/ }).click();
+    assert.ok(
+      await page
+        .getByRole("button", { name: /Guided demo — Supervisor evaluation/ })
+        .count(),
+    );
+    await overflow();
+    await page.screenshot({
+      path: "docs/screenshots/supervisor-checklist-mobile.png",
+      fullPage: true,
+    });
+    await page.getByRole("button", { name: /^All \(/ }).click();
+
     await page
       .getByRole("button", { name: /Guided demo — Supervisor evaluation/ })
       .click();
@@ -231,6 +245,33 @@ const { startServer } = require("./server-harness.cjs");
       .click();
     await section("Supervisor evaluation");
     await ready();
+    await login("student");
+    await nav("Forms");
+    await page.getByRole("heading", { name: /From your supervisor/ }).waitFor();
+    const shared = page
+      .locator("details")
+      .filter({
+        has: page.locator("summary", {
+          hasText: "Guided demo — Supervisor evaluation",
+        }),
+      });
+    await shared.locator("summary").click();
+    await shared.getByText(/coordinator approval is still required/).waitFor();
+    assert.equal(
+      await shared.getByRole("textbox").count(),
+      0,
+      "supervisor responses are readonly",
+    );
+    const download = page.waitForEvent("download");
+    await shared
+      .getByRole("button", { name: "Answered Word", exact: true })
+      .click();
+    assert.ok((await download).suggestedFilename().endsWith("-answered.docx"));
+    await overflow();
+    await page.screenshot({
+      path: "docs/screenshots/supervisor-handoff-mobile.png",
+      fullPage: true,
+    });
     await login("coordinator");
     await nav("Practicum");
     await page

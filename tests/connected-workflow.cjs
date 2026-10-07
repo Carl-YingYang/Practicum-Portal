@@ -126,6 +126,51 @@ const { startServer } = require("./server-harness.cjs");
     );
     await command(coord, "reviewSubmission", [subId, "approve"]);
     await command(coord, "reviewSubmission", [supId, "approve"]);
+    const handoff = await json(await student.get("/api/portal"));
+    assert.ok(
+      handoff.data.formSubmissions.some(
+        (s) => s.id === supId && s.status === "approved",
+      ),
+    );
+    const supervisorFormId = handoff.data.formSubmissions.find(
+      (s) => s.id === supId,
+    ).formId;
+    const handoffExport = await student.get(
+      `/api/forms/${supervisorFormId}/export?mode=answered&submission=${supId}`,
+    );
+    assert.equal(handoffExport.status(), 200, await handoffExport.text());
+    assert.ok(
+      (
+        await (
+          await JSZip.loadAsync(await handoffExport.body())
+        )
+          .file("word/document.xml")
+          .async("string")
+      ).includes("Supervisor evaluation"),
+    );
+    assert.equal(
+      (
+        await other.get(
+          `/api/forms/${supervisorFormId}/export?mode=answered&submission=${supId}`,
+        )
+      ).status(),
+      404,
+    );
+    await command(
+      student,
+      "saveSubmissionDraft",
+      [supId, { x: "attempt" }],
+      403,
+    );
+    const publishedRoster = await json(
+      await coord.get(
+        tpath + `?recipients=true&version=${r.binding.versionId}`,
+      ),
+    );
+    assert.ok(publishedRoster.students.find((s) => s.id === sid).reportId);
+    assert.ok(publishedRoster.students.some((s) => s.ready && !s.reportId));
+    await json(await student.get(tpath + "?recipients=true"), 403);
+
     r = await json(await student.get(path));
     let content = structuredClone(r.content);
     content.sections.find((s) => s.template === "introduction").body =
@@ -377,14 +422,17 @@ const { startServer } = require("./server-harness.cjs");
       .jpeg()
       .toBuffer();
     async function upload(file, sectionId, kind = "evidence", code = 200) {
-      const response = await student.post(ipath + "/assets", {
-        multipart: {
-          revision: String(independent.revision),
-          sectionId,
-          kind,
-          file,
+      const response = await (kind === "evidence" ? coord : student).post(
+        ipath + "/assets",
+        {
+          multipart: {
+            revision: String(independent.revision),
+            sectionId,
+            kind,
+            file,
+          },
         },
-      });
+      );
       if (code !== 200) {
         assert.equal(response.status(), code, await response.text());
         return;
@@ -485,6 +533,64 @@ const { startServer } = require("./server-harness.cjs");
       ),
     );
     assert.ok(independent.assets.some((a) => a.kind === "reviewed"));
+    // Preview and write guards must agree when accounts change after publication.
+    const fixtureDb = load("src/server/database.ts").db;
+    const liveSchool = (await json(await coord.get("/api/portal"))).data;
+    const candidate = liveSchool.students.find(
+      (s) =>
+        s.status === "active" &&
+        s.supervisorId ===
+          liveSchool.students.find((s) => s.id === sid).supervisorId &&
+        ![sid, intern2.id].includes(s.id),
+    );
+    assert.ok(candidate);
+    for (const role of ["supervisor", "student"]) {
+      const profileId =
+        role === "supervisor" ? candidate.supervisorId : candidate.id;
+      const row = await fixtureDb.portalAccount.findFirstOrThrow({
+        where: { profileId, role, schoolId: "practo" },
+      });
+      await fixtureDb.portalAccount.update({
+        where: { id: row.id },
+        data: { status: "disabled" },
+      });
+      try {
+        const roster = await json(
+          await coord.get(
+            tpath + `?recipients=true&version=${t.versions[0].id}`,
+          ),
+        );
+        const target = roster.students.find((s) => s.id === candidate.id);
+        assert.equal(target.ready, false);
+        assert.match(
+          target.reason,
+          role === "supervisor" ? /active supervisor/ : /Activate the student/,
+        );
+        await json(
+          await coord.post(tpath, {
+            data: {
+              action: "assign",
+              versionId: t.versions[0].id,
+              studentIds: [candidate.id],
+              dueDate: null,
+            },
+          }),
+          400,
+        );
+        assert.equal(
+          await fixtureDb.practicumAssignment.count({
+            where: { versionId: t.versions[0].id, studentId: candidate.id },
+          }),
+          0,
+          "blocked assignment does not leave a partial report",
+        );
+      } finally {
+        await fixtureDb.portalAccount.update({
+          where: { id: row.id },
+          data: { status: row.status },
+        });
+      }
+    }
     console.log(
       "Connected workflow passed: gated/resumable demo, actual student/supervisor responses and final Word, fixed rubrics, direct draft linking, report/section/intern isolation, legacy retention, optimized/deduplicated uploads, atomic quota rejection, export reuse and guarded cleanup.",
     );

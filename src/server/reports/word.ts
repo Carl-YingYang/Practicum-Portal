@@ -460,7 +460,26 @@ export async function buildSectionBlocks(
         keepNext: true,
       }),
     );
-    if (section.body.trim()) children.push(...narrative(section.body));
+    if (
+      section.body.trim() &&
+      (section.kind !== "evidence" ||
+        assets.some((a) => a.kind === "evidence" && a.sectionId === section.id))
+    )
+      children.push(...narrative(section.body));
+    if (
+      section.kind === "evidence" &&
+      !assets.some((a) => a.kind === "evidence" && a.sectionId === section.id)
+    ) {
+      children.push(
+        table([
+          ["IMAGE PLACEHOLDER"],
+          [section.body.trim() || `Reserved for ${section.title}`],
+          [
+            "Add the required photograph to your final offline Word document. No image is stored in the portal.",
+          ],
+        ]),
+      );
+    }
     if (section.kind === "journals") {
       const student = students.find((s) => s.id === section.studentId)!;
       const supervisor = data.supervisors.find(

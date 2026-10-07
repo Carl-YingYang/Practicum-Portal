@@ -521,3 +521,14 @@ Validation commands: `typecheck`, `lint`, `build`, `test`, `test:templates`, `te
 - Added additive asset hashes, bounded image normalization, a configurable school file budget, actual usage display, equivalent-file/export reuse and explicit cleanup that retains every Word and protected ZIP.
 - Improved rating-table header widths/alignment in Word and prevented duplicated matching form headings. Mobile linked-form buttons and long download filenames wrap within their container.
 - Added connected unit/API/browser coverage and documented safe migration, usage, compatibility and resource limits in `CONNECTED_WORKFLOW.md`. Preserved the user's login/hero/SVG/copy, and left AI and wet signatures outside this update.
+
+
+## Linked requirements and placeholder evidence polish — 2026-10-07
+
+- Added coordinator-only server recipient previews for saved drafts and selected immutable versions. Default active-student selection, account/supervisor readiness, already-assigned counts, refresh and pre-assignment rechecks replace the disabled empty roster.
+- Publication now saves/checks/synchronizes owned section placeholders on click; blockers link to the exact section or Word mapping. Stable generated keys and included-by-default sections avoid disappearing custom content.
+- Supervisor Forms groups requirements by intern, displays remaining/reviewed totals and provides status filters with subtle secondary colors. Report-bound forms show one actual intern.
+- Added a shared supervisor-response read policy used by portal projection and Word export. Own students receive readonly submitted/approved responses and Word/PDF actions in My Forms and report sections; drafts, other interns, retired contexts and write attempts remain protected.
+- Fixed specific identity autofill matching for department/company/position and supervisor title; unknown identity labels remain blank rather than inheriting the student's name.
+- Removed student evidence upload controls and enforced rejection of new evidence binaries on the server, including disguised images. Browser/Word image placeholders use the description/caption. Existing files and grammarian-reviewed Word returns remain retained.
+- Updated role help, workflow/storage documentation, regression tests and screenshots. No schema migration, reset, login/hero/SVG change, AI or Supabase integration.

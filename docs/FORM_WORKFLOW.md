@@ -6,9 +6,9 @@ This update targets `practo/testing-platform`. Local SQLite remains the database
 
 1. Open **Practicum → Form Library** (also **Forms** in navigation). Create/edit a draft, use Undo/Redo for content, Preview, Blank Word, Sample Word or PDF. Rating headings group criteria and never require scores.
 2. Publish the library form. Link it to a **Forms** section in **Set up format** and choose the student or supervisor respondent. Instructions and sections have their own session Undo/Redo.
-3. Download the starter Word. Keep the supplied page size, margins, headers and footers. Put section placeholders on separate ordinary body paragraphs; keep metadata placeholders inside ordinary text. Use **Sync Word sections** after adding/removing sections.
-4. Run **Check format** or **Generate Sample Word**. The server inspects the package and placeholders and builds fictional content. Resolve errors. Open Sample Word in Microsoft Word to inspect page breaks, tables and headers/footers, then confirm publication. Structural validation cannot certify pagination in every Word renderer.
-5. Select the immutable published version, class/batch and recipients. The whole recipient row is tappable. Search, select all visible, review the names/version/due date, then confirm. Assignment runs in batches of 25 with progress. Successful batches survive a later failure; retry the same version/recipients to reopen existing reports without duplicates.
+3. Download the starter Word. Keep the supplied page size, margins, headers and footers. Put section placeholders on separate ordinary body paragraphs; keep metadata placeholders inside ordinary text. Section placeholders are synchronized when you check or publish; **Sync Word sections** is also available for an explicit update.
+4. Run **Check format** or **Generate Sample Word**. The server inspects the package and placeholders and builds fictional content. Use each error’s **Fix** link to open the corresponding section. Open Sample Word in Microsoft Word to inspect page breaks, tables and headers/footers, then confirm publication. Structural validation cannot certify pagination in every Word renderer.
+5. Ready active students are selected by default. Review the immutable published version, class/batch and recipients; missing accounts/supervisors and already-assigned reports are shown before confirmation. The whole recipient row is tappable. Search, select all visible, review the names/version/due date, then confirm. Assignment runs in batches of 25 with progress. Successful batches survive a later failure; retry the same version/recipients to reopen existing reports without duplicates.
 6. Students answer their report's linked forms; supervisors answer only their assigned interns' requirements. Approved contextual answers appear in the corresponding report section. Review sections and export the combined Word for the grammarian. Wet signatures stay blank for printing.
 
 Assignment is an explicit roster selection, not a subscription for future enrollees. New students must be selected later. Coordinator scope currently follows the existing school boundary; teacher/class ownership and future cohort automation need a separate data model before a multi-coordinator beta.
@@ -25,7 +25,7 @@ Assignment is an explicit roster selection, not a subscription for future enroll
 | Editor history                                                  | Up to 50 session steps; consecutive typing is grouped. New edits clear Redo. Reload/navigation resets history. Files, answers, publication and assignment are outside content Undo/Redo. |
 | Conflicting undo                                                | Expected draft-content signature must match the saved content. The server rejects a stale restore rather than replacing another edit. Object key ordering is ignored.                    |
 
-Word exports are authenticated. Coordinators can generate fictional samples. Respondents can download their saved answered response; another person's response is unavailable. Blank and answered exports identify the form version. PDF uses the existing form export renderer.
+Word exports are authenticated. Coordinators can generate fictional samples. Respondents can download their saved answers. Students can also view/download their assigned supervisor’s submitted, under-review or approved response for their own report context (shared legacy responses follow the current placement), through **My Forms → From your supervisor** or the linked report section. These views are readonly; drafts, returned revisions, other interns and retired contexts remain private. Blank and answered exports identify the form version. PDF uses the existing form export renderer.
 
 ## Finished testing example
 
@@ -35,17 +35,11 @@ Repeated or simultaneous setup reopens the same fixture and preserves existing a
 
 ## Upload policy
 
-Optional `.env` settings (restart after changes):
+Student evidence uploads are **always disabled in this pilot**, including images, PDFs and DOCX evidence. The old `PORTAL_STUDENT_IMAGES=true` override cannot re-enable them. Student file pickers for evidence have been removed; direct API requests are rejected before decoding and without changing the report revision.
 
-```dotenv
-PORTAL_STUDENT_IMAGES=true
-PORTAL_STUDENT_UPLOAD_MB=3
-PORTAL_STUDENT_IMAGE_COUNT=5
-```
+For an image/evidence section, write a description and caption. The browser preview and exported editable Word reserve a clearly labelled **IMAGE PLACEHOLDER**. The section can be marked ready and reviewed through the normal workflow. Actual photographs may be inserted later into the final offline Word document if required.
 
-Set the first flag to `false` to block new student image uploads. Existing evidence remains readable. The byte budget covers evidence and grammarian-reviewed uploads across reports owned by that student. Generated exports do not consume that personal upload budget, but still consume the existing school/report quotas. Duplicate evidence in the same report/section is reused before quota checks.
-
-Images are decoded, oriented and resized to at most 2000 pixels, preserving aspect ratio without upscaling. These changes reduce repeated large photos; they do not make storage unlimited. For example, 200 students each using the full 3 MiB personal budget would account for about 600 MiB before templates, generated Word files and other assets. The existing school quota can stop uploads earlier. Choose an image policy and measured storage budget for beta rather than assuming every allowance fits a free hosting plan.
+Existing saved evidence remains readable and retained. Coordinator/authorized supervisor attachment handling still normalizes images and checks school/report quotas. Students can return a grammarian-reviewed DOCX against the exact exported version. That upload uses `PORTAL_STUDENT_UPLOAD_MB=3` by default; generated exports use school/report storage limits instead.
 
 ## Persistence boundaries and future migration
 
@@ -69,4 +63,4 @@ Before Supabase beta: normalize school entities and form definitions/versions/as
 | New exported documents                | Completed demo: 22 pages; library sample: 1 page; format sample: 3 pages. Rendered with LibreOffice and checked for text outside page edges; no edge overflow found. Rating table visually checked with an unscored heading and blank wet signature.                            |
 | Prior long document fixture           | 44-page Word/PDF regression retained journals, 250 hours, narrative, images, tables and supplied margins/header/footer.                                                                                                                                                         |
 
-All server/browser fixtures use disposable SQLite databases. Screenshots: [history](screenshots/form-history-mobile.png), [Trash confirmation](screenshots/form-trash-confirmation-mobile.png), [completed report](screenshots/completed-report-desktop.png), [format setup](screenshots/templates-mobile.png).
+All server/browser fixtures use disposable SQLite databases. Current refinements: [LINKED_REQUIREMENTS_PLAN.md](LINKED_REQUIREMENTS_PLAN.md). Historical test results below describe the previous update; see the newest section in `VERIFICATION.md` for this refinement. Screenshots: [history](screenshots/form-history-mobile.png), [Trash confirmation](screenshots/form-trash-confirmation-mobile.png), [completed report](screenshots/completed-report-desktop.png), [format setup](screenshots/templates-mobile.png).

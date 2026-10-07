@@ -878,6 +878,8 @@ export function schoolYearOptions(
  */
 export function buildFormAutoFillContext(ctx: {
   studentName?: string;
+  department?: string;
+  position?: string;
   studentNumber?: string;
   course?: string;
   section?: string;
@@ -980,6 +982,8 @@ export function buildFormAutoFillContext(ctx: {
     },
   ];
   const out: Record<string, string> = {};
+  if (ctx.department) out.department = ctx.department;
+  if (ctx.position) out.position = ctx.position;
   for (const m of map) {
     if (m.value) out[m.key] = m.value;
   }
@@ -996,6 +1000,11 @@ export function resolveAutoFillValue(
 ): string {
   const l = label.toLowerCase().trim();
   if (!l) return "";
+  // An unknown identity label must remain blank, never inherit a student's name.
+  if (/department/.test(l)) return ctx.department ?? "";
+  if (/supervisor.*(title|position)|(title|position).*supervisor/.test(l))
+    return ctx.supervisorTitle ?? "";
+  if (/position|job title/.test(l)) return ctx.position ?? "";
   // Ordered fragments → value. Longer/more-specific fragments first.
   const entries: { fragments: string[]; value: string }[] = [
     {
@@ -1029,7 +1038,6 @@ export function resolveAutoFillValue(
         "name of student",
         "trainee name",
         "name of trainee",
-        "name",
       ],
       value: ctx.studentName ?? "",
     },
@@ -1066,8 +1074,13 @@ export function resolveAutoFillValue(
   for (const e of entries) {
     if (!e.value) continue;
     for (const f of e.fragments) {
-      if (l.includes(f)) return e.value;
+      if (
+        new RegExp(`\\b${f.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`).test(l)
+      )
+        return e.value;
     }
   }
-  return "";
+  return /^(name|full name|name of respondent)\s*:?$/.test(l)
+    ? (ctx.studentName ?? "")
+    : "";
 }

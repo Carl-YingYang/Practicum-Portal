@@ -1,4 +1,5 @@
 "use client";
+import { FormExportActions } from "../shared/form-export-actions";
 import { FormBlockRenderer } from "../shared/form-block-renderer";
 import { accountUsers } from "@/lib/prototype";
 import ReactMarkdown from "react-markdown";
@@ -25,11 +26,28 @@ export function ReportSectionPreview({
     data = sourceData ?? snapshot(state);
   return (
     <div className="min-w-0 space-y-4 break-words text-sm leading-relaxed">
-      {!!section.body && (
-        <div className="space-y-3 [&_h1]:text-lg [&_h1]:font-semibold [&_h2]:font-semibold [&_li]:ml-5 [&_ol]:list-decimal [&_ul]:list-disc">
-          <ReactMarkdown>{section.body}</ReactMarkdown>
-        </div>
-      )}
+      {!!section.body &&
+        (section.kind !== "evidence" ||
+          assets.some(
+            (a) => a.kind === "evidence" && a.sectionId === section.id,
+          )) && (
+          <div className="space-y-3 [&_h1]:text-lg [&_h1]:font-semibold [&_h2]:font-semibold [&_li]:ml-5 [&_ol]:list-decimal [&_ul]:list-disc">
+            <ReactMarkdown>{section.body}</ReactMarkdown>
+          </div>
+        )}
+      {section.kind === "evidence" &&
+        !assets.some(
+          (a) => a.kind === "evidence" && a.sectionId === section.id,
+        ) && (
+          <div className="flex min-h-36 flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed bg-muted/20 p-4 text-center">
+            <strong>Image placeholder</strong>
+            <p>{section.body || `Reserved for ${section.title}`}</p>
+            <p className="text-xs text-muted-foreground">
+              No image is uploaded. Add the photograph to your final offline
+              Word document.
+            </p>
+          </div>
+        )}
       {section.kind === "journals" &&
         data.journals
           .filter((j) => j.studentId === section.studentId)
@@ -42,7 +60,11 @@ export function ReportSectionPreview({
                   Journal {index + 1} · {period.start} – {period.end}
                 </h3>
                 <p className="text-xs text-muted-foreground">
-                  {j.status} · Cumulative:{" "}
+                  {j.status}
+                  {j.status !== "approved"
+                    ? " · Awaiting approval; final export will warn"
+                    : ""}{" "}
+                  · Cumulative:{" "}
                   {durationLabel(
                     attendanceMinutes(data, section.studentId!, period.endMs),
                   )}
@@ -128,6 +150,11 @@ export function ReportSectionPreview({
                     {form.title} · v{form.version}
                   </summary>
                   <div className="mt-3 min-w-0 space-y-3">
+                    <FormExportActions
+                      form={form}
+                      values={sub.values}
+                      submissionId={sub.id}
+                    />
                     {form.blocks.map((block) => (
                       <FormBlockRenderer
                         key={block.id}

@@ -26,14 +26,19 @@ export function SectionSettings({
     "mt-1 min-h-10 w-full min-w-0 rounded-md border bg-background px-2 text-sm";
   return (
     <details
+      id={`format-section-${section.key}`}
+      tabIndex={-1}
       open={section.key.startsWith("custom_")}
-      className="min-w-0 rounded-xl border bg-card p-4"
+      className="min-w-0 scroll-mt-20 rounded-xl border bg-card p-4"
     >
       <summary className="cursor-pointer break-words text-sm font-medium">
         {index + 1}. {section.title}
         <span className="mt-1 block text-xs font-normal text-muted-foreground">
           {section.respondent} · {section.kind} ·{" "}
-          {section.required ? "Required" : "Optional"}
+          {section.required ? "Required" : "Optional · included by default"}
+          {section.kind === "forms"
+            ? ` · ${section.formIds.length} linked form(s)`
+            : ""}
         </span>
       </summary>
       <div className="mt-3 space-y-3 border-t pt-3">
@@ -84,11 +89,7 @@ export function SectionSettings({
               Word mapping (advanced)
             </summary>
             Word placeholder key
-            <Input
-              value={section.key}
-              maxLength={50}
-              onChange={(e) => onChange({ ...section, key: e.target.value })}
-            />
+            <Input value={section.key} readOnly maxLength={50} />
             <small className="block break-all text-muted-foreground">{`{{section_${section.key}}}`}</small>
             <Button
               type="button"
@@ -122,6 +123,14 @@ export function SectionSettings({
                   ...section,
                   kind: e.target.value as TemplateSection["kind"],
                   formIds: [],
+                  respondent:
+                    e.target.value === "forms"
+                      ? "supervisor"
+                      : ["journals", "attendance", "evidence"].includes(
+                            e.target.value,
+                          )
+                        ? "student"
+                        : section.respondent,
                 })
               }
             >
@@ -129,7 +138,9 @@ export function SectionSettings({
               <option value="journals">Saved journals</option>
               <option value="attendance">Attendance records</option>
               <option value="forms">Assigned forms & evaluations</option>
-              <option value="evidence">Uploaded evidence</option>
+              <option value="evidence">
+                Image placeholder / evidence description
+              </option>
             </select>
           </label>
           <label className="text-sm">
@@ -191,6 +202,25 @@ export function SectionSettings({
               The selected respondent receives these forms on assignment.
               Approved responses appear here in the report.
             </p>
+            {!section.formIds.length && (
+              <p className="rounded-lg bg-amber-50/40 p-3 text-sm dark:bg-amber-950/20">
+                Select at least one published form below, or change Content
+                source to Written answer. This section cannot publish without a
+                form.
+              </p>
+            )}
+            {!forms.some(
+              (f) => f.status === "published" && !f.origin && !f.trashedAt,
+            ) && (
+              <Button
+                variant="outline"
+                onClick={() =>
+                  useAppStore.getState().navigate("coordinator.forms")
+                }
+              >
+                Open Form Library to create or publish a form
+              </Button>
+            )}
             {forms
               .filter((f) => f.status === "published" && !f.origin)
               .map((f) => (

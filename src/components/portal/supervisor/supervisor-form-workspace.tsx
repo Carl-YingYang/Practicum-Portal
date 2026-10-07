@@ -152,6 +152,8 @@ export function SupervisorFormWorkspace({
       : undefined;
     return buildFormAutoFillContext({
       studentName: student?.name,
+      department: student?.department,
+      position: student?.position,
       studentNumber: student?.studentNumber,
       course: student?.course,
       section: student?.section,
@@ -473,7 +475,7 @@ export function SupervisorFormWorkspace({
       </div>
 
       {/* Intern picker (for evaluation/ojt forms) */}
-      {isStudentTargeted && myInterns.length > 0 && (
+      {isStudentTargeted && myInterns.length > 0 && !assignmentId && (
         <SectionCard
           title="Select intern to evaluate"
           description="You can fill one form per assigned intern. Switch any time — your drafts are saved."

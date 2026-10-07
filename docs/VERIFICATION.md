@@ -149,3 +149,27 @@ The connected update was tested on disposable migrated SQLite databases; develop
 Two defects found during iteration were fixed: a long linked-form action could widen a 320px report page, and narrow Word rating columns could split words. Tests now exercise the full export path and keep diagnostic overflow output. Additional fixes retain contextual response IDs during submit, distinguish repeated requirements in inboxes and keep legacy generic submissions compatible.
 
 Browser validation used headless Chromium; document rendering used bundled LibreOffice. These checks do not guarantee identical pagination on every Microsoft Word version or a deployment's database durability. No AI integration or electronic-signature feature was added.
+
+
+## Linked requirements and placeholder evidence — October 7, 2026
+
+Branch `practo/testing-platform`, based on `6d4025b`. Carl explicitly authorized publication on October 7, 2026, after the checks below passed. No migration or reset is needed; login/hero/SVG changes are untouched.
+
+| Check | Result |
+| --- | --- |
+| Production build and TypeScript | Pass, including the recipient-preview endpoint and shared readonly-response policy. |
+| ESLint | Zero errors; 22 pre-existing warnings. New/changed flow components add no warnings. |
+| Domain/Word units | 33 checks pass across prototype, template, connected, form-quality and linked-flow suites. Four new checks cover precise identity matching, response visibility, default section inclusion/placeholders and task phases. Bound response visibility remains valid after a mentor transfer. |
+| Template API | Role/school isolation, mapping, immutable versions, assignment, respondent permissions, retained answers and archive checks pass. |
+| Template browser | Actual 320px/desktop workflow passes: tapping Publish reveals a fixable missing-form issue; Fix expands the correct section; new/custom/extra Word slots synchronize without a manual Sync step; ready active students are selected by default; confirmation assigns them; v2 becomes the default selected version, and manually choosing v1 uses its already-assigned roster. Zero page errors or page-level horizontal overflow. |
+| Supervisor/student handoff browser | Per-intern checklist and To do filter work at 320×568. Student can expand the submitted supervisor response, cannot edit it, and downloads authenticated Answered Word before approval. Coordinator approval/section review, preview and final Word complete. Zero page errors or document-level horizontal overflow. |
+| Connected HTTP | Student receives only their submitted/approved supervisor response; own answered Word works, another student's request returns 404 and edit attempts return 403. Approved answers join the exact report requirement. Disabled student/supervisor accounts produce the same blocked readiness in preview and atomic assignment rejection; no partial report remains. Immutable rubric/history, upgrades, quota rejection, export reuse and retained files pass. |
+| Student upload policy | Both old true/false environment settings reject evidence images, disguised images and PDF files with 403 and no file/revision change. Written placeholder Word and grammarian-reviewed DOCX return work. No student evidence file picker remains. |
+| Form-quality regression | Lifecycle/history/Word permissions, completed-demo idempotence, 200 recipients in batches of 25, retry without duplicate reports and 10 concurrent isolated saves pass. This is a batch/functional fixture, not a 200-user live load benchmark. |
+| Existing report HTTP | Ownership, revisions, reviewer restrictions, retained assets/exports, reviewed Word and preferences pass. Existing attachment normalization remains covered through coordinator uploads. |
+| Existing server/login browser | Sessions, CSRF, role/school boundaries, clock concurrency, receipts, journals, production/demo gates, direct testing accounts, supervisor creation, both themes and mobile navigation pass. |
+| Placeholder document | Generated editable Word renders to 12 pages in LibreOffice; its pictorial page contains the labelled placeholder and exact caption once. PyMuPDF checks find no text outside page edges; placeholder page visually inspected. This is an intentionally incomplete independent report fixture. |
+
+Screenshots: [supervisor checklist](screenshots/supervisor-checklist-mobile.png), [student readonly handoff](screenshots/supervisor-handoff-mobile.png), [Word placeholder](screenshots/evidence-placeholder-word.png), [format setup](screenshots/templates-mobile.png). Editable fixture: [placeholder evidence Word](verification/placeholder-evidence.docx). Plan/resource references: [LINKED_REQUIREMENTS_PLAN.md](LINKED_REQUIREMENTS_PLAN.md).
+
+The only failures during iteration were test/environment issues: Chromium was initially absent; two assertions used an incorrect navigation label and expected nonexistent free-text content in a ratings-only form. Browser dependencies were installed and the assertions corrected, then the full affected workflows rerun successfully. Actual pagination in every Microsoft Word version, physical iOS devices and a hosted multi-worker deployment are not claimed tested.

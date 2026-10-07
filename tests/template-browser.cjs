@@ -108,6 +108,22 @@ const { startServer } = require("./server-harness.cjs");
       .fill("Custom student narrative");
     await page.getByRole("button", { name: "Save draft", exact: true }).click();
     await page.getByText("Draft saved.", { exact: true }).waitFor();
+    await page
+      .getByRole("button", { name: "Publish new version", exact: true })
+      .click();
+    await page
+      .getByRole("button", { name: "Fix Evaluation Forms", exact: true })
+      .last()
+      .click();
+    assert.ok(
+      await page
+        .locator("details[open]")
+        .filter({
+          has: page.getByText("Link published forms", { exact: true }),
+        })
+        .count(),
+    );
+
     await overflow();
     const list = await api("/api/templates"),
       id = list.templates[0].id,
@@ -167,22 +183,6 @@ const { startServer } = require("./server-harness.cjs");
       })
       .click();
     await page
-      .getByRole("button", {
-        name: "Sync Word sections",
-        exact: true,
-      })
-      .click();
-    await page
-      .getByText(
-        "Word section placeholders updated. Download and inspect the format before publishing.",
-        { exact: true },
-      )
-      .waitFor();
-    await page
-      .getByRole("button", { name: "Check format", exact: true })
-      .click();
-    await page.getByText(/Structural checks passed/).waitFor();
-    await page
       .getByRole("button", { name: "Publish new version", exact: true })
       .click();
     await page
@@ -191,10 +191,17 @@ const { startServer } = require("./server-harness.cjs");
       .click();
     await page
       .getByText(
-        "Published version 1. Existing assignments stay on their version.",
+        "Published version 1. Review the preselected active students below to send their reports. Existing assignments stay on their version.",
         { exact: true },
       )
       .waitFor();
+    assert.ok(
+      await page.getByLabel("Sample Student 1 ·", { exact: false }).isChecked(),
+      "active students selected by default",
+    );
+    await page
+      .getByRole("button", { name: "Clear selection", exact: true })
+      .click();
     await page.getByLabel("Sample Student 1 ·", { exact: false }).check();
     await page
       .getByRole("button", { name: "Review 1 recipients", exact: true })
@@ -383,15 +390,20 @@ const { startServer } = require("./server-harness.cjs");
     await page
       .getByRole("button", { name: /^Open Practicum Weekly Journal/ })
       .click();
-    await page
-      .getByRole("heading", { name: "Select intern to evaluate", exact: true })
-      .waitFor();
     assert.equal(
       await page
-        .getByRole("button", { name: /Sample Student 5/ })
-        .getAttribute("aria-pressed"),
-      "true",
+        .getByRole("heading", {
+          name: "Select intern to evaluate",
+          exact: true,
+        })
+        .count(),
+      0,
+      "bound forms do not offer an unrelated intern picker",
     );
+    await page
+      .getByText(/Sample Student 5 ·/)
+      .first()
+      .waitFor();
     await page
       .getByRole("textbox")
       .first()
@@ -404,6 +416,52 @@ const { startServer } = require("./server-harness.cjs");
           s.targetStudentId === id,
       );
     }, targetIntern.id);
+    await overflow();
+    // New publication defaults to the newest version; explicit old-version selection reads its own roster.
+    await login("coordinator");
+    await nav("Practicum");
+    await page
+      .getByRole("button", { name: "Set up format", exact: true })
+      .click();
+    await page
+      .getByRole("button")
+      .filter({
+        has: page.getByRole("heading", {
+          name: "Browser Official Format",
+          exact: true,
+        }),
+      })
+      .click();
+    await page
+      .getByRole("button", { name: "Publish new version", exact: true })
+      .click();
+    await page
+      .getByRole("dialog")
+      .getByRole("button", { name: "Publish new version", exact: true })
+      .click();
+    await page.getByText(/Published version 2\./).waitFor();
+    const latest = await api(path);
+    assert.equal(
+      await page.getByLabel("Published version", { exact: true }).inputValue(),
+      latest.versions[0].id,
+    );
+    await page
+      .getByLabel("Published version", { exact: true })
+      .selectOption(latest.versions[1].id);
+    await page
+      .getByRole("button", { name: "Refresh recipients", exact: true })
+      .waitFor();
+    await page.waitForFunction(() =>
+      [...document.querySelectorAll("button")].some(
+        (b) => b.textContent === "Refresh recipients" && !b.disabled,
+      ),
+    );
+    assert.ok(
+      await page
+        .getByLabel("Sample Student 1 ·", { exact: false })
+        .isDisabled(),
+      "existing version assignment is retained rather than reselected",
+    );
     await overflow();
     assert.deepEqual(errors, []);
     console.log(

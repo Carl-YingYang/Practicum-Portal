@@ -1,4 +1,5 @@
 import { responseForm, formDraftSignature } from "@/domain/forms/response-form";
+import { canReadSupervisorResponse } from "@/domain/forms/response-access";
 import { formStructureErrors } from "@/domain/form-templates";
 import type { PortalData } from "@/domain/portal/snapshot";
 import { validateCommandArguments, type Command } from "./command-schema";
@@ -533,12 +534,24 @@ export function scopedData(data: PortalData, actor: User): PortalData {
       : students.some((st) => st.supervisorId === s.id),
   );
   const profileId = actor.studentId ?? actor.supervisorId;
+  const sharedResponses = data.formSubmissions.filter((s) =>
+    canReadSupervisorResponse(data, actor, s),
+  );
+  const sharedAssignments = data.formAssignments.filter(
+    (a) =>
+      actor.role === "student" &&
+      a.studentId === actor.studentId &&
+      !!a.reportId &&
+      !a.retired,
+  );
   const forms = data.formDocuments.filter(
     (f) =>
       f.status === "published" &&
-      data.formAssignments.some(
-        (a) => a.formId === f.id && assignmentAppliesTo(a, actor),
-      ),
+      (sharedResponses.some((s) => s.formId === f.id) ||
+        sharedAssignments.some((a) => a.formId === f.id) ||
+        data.formAssignments.some(
+          (a) => a.formId === f.id && assignmentAppliesTo(a, actor),
+        )),
   );
   return {
     ...data,
@@ -570,13 +583,19 @@ export function scopedData(data: PortalData, actor: User): PortalData {
     formAssignments: data.formAssignments
       .filter(
         (a) =>
-          forms.some((f) => f.id === a.formId) && assignmentAppliesTo(a, actor),
+          forms.some((f) => f.id === a.formId) &&
+          (assignmentAppliesTo(a, actor) ||
+            sharedAssignments.some((shared) => shared.id === a.id)),
       )
       .map((a) => ({
         ...a,
         targetUserIds: a.targetUserIds?.filter((id) => id === actor.id) ?? [],
       })),
-    formSubmissions: data.formSubmissions.filter((s) => s.userId === actor.id),
+    formSubmissions: data.formSubmissions.filter(
+      (s) =>
+        s.userId === actor.id ||
+        sharedResponses.some((shared) => shared.id === s.id),
+    ),
     subscription: { ...data.subscription, invoices: [] },
   };
 }

@@ -154,7 +154,7 @@ export async function buildFormatSample(
       "Sample text preview does not verify pagination. Open Sample Word in Microsoft Word before publishing.",
       ...(content.sections.some((s) => s.kind === "evidence")
         ? [
-            "Evidence sections are empty in the sample; inspect their placement using a small test image.",
+            "Evidence sections use written image placeholders. Inspect their spacing in Sample Word; students cannot upload evidence.",
           ]
         : []),
     ],

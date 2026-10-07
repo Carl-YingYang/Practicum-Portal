@@ -6,14 +6,9 @@ export function boundedMb(name: string, fallback: number, max = 102400) {
 }
 export function studentUploadPolicy() {
   return {
-    imagesEnabled: process.env.PORTAL_STUDENT_IMAGES !== "false",
+    // Pilot policy: students use placeholders; environment flags cannot bypass it.
+    imagesEnabled: false,
     limitBytes: boundedMb("PORTAL_STUDENT_UPLOAD_MB", 3),
-    maxImages: Math.max(
-      1,
-      Math.min(
-        100,
-        Math.floor(Number(process.env.PORTAL_STUDENT_IMAGE_COUNT)) || 5,
-      ),
-    ),
+    maxImages: 0,
   };
 }

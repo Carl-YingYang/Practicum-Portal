@@ -4,14 +4,15 @@ import type { TemplateRecord } from "@/domain/templates/model";
 import { Button } from "@/components/ui/button";
 import { reportRequest } from "@/client/reports";
 import { downloadFile } from "@/client/download";
+import { FormatIssues } from "./format-issues";
 export function FormatPreflight({
   record,
-  save,
   onReady,
+  prepare,
 }: {
   record: TemplateRecord;
-  save: () => Promise<void>;
   onReady: (revision: number) => void;
+  prepare: () => Promise<TemplateRecord>;
 }) {
   const [result, setResult] = useState<{
       revision: number;
@@ -25,10 +26,7 @@ export function FormatPreflight({
     setBusy(true);
     setError("");
     try {
-      await save();
-      const latest = await reportRequest<TemplateRecord>(
-        `/api/templates/${record.id}`,
-      );
+      const latest = await prepare();
       const next = await reportRequest<NonNullable<typeof result>>(
         `/api/templates/${record.id}`,
         "POST",
@@ -91,11 +89,7 @@ export function FormatPreflight({
               ? " · Draft changed: check again before publishing."
               : ""}
           </p>
-          {result.errors.map((e, i) => (
-            <p key={i} className="break-words text-destructive">
-              {e}
-            </p>
-          ))}
+          <FormatIssues errors={result.errors} content={record.content} />
           {result.warnings.map((w, i) => (
             <p key={i} className="text-muted-foreground">
               {w}

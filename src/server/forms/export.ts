@@ -6,6 +6,7 @@ import { responseForm } from "@/domain/forms/response-form";
 import { sampleFormValues } from "@/domain/forms/sample";
 import { assignmentAppliesTo } from "@/lib/selectors";
 import { HttpError } from "@/server/security";
+import { canReadSupervisorResponse } from "@/domain/forms/response-access";
 export async function exportFormWord(
   account: PortalAccount,
   formId: string,
@@ -22,11 +23,14 @@ export async function exportFormWord(
     : undefined;
   if (
     submissionId &&
-    (!sub || (actor.role !== "coordinator" && sub.userId !== actor.id))
+    (!sub ||
+      (actor.role !== "coordinator" &&
+        sub.userId !== actor.id &&
+        !canReadSupervisorResponse(data, actor, sub)))
   )
     throw new HttpError(404, "Response not available.");
   const live = data.formDocuments.find((f) => f.id === formId);
-  const form = mode === "answered" ? responseForm(live, sub) : live;
+  const form = sub ? responseForm(live, sub) : live;
   if (!form || form.trashedAt) throw new HttpError(404, "Form not available.");
   if (
     actor.role !== "coordinator" &&

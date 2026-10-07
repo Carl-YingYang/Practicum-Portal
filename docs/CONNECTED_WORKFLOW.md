@@ -47,7 +47,8 @@ The setup is repeatable/resumable, coalesces simultaneous requests in the runnin
 
 No image-hosting subscription or extra server is required for this prototype. Files remain in SQLite with these bounds:
 
-- Report images: PNG/JPEG, corrected orientation, maximum 2000 × 2000 inside the original proportions, no upscaling. JPEG quality 85; PNG compression preserves lossless pixels at the normalized size. Images are normalized copies; PDF/DOCX uploads retain their original bytes.
+- Current pilot: student evidence uploads are prohibited. Written descriptions render as image placeholders; grammarian-reviewed DOCX returns remain available. Existing files are retained.
+- Coordinator / authorized supervisor report images: PNG/JPEG, corrected orientation, maximum 2000 × 2000 inside the original proportions, no upscaling. JPEG quality 85; PNG compression preserves lossless pixels at the normalized size. Images are normalized copies; PDF/DOCX uploads retain their original bytes.
 - Upload limits: 32 MB per report file; 20 MB per format/reference file. Reports retain the existing 200-file bound and now have a 100 MB file budget.
 - School file budget: `PORTAL_STORAGE_MB=512` by default, configurable from 1 through 102400 MB. It counts report assets, blank/reference drafts and immutable template versions. It is a file-byte budget, not an estimate of total SQLite/database disk usage.
 - Identical normalized evidence in the same report/section, or identical reviewed Word in the same export, is reused. Repeated unchanged exports with the same selected sections reuse their saved files.

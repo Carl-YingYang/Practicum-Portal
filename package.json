@@ -34,6 +34,7 @@
     "test:connected": "node --test tests/connected-unit.test.cjs && node tests/connected-workflow.cjs",
     "test:connected-ui": "node tests/connected-browser.cjs",
     "test:form-quality": "node --test tests/form-quality.test.cjs && node tests/form-quality-integration.cjs && node tests/form-quality-browser.cjs",
+    "test:linked-flow": "node --test tests/linked-flow.test.cjs",
     "test:upload-policy": "node tests/upload-policy.cjs && node tests/upload-policy.cjs --disabled"
   },
   "dependencies": {

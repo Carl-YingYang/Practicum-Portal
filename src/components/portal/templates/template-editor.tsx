@@ -1,5 +1,6 @@
 "use client";
 import { TemplateAssignment } from "./template-assignment";
+import { FormatIssues } from "./format-issues";
 import { FormatPreflight } from "./format-preflight";
 import { ConfirmDialog } from "../shared/confirm-dialog";
 import { useState } from "react";
@@ -33,8 +34,47 @@ export function TemplateEditor({
     [message, setMessage] = useState("");
   const [checkedRevision, setCheckedRevision] = useState<number | null>(null),
     [publishOpen, setPublishOpen] = useState(false);
+  const [publishIssues, setPublishIssues] = useState<string[]>([]);
   const disabled = pending || record.archived;
-  const problems = templateErrors(content, record.slots);
+  async function prepare() {
+    await draft.save();
+    let saved = await reportRequest<TemplateRecord>(
+      `/api/templates/${record.id}`,
+    );
+    if (templateErrors(saved.content, saved.slots).length) {
+      saved = await reportRequest<TemplateRecord>(
+        `/api/templates/${record.id}`,
+        "POST",
+        { action: "sync", revision: saved.revision },
+      );
+      draft.accept(saved);
+    }
+    return saved;
+  }
+  async function reviewPublication() {
+    await run(async () => {
+      const saved = await prepare();
+      const result = await reportRequest<{
+        errors: string[];
+        revision: number;
+      }>(`/api/templates/${record.id}`, "POST", {
+        action: "preflight",
+        revision: saved.revision,
+      });
+      setPublishIssues(result.errors);
+      if (result.errors.length) {
+        setMessage(
+          "Fix the requirements below, then try publication again. Section placeholders were synchronized automatically.",
+        );
+        document
+          .getElementById("publish-format")
+          ?.scrollIntoView({ block: "start" });
+        return;
+      }
+      setCheckedRevision(result.revision);
+      setPublishOpen(true);
+    });
+  }
   async function run(action: (saved: TemplateRecord) => Promise<void>) {
     if (pending) return false;
     setPending(true);
@@ -63,8 +103,12 @@ export function TemplateEditor({
       );
       draft.accept(next);
       if (action === "publish") {
+        setPublishIssues([]);
+        document
+          .getElementById("assign-students")
+          ?.scrollIntoView({ block: "start" });
         setMessage(
-          `Published version ${next.versions[0].number}. Existing assignments stay on their version.`,
+          `Published version ${next.versions[0].number}. Review the preselected active students below to send their reports. Existing assignments stay on their version.`,
         );
       } else
         setMessage(
@@ -198,7 +242,11 @@ export function TemplateEditor({
           Allow students to add optional custom written sections
         </label>
       </fieldset>
-      <section className="min-w-0 space-y-4 rounded-xl border bg-card p-4">
+      <section
+        id="word-format"
+        tabIndex={-1}
+        className="min-w-0 scroll-mt-20 space-y-4 rounded-xl border bg-card p-4"
+      >
         <h2 className="font-semibold">Word format & reference</h2>
         <details className="rounded-lg border p-3">
           <summary className="cursor-pointer font-medium">
@@ -333,7 +381,7 @@ export function TemplateEditor({
         <legend className="mb-3 text-lg font-semibold">Report sections</legend>
         {content.sections.map((section, i) => (
           <SectionSettings
-            key={i}
+            key={section.key}
             section={section}
             index={i}
             count={content.sections.length}
@@ -381,23 +429,21 @@ export function TemplateEditor({
       </fieldset>
       <FormatPreflight
         record={record}
-        save={draft.save}
+        prepare={prepare}
         onReady={setCheckedRevision}
       />
-      <section className="space-y-3 rounded-xl border bg-card p-4">
+      <section
+        id="publish-format"
+        tabIndex={-1}
+        className="scroll-mt-20 space-y-3 rounded-xl border bg-card p-4"
+      >
         <h2 className="font-semibold">Publish a version</h2>
-        {problems.length ? (
-          <ul className="max-h-48 list-disc space-y-1 overflow-y-auto pl-5 text-sm text-amber-700 dark:text-amber-300">
-            {problems.map((p, i) => (
-              <li key={i}>{p}</li>
-            ))}
-          </ul>
-        ) : (
-          <p className="text-sm text-muted-foreground">
-            Every configured section has its own Word slot. Publish after
-            checking the downloaded format.
-          </p>
-        )}
+        <p className="text-sm text-muted-foreground">
+          Publication saves your changes, synchronizes section placeholders and
+          checks the format. Any issue has a direct link to its setting. Inspect
+          Sample Word before confirming.
+        </p>
+        <FormatIssues errors={publishIssues} content={content} />
         <div className="flex flex-wrap gap-2">
           <Button
             variant="outline"
@@ -407,21 +453,16 @@ export function TemplateEditor({
             Save draft
           </Button>
           <Button
-            disabled={
-              disabled ||
-              problems.length > 0 ||
-              draft.dirty ||
-              checkedRevision !== record.revision
-            }
-            onClick={() => setPublishOpen(true)}
+            disabled={disabled || draft.saving}
+            onClick={() => void reviewPublication()}
           >
             Publish new version
           </Button>
         </div>
       </section>
       <p className="text-xs text-muted-foreground">
-        Publish unlocks after structural checks pass for the saved draft.
-        Assignment is a separate recipient review below.
+        Save and check happen when you press Publish. You then review the
+        active-student roster and confirm assignment below.
       </p>
       <ConfirmDialog
         open={publishOpen}
@@ -440,6 +481,7 @@ export function TemplateEditor({
         record={record}
         beforeAssign={draft.save}
         onUpdated={draft.accept}
+        onPublish={() => void reviewPublication()}
       />
       {!record.archived && (
         <details className="rounded-xl border p-4">

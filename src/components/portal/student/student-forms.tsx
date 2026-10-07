@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { SupervisorResponse } from "../shared/supervisor-response";
 import { useAppStore } from "@/store/use-app-store";
 import { PageHeader } from "@/components/portal/layout/page-header";
 import { EmptyState } from "@/components/portal/shared/empty-state";
@@ -110,6 +111,40 @@ export function StudentForms() {
     const completed = rows.filter((r) => r.status === "approved");
     return { actionNeeded, inProgress, submitted, completed };
   }, [rows]);
+  const supervisorRows = [
+    ...assignments
+      .filter(
+        (a) =>
+          a.reportId &&
+          a.studentId === currentUser.studentId &&
+          !assigned.some((item) => item.assignment.id === a.id),
+      )
+      .map((a) => ({ formId: a.formId, assignmentId: a.id })),
+    ...submissions
+      .filter(
+        (s) =>
+          !s.assignmentId &&
+          s.targetStudentId === currentUser.studentId &&
+          s.userId !== currentUser.id,
+      )
+      .map((s) => ({ formId: s.formId, assignmentId: undefined })),
+  ]
+    .filter(
+      (row, i, all) =>
+        all.findIndex(
+          (other) =>
+            other.formId === row.formId &&
+            other.assignmentId === row.assignmentId,
+        ) === i,
+    )
+    .filter(
+      (row) =>
+        !search ||
+        forms
+          .find((f) => f.id === row.formId)
+          ?.title.toLowerCase()
+          .includes(search.toLowerCase()),
+    );
 
   return (
     <div className="space-y-6">
@@ -158,6 +193,23 @@ export function StudentForms() {
         />
       </div>
 
+      {!!supervisorRows.length && (
+        <section className="min-w-0 space-y-3">
+          <h2 className="font-semibold">
+            From your supervisor · {supervisorRows.length}
+          </h2>
+          <p className="text-sm text-muted-foreground">
+            View submitted responses and download Word or PDF. Approved report
+            requirements join your report automatically.
+          </p>
+          {supervisorRows.map((row) => (
+            <SupervisorResponse
+              key={`${row.formId}:${row.assignmentId ?? "shared"}`}
+              {...row}
+            />
+          ))}
+        </section>
+      )}
       {rows.length === 0 ? (
         <div className="rounded-xl border border-border/60 bg-card p-6">
           <EmptyState

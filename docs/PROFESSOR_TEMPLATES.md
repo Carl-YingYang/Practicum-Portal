@@ -31,9 +31,9 @@ The supervisor's global Report Builder navigation is removed. Earlier independen
 1. Sign in as a coordinator and open **Templates & Assignments**.
 2. Click **New template from pilot**. The clean starter derives its Letter paper, 1.5-inch left margin, one-inch remaining margins, header/footer, styles and logos from the supplied practicum sample. Filled sample names, narrative answers, body pictures and source document metadata were removed.
 3. Expand a section to edit its title, instructions, source, respondent, required flag, page-break setting and linked published forms. Add a genuine custom section, remove sections, or reorder them.
-4. Click **Sync Word sections** to update the owned section placeholders in the draft. Download and inspect the format. Edit fixed wording, logos, styles, page layout and other complex formatting in Word, then upload that mapped blank DOCX.
+4. Checks/publication automatically synchronize owned section placeholders when needed. You can also click **Sync Word sections** to update the owned section placeholders in the draft. Download and inspect the format. Edit fixed wording, logos, styles, page layout and other complex formatting in Word, then upload that mapped blank DOCX.
 5. Upload a **separate filled example**, if useful. It has its own in-app text preview and download. Example answers never initialize student responses.
-6. Resolve the publication checklist and click **Publish new version**. Select students, an optional due date and a published version, then **Assign reports**.
+6. Resolve the publication checklist and click **Publish new version**. Ready active students are selected by default. Review missing account/supervisor reasons, the optional due date and published version, then confirm **Assign reports**.
 7. Students open their blank assignment under **My Practicum Report**. Each section shows its responsible respondent and instructions. Linked forms open the existing real form-filling workspace. Journals and attendance use saved records; approved form responses use their captured form snapshots.
 8. Mark completed sections ready for review. Reviewers approve or request revision with feedback. Export a full report or one chunk to Word, and retain a grammarian-reviewed DOCX alongside the export version.
 
@@ -65,6 +65,8 @@ The portal replaces that paragraph with native Word headings, paragraphs, tables
 To permit optional student-written extras, enable the template setting and include `{{extra_sections}}`. These custom narratives cannot become required core sections. On a version upgrade, extras remain active when still allowed; otherwise their answers remain archived.
 
 Sync changes only owned slot paragraphs. It uses existing slot positions in configured order, removes retired slots and appends additional slots before the final section properties. It preserves surrounding fixed text. Download and inspect layout after structural edits, especially if the original format interleaves fixed instructions with placeholders.
+
+Student evidence uploads are prohibited in this pilot. Image sections use descriptions/captions and labelled placeholders, including in Word. Existing saved evidence remains accessible.
 
 Full exports retain the uploaded format's fixed content and geometry. Chunk exports remove unrelated body content while retaining the source header/footer, styles and final section geometry. PDFs and other DOCX evidence remain original companion files in the ZIP; they are not silently merged into report pages.
 

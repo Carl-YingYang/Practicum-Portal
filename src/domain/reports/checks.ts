@@ -19,9 +19,10 @@ export function reportChecks(
       issues.push(`${prefix}${s.title}: add content.`);
     if (
       s.kind === "evidence" &&
+      !s.body.trim() &&
       !assets.some((a) => a.kind === "evidence" && a.sectionId === s.id)
     )
-      issues.push(`${prefix}${s.title}: upload evidence.`);
+      issues.push(`${prefix}${s.title}: describe the image placeholder.`);
     if (s.status !== "reviewed")
       issues.push(
         `${prefix}${s.title}: ${s.status === "ready" ? "awaiting review" : "not reviewed"}.`,

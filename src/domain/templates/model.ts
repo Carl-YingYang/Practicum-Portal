@@ -72,6 +72,7 @@ export const metadataSlots = [
 ] as const;
 export function pilotContent(): TemplateContent {
   return {
+    contextVersion: 1,
     title: "Practicum Report",
     description:
       "Word-first practicum format based on the supplied sample. Keep the filled reference separate from the blank official format.",
@@ -82,7 +83,7 @@ export function pilotContent(): TemplateContent {
       instructions: t.prompt,
       kind: t.kind,
       required: t.required,
-      respondent: "student",
+      respondent: t.kind === "forms" ? "supervisor" : "student",
       pageBreak: true,
       formIds: [],
     })),
@@ -121,7 +122,8 @@ export function assignedSections(
     studentId,
     body: "",
     required: s.required,
-    included: s.required,
+    // Coordinator-selected sections appear by default; optional ones can be excluded.
+    included: true,
     status: "draft",
     reviewNote: "",
     reviewedAt: null,

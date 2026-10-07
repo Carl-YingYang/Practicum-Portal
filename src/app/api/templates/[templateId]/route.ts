@@ -1,4 +1,5 @@
 import { templatePreflight } from "@/server/templates/preflight";
+import { templateRecipients } from "@/server/templates/recipients";
 import { linkForm } from "@/server/templates/link-form";
 import { assignTemplate } from "@/server/templates/assignments";
 import {
@@ -29,6 +30,15 @@ export async function GET(request: Request, ctx: Context) {
       id = (await ctx.params).templateId,
       url = new URL(request.url),
       kind = url.searchParams.get("file");
+    if (url.searchParams.has("recipients"))
+      return Response.json(
+        await templateRecipients(
+          id,
+          account,
+          url.searchParams.get("version") ?? undefined,
+        ),
+        { headers: { "Cache-Control": "no-store" } },
+      );
     if (kind === "sample") {
       const record = await templateResponse(id, account);
       const result = await templatePreflight(id, account, record.revision);

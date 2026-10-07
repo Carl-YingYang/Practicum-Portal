@@ -18,23 +18,23 @@ export function WorkflowHelp() {
     ? [
         "Open Practicum → Set up format. Start from the pilot and adjust sections, instructions and who answers each one.",
         "Create and publish an evaluation in Form Library. Choose Add to practicum report, then select its destination section and respondent.",
-        "Download and inspect the blank Word layout. Publish the format after its checklist is complete. Publishing saves a fixed rubric and layout.",
-        "Assign the published version to students. Their linked forms go to the student or assigned supervisor automatically.",
+        "Check or publish saves the draft and synchronizes Word section placeholders. Follow any Fix link to the setting, inspect Sample Word, then confirm publication.",
+        "Ready active students are selected by default. Review the recipients and any missing account/supervisor, then confirm assignment. Linked forms go to the correct accounts together.",
         "Review form responses in Form Library → Submissions. Then review the assembled report sections in Practicum → Review & export.",
         "Build the final Word report after required checks pass. Draft exports need an explicit choice. Wet signatures and grammarian review happen outside the portal.",
       ]
     : role === "supervisor"
       ? [
           "Open My Interns, choose the intern and select Review practicum report.",
-          "Open a linked form or your Forms inbox. Check the intern and cycle shown at the top; assigned requirements keep a fixed rubric.",
+          "Open Forms for one checklist per intern. To do is work remaining; Awaiting review means submitted; Approved means complete. Check the intern and cycle before answering.",
           "Save answers, then submit for coordinator review. Drafts remain editable; submitted answers stay locked until revision is requested.",
           "Review student sections that are ready. You cannot approve your own supervisor response.",
         ]
       : [
           "Open My Practicum Report and choose the official assigned format. Independent drafts are separate from official assignments.",
           "Write your own sections. Journals and attendance use saved records in the report's placement period; do not manually add their hours.",
-          "Open linked forms to answer them. A supervisor requirement shows who is responsible, so you do not fill it for them.",
-          "Save, mark completed sections ready and check the feedback. A submitted form and a reviewed report section are separate steps.",
+          "Answer your linked forms. From your supervisor shows readonly submitted responses with Word/PDF downloads; approved assigned responses join the matching report section.",
+          "For image sections, write a placeholder description and caption. Student evidence uploads are disabled; add photos to the final offline Word document if your professor requires them. Save and mark sections ready for review.",
           "Preview the report, resolve its checklist and export Word. Upload the grammarian-reviewed DOCX against the export they checked.",
         ];
   return (

@@ -207,7 +207,7 @@ const { startServer } = require("./server-harness.cjs");
     })
       .png()
       .toBuffer();
-    res = await student.post(path + "/assets", {
+    res = await coordinator.post(path + "/assets", {
       multipart: {
         revision: String(report.revision),
         kind: "evidence",
@@ -236,7 +236,7 @@ const { startServer } = require("./server-harness.cjs");
     report = await res.json();
     assert.equal(report.assets.find((a) => a.id === evidence.id).rotation, 90);
     assert.notEqual(report.sourceFingerprint, version.sourceFingerprint);
-    res = await student.post(path + "/assets", {
+    res = await coordinator.post(path + "/assets", {
       multipart: {
         revision: String(report.revision),
         kind: "evidence",
