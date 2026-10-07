@@ -13,14 +13,16 @@ export function ReportSectionPreview({
   assets,
   reportId,
   formIds,
+  sourceData,
 }: {
   section: ReportSection;
   assets: ReportAssetInfo[];
   reportId: string;
   formIds?: string[];
+  sourceData?: import("@/domain/portal/snapshot").PortalData;
 }) {
   const state = useAppStore(),
-    data = snapshot(state);
+    data = sourceData ?? snapshot(state);
   return (
     <div className="min-w-0 space-y-4 break-words text-sm leading-relaxed">
       {!!section.body && (
@@ -29,7 +31,7 @@ export function ReportSectionPreview({
         </div>
       )}
       {section.kind === "journals" &&
-        state.journals
+        data.journals
           .filter((j) => j.studentId === section.studentId)
           .sort((a, b) => a.date.localeCompare(b.date))
           .map((j, index) => {
@@ -73,7 +75,7 @@ export function ReportSectionPreview({
                 </tr>
               </thead>
               <tbody>
-                {state.timeLogs
+                {data.timeLogs
                   .filter(
                     (t) =>
                       t.userId === section.studentId &&
@@ -105,7 +107,7 @@ export function ReportSectionPreview({
             Approved form responses and submitted evaluations are assembled
             here. Official wet-signed sheets stay as attachments.
           </p>
-          {state.formSubmissions
+          {data.formSubmissions
             .filter(
               (sub) =>
                 sub.status === "approved" &&
@@ -119,7 +121,7 @@ export function ReportSectionPreview({
             .map((sub) => {
               const form =
                 sub.formSnapshot ??
-                state.formDocuments.find((f) => f.id === sub.formId);
+                data.formDocuments.find((f) => f.id === sub.formId);
               return form ? (
                 <details key={sub.id} className="rounded-lg border p-3">
                   <summary className="cursor-pointer break-words font-medium">
@@ -137,10 +139,12 @@ export function ReportSectionPreview({
                 </details>
               ) : null;
             })}
-          {state.evaluations
+          {data.evaluations
             .filter(
               (e) =>
-                e.studentId === section.studentId && e.status === "submitted",
+                !formIds?.length &&
+                e.studentId === section.studentId &&
+                e.status === "submitted",
             )
             .map((e) => (
               <article key={e.id} className="rounded-lg border p-3">

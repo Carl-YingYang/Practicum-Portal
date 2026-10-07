@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { useAppStore } from "@/store/use-app-store";
 import { snapshot } from "@/domain/portal/snapshot";
+import { reportSources } from "@/domain/reports/sources";
 import { reportChecks } from "@/domain/reports/checks";
 import {
   makeSection,
@@ -537,6 +538,12 @@ export function ReportEditor({
                 </p>
                 <h3 className="font-semibold">{s.title}</h3>
                 <ReportSectionPreview
+                  sourceData={reportSources(
+                    content,
+                    snapshot(state),
+                    report.binding,
+                    s.template,
+                  )}
                   section={s}
                   formIds={
                     report.binding?.sections.find((d) => d.key === s.template)
@@ -728,6 +735,7 @@ export function ReportEditor({
                     }
                     variant="outline"
                     size="sm"
+                    className="h-auto min-h-11 min-w-0 max-w-full whitespace-normal break-words text-left"
                     onClick={() =>
                       state.navigate(
                         state.currentUser?.role === "student"
@@ -737,6 +745,13 @@ export function ReportEditor({
                             : "coordinator.forms",
                         {
                           formId: fid,
+                          ...(state.currentUser?.role === "coordinator"
+                            ? { tab: "submissions" }
+                            : {}),
+                          assignmentId:
+                            report.binding?.assignments?.[section.template]?.[
+                              fid
+                            ],
                           studentId: section.studentId ?? undefined,
                         },
                       )
@@ -758,6 +773,12 @@ export function ReportEditor({
             {preview || !sectionEditable ? (
               <ReportSectionPreview
                 section={section}
+                sourceData={reportSources(
+                  content,
+                  snapshot(state),
+                  report.binding,
+                  section.template,
+                )}
                 formIds={definition?.formIds}
                 assets={report.assets}
                 reportId={report.id}
@@ -1004,6 +1025,31 @@ export function ReportEditor({
           separately; Word edits are not automatically imported into section
           editors.
         </p>
+        {canExport && report.versions.length > 1 && (
+          <details className="rounded-lg border p-3 text-sm">
+            <summary className="cursor-pointer">Storage cleanup</summary>
+            <p className="my-2 text-xs text-muted-foreground">
+              Remove older unreviewed ZIP bundles. All Word exports, the newest
+              bundle and any bundle with grammarian review stay saved.
+            </p>
+            <Button
+              variant="outline"
+              disabled={pending}
+              onClick={() =>
+                void run(async () => {
+                  draft.accept(
+                    await reportRequest(`/api/reports/${report.id}`, "POST", {
+                      action: "cleanup",
+                      revision: draft.revision(),
+                    }),
+                  );
+                })
+              }
+            >
+              Clean older ZIP bundles
+            </Button>
+          </details>
+        )}
         {!report.versions.length && (
           <p className="text-sm text-muted-foreground">
             Build a report to create its first version.
@@ -1026,13 +1072,15 @@ export function ReportEditor({
                 .map((a) => (
                   <a
                     key={a.id}
-                    className="inline-flex min-h-11 items-center gap-1 break-all text-sm text-primary underline"
+                    className="inline-flex min-h-11 min-w-0 max-w-full items-center gap-1 text-sm text-primary underline"
                     href={reportAssetUrl(report.id, a.id)}
                     download
                   >
                     <Download className="size-4 shrink-0" />
-                    {a.kind === "reviewed" ? "Reviewed: " : ""}
-                    {a.name}
+                    <span className="min-w-0 break-all">
+                      {a.kind === "reviewed" ? "Reviewed: " : ""}
+                      {a.name}
+                    </span>
                   </a>
                 ))}
             </div>

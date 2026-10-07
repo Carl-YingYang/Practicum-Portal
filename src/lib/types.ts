@@ -178,7 +178,12 @@ export interface CredentialCsvRow {
 }
 /** Department enum — shared between Student and Supervisor for matching. */
 export type Department =
-  "Engineering" | "QA" | "Design" | "Marketing" | "Operations" | "Other";
+  | "Engineering"
+  | "QA"
+  | "Design"
+  | "Marketing"
+  | "Operations"
+  | "Other";
 export const DEPARTMENTS: Department[] = [
   "Engineering",
   "QA",
@@ -406,7 +411,10 @@ export type ToolKey = "drive" | "journalTemplate" | "form" | "jibble";
 export type PlanTier = "starter" | "growth" | "enterprise";
 export type BillingCycle = "monthly" | "per-term" | "annual";
 export type SubscriptionStatus =
-  "trialing" | "active" | "past_due" | "canceled";
+  | "trialing"
+  | "active"
+  | "past_due"
+  | "canceled";
 export type PaymentMethod = "card" | "bank" | "invoice";
 export interface SubscriptionPlan {
   tier: PlanTier;
@@ -574,8 +582,19 @@ export interface FormBlock {
 }
 export type FormStatus = "draft" | "published" | "archived";
 export type FormCategory =
-  "evaluation" | "journal" | "ojt" | "program" | "other";
+  | "evaluation"
+  | "journal"
+  | "ojt"
+  | "program"
+  | "other";
 export interface FormDocument {
+  /** Shared immutable definition pinned to a published practicum format. */
+  origin?: {
+    formId: string;
+    templateId: string;
+    templateVersionId: string;
+    version: number;
+  };
   id: string;
   title: string;
   description: string;
@@ -610,8 +629,18 @@ export const FORM_STATUS_LABELS: Record<FormStatus, string> = {
 // revision).
 // ============================================================
 export type FormAssignmentTarget =
-  "all_supervisors" | "all_students" | "specific_users";
+  | "all_supervisors"
+  | "all_students"
+  | "specific_users";
 export interface FormAssignment {
+  reportId?: string;
+  sectionKey?: string;
+  sectionTitle?: string;
+  reportTitle?: string;
+  templateVersion?: number;
+  studentId?: string;
+  cycle?: string;
+  retired?: boolean;
   id: string;
   formId: string;
   target: FormAssignmentTarget;
@@ -636,6 +665,7 @@ export type FormSubmissionStatus =
   | "needs_revision";
 export type FormFieldValue = string | Record<string, string>;
 export interface FormSubmission {
+  assignmentId?: string;
   id: string;
   formId: string;
   /** Immutable template used to interpret this response. */
@@ -716,6 +746,7 @@ export type ViewKey =
   | "coordinator.evaluation-view"
   | "coordinator.journals"
   | "coordinator.journal-view"
+  | "coordinator.practicum"
   | "coordinator.templates"
   | "coordinator.report-builder"
   | "coordinator.reports"
@@ -744,6 +775,10 @@ export interface NavItem {
   section?: string;
 }
 export interface ViewParams {
+  official?: string;
+  assignmentId?: string;
+  reportId?: string;
+  templateId?: string;
   studentId?: string;
   supervisorId?: string;
   coordinatorId?: string;

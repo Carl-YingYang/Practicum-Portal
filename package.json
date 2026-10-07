@@ -30,7 +30,9 @@
     "test:reports-doc": "node tests/report-document.cjs",
     "test:templates": "node --test tests/template-unit.test.cjs && node tests/template-integration.cjs",
     "test:templates-ui": "node tests/template-browser.cjs",
-    "test:templates-doc": "node tests/template-document.cjs"
+    "test:templates-doc": "node tests/template-document.cjs",
+    "test:connected": "node --test tests/connected-unit.test.cjs && node tests/connected-workflow.cjs",
+    "test:connected-ui": "node tests/connected-browser.cjs"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

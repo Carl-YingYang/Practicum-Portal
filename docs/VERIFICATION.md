@@ -121,3 +121,29 @@ Iterations corrected JSON-property-order permission comparisons, numeric rating 
 Evidence: [templates mobile](screenshots/templates-mobile.png), [templates desktop](screenshots/templates-desktop.png), [assigned report mobile](screenshots/assigned-report-mobile.png), [rendered Word journal](screenshots/template-word-page.png), and [fictional mapped DOCX](verification/template-pilot-report.docx).
 
 Read [PROFESSOR_TEMPLATES.md](PROFESSOR_TEMPLATES.md) for non-resetting upgrade instructions and precise version/form-snapshot boundaries. Content previews do not reproduce Word pagination; arbitrary filled documents require explicit mapping. Actual Microsoft Word, Safari/iOS and physical devices remain untested. No live AI, school verification or electronic signatures were added.
+
+## Connected workflow verification — 2026-10-07
+
+The connected update was tested on disposable migrated SQLite databases; development data was not reset. Login/hero/SVG edits are preserved. Research and the implementation boundaries are recorded in `CONNECTED_WORKFLOW_PLAN.md`; usage, migration and compatibility are in `CONNECTED_WORKFLOW.md`.
+
+| Check | Result |
+| --- | --- |
+| `npm test` | 21 prototype/domain tests pass. |
+| `npm run typecheck`, `npm run build` | Pass; production includes authenticated storage and gated guided-demo routes. |
+| `npm run lint` | Zero errors; 22 existing warnings remain. No added effect warning in the new hub/template/report deep-link loaders. |
+| `npm run test:connected` | Two boundary/selector tests plus real HTTP flow pass. Covers simultaneous/repeat demo setup without account/answer resets; actual three-role completion and final Word; frozen shared rubrics; direct linking with revision conflict rejection; explicit upgrades; distinct report/section/intern responses; retired-context locks and saved-answer/Word retention. |
+| Connected storage checks | 4000×3000 JPEG becomes 2000×1500; identical upload is reused; a four-MB quota breach rolls back file/revision writes. Unchanged export is reused. Cleanup retains all Word, newest ZIP and a grammarian-linked ZIP while removing only the eligible older ZIP. |
+| `npm run test:connected-ui` | Actual editor linking, guide, guided sample, student answers/save/submit, correct-intern supervisor ratings, coordinator response approval and section reviews, preview and final Word pass at 320×568 and desktop. Testing role buttons are visible. Zero page errors or document-level horizontal overflow. |
+| `npm run test:templates` | Three Word/rating/placeholder tests plus template HTTP permissions, immutable versions, assignments and retained-content checks pass. |
+| `npm run test:templates-ui` | Professor custom-section/publish/assign flow, locked student format, custom answers, real ratings and correct supervisor intern pass at 320px/desktop with zero page errors. |
+| `npm run test:integration` | Existing credential/session, ownership, concurrent clock, receipt, journal, form, cross-school, production-gating and rate-limit checks pass. |
+| `npm run test:browser` | Existing all-role login, heroes/themes, direct testing buttons, mobile navigation, persistence, journal Word/PDF and provisioning checks pass with zero page errors. |
+| `npm run test:login` | Actual development login with older env setup passes for all roles; explicit demo opt-out still hides/rejects demo access. |
+| `npm run test:reports`, `npm run test:reports-ui` | Existing report ownership, combined scope, revisions, evidence, exports, recovery, preferences, confirmed form submission and mobile/desktop workflow pass. |
+| `npm run test:templates-doc` | Current mapped output renders to 44 PDF pages; 70 narrative paragraphs, seven journals, 250 completed hours, tables, images and inherited margins remain present. |
+| `npm run test:reports-doc` | Existing long Word/PDF reference retains its final narrative, seventh journal, exact minutes, image/table/header structure and form bounds. |
+| Guided Word visual check | The new short format renders to one page with black headings, complete answers and readable five-point rating headers/average. Inspected the generated page image; fixed split rating words and duplicate matching form headings before publication. |
+
+Two defects found during iteration were fixed: a long linked-form action could widen a 320px report page, and narrow Word rating columns could split words. Tests now exercise the full export path and keep diagnostic overflow output. Additional fixes retain contextual response IDs during submit, distinguish repeated requirements in inboxes and keep legacy generic submissions compatible.
+
+Browser validation used headless Chromium; document rendering used bundled LibreOffice. These checks do not guarantee identical pagination on every Microsoft Word version or a deployment's database durability. No AI integration or electronic-signature feature was added.

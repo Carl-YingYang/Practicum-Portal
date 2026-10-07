@@ -78,6 +78,7 @@ model PracticumReport {
 }
 
 model ReportAsset {
+  contentHash String?
   id        String          @id
   reportId  String
   name      String
@@ -95,6 +96,7 @@ model ReportAsset {
   report    PracticumReport @relation(fields: [reportId], references: [id], onDelete: Cascade)
 
   @@index([reportId])
+  @@index([reportId, contentHash])
 }
 
 // Drafts are editable; published formats are immutable assignment snapshots.

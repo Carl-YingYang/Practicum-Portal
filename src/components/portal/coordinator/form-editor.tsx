@@ -23,6 +23,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { flushChanges } from "@/client/portal-client";
 import { useAsyncAction } from "@/hooks/use-async-action";
 import { useAppStore } from "@/store/use-app-store";
+import { FormReportLink } from "../templates/form-report-link";
 import { PageHeader } from "@/components/portal/layout/page-header";
 import { SectionCard } from "@/components/portal/shared/section-card";
 import { EmptyState } from "@/components/portal/shared/empty-state";
@@ -247,6 +248,7 @@ export function FormEditor({ formId }: { formId?: string }) {
   return (
     <TooltipProvider delayDuration={250}>
       <div className="space-y-3">
+        <FormReportLink formId={form.id} />
         {/* Sticky editor toolbar */}
         <div className="sticky top-16 z-20 -mx-4 border-b border-border/60 bg-background/95 px-4 py-2 backdrop-blur sm:-mx-6 sm:px-6">
           <div className="flex flex-wrap items-center gap-2">

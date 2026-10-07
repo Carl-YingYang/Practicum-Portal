@@ -255,6 +255,20 @@ export function TemplateEditor({
           url={`/api/templates/${record.id}?file=example`}
         />
       )}
+      <label className="block text-sm">
+        Practicum cycle / batch
+        <Input
+          disabled={disabled}
+          value={content.cycle ?? ""}
+          maxLength={120}
+          placeholder="e.g. 2026–2027 Summer"
+          onChange={(e) => draft.change({ ...content, cycle: e.target.value })}
+        />
+        <span className="text-xs text-muted-foreground">
+          Label for these assignments. Each report keeps its own responses and
+          placement period.
+        </span>
+      </label>
       <fieldset disabled={disabled} className="min-w-0 space-y-3">
         <legend className="mb-3 text-lg font-semibold">Report sections</legend>
         {content.sections.map((section, i) => (

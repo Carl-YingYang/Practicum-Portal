@@ -277,8 +277,17 @@ export interface AppState {
   clockIn: (userId: string, role: Role, note?: string) => string;
   clockOut: (userId: string, note?: string) => void;
   deleteTimeLog: (id: string) => void;
-  requestTimeCorrection: (logId: string, clockOutAt: string, reason: string) => string;
-  reviewTimeCorrection: (logId: string, correctionId: string, decision: "approved" | "rejected", note?: string) => void;
+  requestTimeCorrection: (
+    logId: string,
+    clockOutAt: string,
+    reason: string,
+  ) => string;
+  reviewTimeCorrection: (
+    logId: string,
+    correctionId: string,
+    decision: "approved" | "rejected",
+    note?: string,
+  ) => void;
   /**
    * Add a manual (back-dated) time entry — used by the Jibble-style timesheet
    * calendar's "Add entry" affordance. Lets users fill in gaps in their
@@ -343,6 +352,7 @@ export interface AppState {
   startFormResponse: (input: {
     formId: string;
     targetStudentId?: string;
+    assignmentId?: string;
   }) => string;
   /** Persist the current draft values (autosave). Reopens needs_revision → in_progress. */
   saveSubmissionDraft: (

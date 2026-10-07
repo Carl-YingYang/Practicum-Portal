@@ -235,6 +235,7 @@ export function createFormsActions(
       const blockIds = new Map(src.blocks.map((b) => [b.id, uuid()]));
       const copy: FormDocument = {
         ...src,
+        origin: undefined,
         id: newId,
         title: `${src.title} (Copy)`,
         status: "draft",
@@ -283,20 +284,29 @@ export function createFormsActions(
       set((s) => ({
         formAssignments: s.formAssignments.filter((a) => a.id !== assignmentId),
       })),
-    startFormResponse: ({ formId, targetStudentId }) => {
+    startFormResponse: ({ formId, targetStudentId, assignmentId }) => {
       const user = get().currentUser;
       const form = get().formDocuments.find((f) => f.id === formId);
+      const context = assignmentId
+        ? get().formAssignments.find((a) => a.id === assignmentId)
+        : undefined;
       const assigned =
         user &&
         get().formAssignments.some(
-          (a) => a.formId === formId && assignmentAppliesTo(a, user),
+          (a) =>
+            a.formId === formId &&
+            (!assignmentId || a.id === assignmentId) &&
+            assignmentAppliesTo(a, user),
         );
       if (
         !user ||
         user.accountStatus === "disabled" ||
         !form ||
         form.status !== "published" ||
-        !assigned
+        !assigned ||
+        (!!form.origin && !context?.reportId) ||
+        (!!context?.reportId &&
+          context.studentId !== (targetStudentId ?? user.studentId))
       )
         return "";
       if (
@@ -314,6 +324,7 @@ export function createFormsActions(
         (s) =>
           s.formId === formId &&
           s.userId === userId &&
+          s.assignmentId === assignmentId &&
           (targetStudentId
             ? s.targetStudentId === targetStudentId
             : !s.targetStudentId),
@@ -325,6 +336,7 @@ export function createFormsActions(
         id,
         formId,
         formSnapshot: structuredClone(form),
+        assignmentId,
         userId,
         targetStudentId,
         values: {},

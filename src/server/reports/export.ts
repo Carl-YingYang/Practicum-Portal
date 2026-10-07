@@ -11,6 +11,7 @@ import {
 } from "./service";
 import { buildMappedWord } from "@/server/templates/word";
 import { buildReportWord } from "./word";
+import { reserveStorage, REPORT_STORAGE_BYTES } from "@/server/storage";
 import { reportChecks } from "@/domain/reports/checks";
 export async function exportReport(
   id: string,
@@ -52,7 +53,7 @@ export async function exportReport(
         assets.map((a) => ({ ...a, kind: "evidence" as const })),
         r.state.binding,
       );
-      const bound = sourceFingerprint(r.state.content, r.data);
+      const bound = sourceFingerprint(r.state.content, r.data, r.state.binding);
       for (const s of selectedContent.sections.filter(
         (s) =>
           s.included &&
@@ -68,6 +69,27 @@ export async function exportReport(
           409,
           "Review the report checklist or explicitly export a draft.",
         );
+      const fingerprint = reportFingerprint(
+        r.state.content,
+        r.data,
+        assets,
+        r.state.binding,
+      );
+      const selectedIds = selectedContent.sections
+        .filter((s) => s.included)
+        .map((s) => s.id);
+      const previous = r.state.versions.find(
+        (v) =>
+          v.sourceFingerprint === fingerprint &&
+          JSON.stringify(v.sectionIds) === JSON.stringify(selectedIds),
+      );
+      if (
+        previous &&
+        (await tx.reportAsset.count({
+          where: { reportId: id, sectionId: previous.id, kind: "export" },
+        })) === 2
+      )
+        return;
       const versionId = randomUUID(),
         number = r.state.versions.length + 1;
       const version = r.state.binding
@@ -108,12 +130,6 @@ export async function exportReport(
         "Open the DOCX in Microsoft Word. Update the table of contents (References > Update Table). Evidence files are original uploads; PDFs and DOCX attachments remain separate. Wet signatures and grammarian review are performed outside the portal. Draft/review statuses describe saved portal records, not signature validity.\n\n" +
           checks.join("\n"),
       );
-      const fingerprint = reportFingerprint(
-        r.state.content,
-        r.data,
-        assets,
-        r.state.binding,
-      );
       zip.file(
         "report-manifest.json",
         JSON.stringify(
@@ -139,6 +155,7 @@ export async function exportReport(
         type: "nodebuffer",
         compression: "DEFLATE",
       });
+      await reserveStorage(tx, account.schoolId, bytes.length + bundle.length);
       const totals = await tx.reportAsset.aggregate({
         where: { reportId: id },
         _sum: { size: true },
@@ -147,7 +164,7 @@ export async function exportReport(
       if (
         totals._count + 2 > 200 ||
         (totals._sum.size ?? 0) + bytes.length + bundle.length >
-          250 * 1024 * 1024
+          REPORT_STORAGE_BYTES
       )
         throw new HttpError(
           400,

@@ -209,11 +209,26 @@ export function authorizeCommand(
   ) {
     if (action === "startFormResponse") {
       const form = exists(data.formDocuments, input.formId);
+      const assignment = input.assignmentId
+        ? exists(data.formAssignments, input.assignmentId)
+        : undefined;
+      if (form.origin && !assignment?.reportId)
+        deny("Open this requirement from its assigned report.");
+      if (
+        assignment &&
+        (assignment.formId !== form.id ||
+          !assignmentAppliesTo(assignment, actor) ||
+          (assignment.reportId &&
+            assignment.studentId !==
+              (input.targetStudentId ?? actor.studentId)))
+      )
+        deny();
       if (
         form.status !== "published" ||
         !data.formAssignments.some(
           (assignment) =>
             assignment.formId === form.id &&
+            (!input.assignmentId || assignment.id === input.assignmentId) &&
             assignmentAppliesTo(assignment, actor),
         )
       )
@@ -229,6 +244,19 @@ export function authorizeCommand(
         !["in_progress", "needs_revision"].includes(sub.status)
       )
         deny();
+      if (sub.assignmentId) {
+        const assignment = exists(data.formAssignments, sub.assignmentId);
+        if (
+          !assignmentAppliesTo(assignment, actor) ||
+          (actor.role === "supervisor" &&
+            !data.students.some(
+              (s) =>
+                s.id === assignment.studentId &&
+                s.supervisorId === actor.supervisorId,
+            ))
+        )
+          deny("This requirement is no longer assigned to you.");
+      }
       const form = sub.formSnapshot ?? exists(data.formDocuments, sub.formId);
       if (
         action === "submitFormResponse" &&
@@ -322,6 +350,26 @@ export function authorizeCommand(
     )
       throw new HttpError(400, "Choose a valid journal schedule.");
   }
+  if (
+    [
+      "updateFormMeta",
+      "updateFormBlock",
+      "addFormBlock",
+      "removeFormBlock",
+      "moveFormBlock",
+      "reorderFormBlocks",
+      "duplicateFormBlock",
+      "publishFormDocument",
+      "unpublishFormDocument",
+      "archiveFormDocument",
+      "deleteFormDocument",
+    ].includes(action) &&
+    exists(data.formDocuments, a[0]).origin
+  )
+    throw new HttpError(
+      409,
+      "This definition belongs to a published practicum format. Edit the original library form and publish a new format version.",
+    );
   if (action === "updateFormMeta")
     safePatch(a[1], ["title", "description", "category"]);
   if (action === "updateFormBlock")
@@ -339,6 +387,7 @@ export function authorizeCommand(
       "prefill",
       "options",
       "scoreMode",
+      "summaryMode",
       "showIf",
     ]);
   if (
@@ -398,7 +447,22 @@ export function authorizeCommand(
     )
       deny();
   }
-  if (action === "unassignForm") exists(data.formAssignments, a[0]);
+  if (
+    action === "assignForm" &&
+    exists(data.formDocuments, input.formId).origin
+  )
+    throw new HttpError(
+      409,
+      "Assign this fixed definition through its published report format.",
+    );
+  if (action === "unassignForm") {
+    const assignment = exists(data.formAssignments, a[0]);
+    if (assignment.reportId)
+      throw new HttpError(
+        409,
+        "This requirement belongs to an official report. Change its format and explicitly upgrade the assignment instead.",
+      );
+  }
   if (action === "reviewSubmission") exists(data.formSubmissions, a[0]);
 }
 import { accountUsers } from "@/lib/prototype";

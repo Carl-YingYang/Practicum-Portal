@@ -57,7 +57,13 @@ type FieldValue = string | Record<string, string>;
  * Simpler than the supervisor version: no intern picker (students fill
  * self-reflective forms). Autosaves + submits to the store.
  */
-export function StudentFormWorkspace({ formId }: { formId?: string }) {
+export function StudentFormWorkspace({
+  formId,
+  assignmentId,
+}: {
+  formId?: string;
+  assignmentId?: string;
+}) {
   const { toast } = useToast();
   const { exporting, exportPdf } = usePdfExport();
   const navigate = useAppStore((s) => s.navigate);
@@ -70,6 +76,7 @@ export function StudentFormWorkspace({ formId }: { formId?: string }) {
   const submissions = useAppStore((s) => s.formSubmissions);
   const toolsConfig = useAppStore((s) => s.toolsConfig);
   const assignments = useAppStore((s) => s.formAssignments);
+  const context = assignments.find((a) => a.id === assignmentId);
   const students = useAppStore((s) => s.students);
   const supervisors = useAppStore((s) => s.supervisors);
   const companies = useAppStore((s) => s.companies);
@@ -99,19 +106,33 @@ export function StudentFormWorkspace({ formId }: { formId?: string }) {
       companyName: company?.name,
       supervisorName: supervisor?.name,
       supervisorTitle: supervisor?.title,
-      term: configuredTerm(toolsConfig),
+      term: context?.cycle || configuredTerm(toolsConfig),
     });
-  }, [currentUser, students, companies, supervisors, toolsConfig]);
+  }, [
+    currentUser,
+    students,
+    companies,
+    supervisors,
+    toolsConfig,
+    context?.cycle,
+  ]);
   const currentSubmission = React.useMemo(() => {
     if (!formId || !currentUser) return undefined;
-    return submissionFor(submissions, formId, currentUser.id);
-  }, [submissions, formId, currentUser]);
+    return submissionFor(
+      submissions,
+      formId,
+      currentUser.id,
+      undefined,
+      assignmentId,
+    );
+  }, [submissions, formId, currentUser, assignmentId]);
   const form = currentSubmission?.formSnapshot ?? liveForm;
   const draft = useFormDraft(
     formId,
     currentUser?.id,
     undefined,
     currentSubmission,
+    assignmentId,
   );
   const { values, valuesRef, saveState } = draft;
   const [submitOpen, setSubmitOpen] = React.useState(false);
@@ -138,7 +159,10 @@ export function StudentFormWorkspace({ formId }: { formId?: string }) {
   const hasAssignment =
     currentUser &&
     assignments.some(
-      (a) => a.formId === formId && assignmentAppliesTo(a, currentUser),
+      (a) =>
+        a.formId === formId &&
+        (!assignmentId || a.id === assignmentId) &&
+        assignmentAppliesTo(a, currentUser),
     );
   if (
     (!liveForm || liveForm.status !== "published" || !hasAssignment) &&
@@ -169,6 +193,7 @@ export function StudentFormWorkspace({ formId }: { formId?: string }) {
   const status: FormSubmissionStatus =
     currentSubmission?.status ?? "not_started";
   const isReadOnly =
+    (!!form.origin && !hasAssignment) ||
     status === "submitted" ||
     status === "under_review" ||
     status === "approved";
@@ -192,6 +217,7 @@ export function StudentFormWorkspace({ formId }: { formId?: string }) {
         (s) =>
           s.formId === formId &&
           s.userId === currentUser?.id &&
+          s.assignmentId === assignmentId &&
           (s.targetStudentId ?? undefined) === undefined,
       );
     if (!currentSubmission || !form)
@@ -331,6 +357,28 @@ export function StudentFormWorkspace({ formId }: { formId?: string }) {
         description={form.description || undefined}
         showBack={false}
       />
+      {context?.reportId && (
+        <div className="rounded-lg border bg-muted/40 p-3 text-sm">
+          <p className="break-words font-medium">
+            {students.find((s) => s.id === context.studentId)?.name} ·{" "}
+            {context.cycle || "Current practicum"}
+          </p>
+          <p className="mt-1 break-words text-xs font-medium">{context.reportTitle} · {context.sectionTitle} · format v{context.templateVersion}</p>
+          <p className="text-xs text-muted-foreground">
+            Assigned format · Rubric v{form.origin?.version ?? form.version} ·
+            Answers belong to this report requirement.
+          </p>
+          <Button
+            variant="link"
+            className="h-auto px-0"
+            onClick={() =>
+              navigate("student.report-builder", { reportId: context.reportId })
+            }
+          >
+            Back to assigned report
+          </Button>
+        </div>
+      )}
 
       <div className="flex flex-wrap items-center gap-3 rounded-lg border border-border/60 bg-card px-3.5 py-2 text-[11.5px] text-muted-foreground">
         <span className="inline-flex items-center gap-1">

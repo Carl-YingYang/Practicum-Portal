@@ -71,9 +71,11 @@ type FieldValue = string | Record<string, string>;
 export function SupervisorFormWorkspace({
   formId,
   studentId,
+  assignmentId,
 }: {
   formId?: string;
   studentId?: string;
+  assignmentId?: string;
 }) {
   const { toast } = useToast();
   const { exporting, exportPdf } = usePdfExport();
@@ -87,6 +89,7 @@ export function SupervisorFormWorkspace({
   const submissions = useAppStore((s) => s.formSubmissions);
   const toolsConfig = useAppStore((s) => s.toolsConfig);
   const assignments = useAppStore((s) => s.formAssignments);
+  const context = assignments.find((a) => a.id === assignmentId);
   const students = useAppStore((s) => s.students);
   const supervisors = useAppStore((s) => s.supervisors);
   const companies = useAppStore((s) => s.companies);
@@ -126,8 +129,9 @@ export function SupervisorFormWorkspace({
       formId,
       currentUser.id,
       selectedStudentId,
+      assignmentId,
     );
-  }, [submissions, formId, currentUser, selectedStudentId]);
+  }, [submissions, formId, currentUser, selectedStudentId, assignmentId]);
   // Auto-fill context: resolve the current supervisor + selected student
   // (for evaluation/ojt forms) + their company. info-field blocks use this
   // to auto-populate (Student Name / Company / Supervisor / Term / Date…).
@@ -153,7 +157,7 @@ export function SupervisorFormWorkspace({
       companyName: studentCompany?.name ?? supervisorCompany?.name,
       supervisorName: supervisor?.name,
       supervisorTitle: supervisor?.title,
-      term: configuredTerm(toolsConfig),
+      term: context?.cycle || configuredTerm(toolsConfig),
     });
   }, [
     currentUser,
@@ -162,6 +166,7 @@ export function SupervisorFormWorkspace({
     companies,
     selectedStudentId,
     toolsConfig,
+    context?.cycle,
   ]);
   // local values mirror the submission's values (so typing feels instant)
   const form = currentSubmission?.formSnapshot ?? liveForm;
@@ -170,6 +175,7 @@ export function SupervisorFormWorkspace({
     currentUser?.id,
     selectedStudentId,
     currentSubmission,
+    assignmentId,
   );
   const { values, valuesRef, saveState } = draft;
   const [submitOpen, setSubmitOpen] = React.useState(false);
@@ -196,7 +202,10 @@ export function SupervisorFormWorkspace({
   const hasAssignment =
     currentUser &&
     assignments.some(
-      (a) => a.formId === formId && assignmentAppliesTo(a, currentUser),
+      (a) =>
+        a.formId === formId &&
+        (!assignmentId || a.id === assignmentId) &&
+        assignmentAppliesTo(a, currentUser),
     );
   if (
     (!liveForm || liveForm.status !== "published" || !hasAssignment) &&
@@ -226,6 +235,7 @@ export function SupervisorFormWorkspace({
   ).length;
   const status = currentSubmission?.status ?? "not_started";
   const isReadOnly =
+    (!!form.origin && !hasAssignment) ||
     status === "submitted" ||
     status === "under_review" ||
     status === "approved";
@@ -249,6 +259,7 @@ export function SupervisorFormWorkspace({
         (s) =>
           s.formId === formId &&
           s.userId === currentUser?.id &&
+          s.assignmentId === assignmentId &&
           (s.targetStudentId ?? undefined) === selectedStudentId,
       );
     if (!currentSubmission || !form)
@@ -389,6 +400,30 @@ export function SupervisorFormWorkspace({
         description={form.description || undefined}
         showBack={false}
       />
+      {context?.reportId && (
+        <div className="rounded-lg border bg-muted/40 p-3 text-sm">
+          <p className="break-words font-medium">
+            {students.find((s) => s.id === context.studentId)?.name} ·{" "}
+            {context.cycle || "Current practicum"}
+          </p>
+          <p className="mt-1 break-words text-xs font-medium">{context.reportTitle} · {context.sectionTitle} · format v{context.templateVersion}</p>
+          <p className="text-xs text-muted-foreground">
+            Assigned format · Rubric v{form.origin?.version ?? form.version} ·
+            Answers belong to this report requirement.
+          </p>
+          <Button
+            variant="link"
+            className="h-auto px-0"
+            onClick={() =>
+              navigate("supervisor.report-builder", {
+                reportId: context.reportId,
+              })
+            }
+          >
+            Back to assigned report
+          </Button>
+        </div>
+      )}
 
       {/* Meta strip */}
       <div className="flex flex-wrap items-center gap-3 rounded-lg border border-border/60 bg-card px-3.5 py-2 text-[11.5px] text-muted-foreground">
@@ -438,6 +473,7 @@ export function SupervisorFormWorkspace({
                 <button
                   key={stu.id}
                   aria-pressed={isSelected}
+                  disabled={!!assignmentId}
                   onClick={() => {
                     void draft
                       .save()

@@ -11,6 +11,7 @@ import type { ReportAsset } from "@prisma/client";
 import type { ReportContent } from "@/domain/reports/model";
 import type { TemplateBinding } from "@/domain/templates/model";
 import type { PortalData } from "@/domain/portal/snapshot";
+import { reportSources } from "@/domain/reports/sources";
 import { buildSectionBlocks } from "@/server/reports/word";
 import { attendanceMinutes } from "@/domain/reports/checks";
 import { HttpError } from "@/server/security";
@@ -116,6 +117,7 @@ export async function buildMappedWord(
   assets: ReportAsset[],
   sectionIds?: string[],
 ) {
+  data = reportSources(content, data, binding);
   const student = data.students.find((s) => s.id === content.studentIds[0])!;
   const company = data.companies.find((c) => c.id === student.companyId);
   const supervisor = data.supervisors.find(
@@ -155,7 +157,7 @@ export async function buildMappedWord(
       s && s.included && (!sectionIds || sectionIds.includes(s.id))
         ? await buildSectionBlocks(
             { ...content, sections: [s] },
-            data,
+            reportSources(content, data, binding, def.key),
             assets,
             undefined,
             [def],

@@ -22,47 +22,73 @@ import { SUBSCRIPTION_PLANS } from "./mock-data";
 // Components pass the relevant arrays from the store.
 // ============================================================
 
-export function getCompany(companies: Company[], id: string): Company | undefined {
+export function getCompany(
+  companies: Company[],
+  id: string,
+): Company | undefined {
   return companies.find((c) => c.id === id);
 }
 
-export function getStudent(students: Student[], id: string | undefined): Student | undefined {
+export function getStudent(
+  students: Student[],
+  id: string | undefined,
+): Student | undefined {
   if (!id) return undefined;
   return students.find((s) => s.id === id);
 }
 
-export function getSupervisor(supervisors: Supervisor[], id: string | null | undefined): Supervisor | undefined {
+export function getSupervisor(
+  supervisors: Supervisor[],
+  id: string | null | undefined,
+): Supervisor | undefined {
   if (!id) return undefined;
   return supervisors.find((s) => s.id === id);
 }
 
-export function getEvaluation(evals: Evaluation[], id: string | undefined): Evaluation | undefined {
+export function getEvaluation(
+  evals: Evaluation[],
+  id: string | undefined,
+): Evaluation | undefined {
   if (!id) return undefined;
   return evals.find((e) => e.id === id);
 }
 
-export function getJournal(journals: Journal[], id: string | undefined): Journal | undefined {
+export function getJournal(
+  journals: Journal[],
+  id: string | undefined,
+): Journal | undefined {
   if (!id) return undefined;
   return journals.find((j) => j.id === id);
 }
 
-export function studentsForSupervisor(students: Student[], supervisorId: string): Student[] {
+export function studentsForSupervisor(
+  students: Student[],
+  supervisorId: string,
+): Student[] {
   return students.filter((s) => s.supervisorId === supervisorId);
 }
 
 /** Number of active students currently assigned to a supervisor. */
-export function supervisorLoad(students: Student[], supervisorId: string): number {
+export function supervisorLoad(
+  students: Student[],
+  supervisorId: string,
+): number {
   return students.filter(
-    (s) => s.supervisorId === supervisorId && s.status === "active"
+    (s) => s.supervisorId === supervisorId && s.status === "active",
   ).length;
 }
 
 /** Load ratio as a percentage (0-100). Returns 0 if capacity is 0. */
-export function supervisorLoadPct(students: Student[], supervisor: Supervisor): number {
+export function supervisorLoadPct(
+  students: Student[],
+  supervisor: Supervisor,
+): number {
   if (!supervisor.capacity || supervisor.capacity <= 0) return 0;
   return Math.min(
     100,
-    Math.round((supervisorLoad(students, supervisor.id) / supervisor.capacity) * 100)
+    Math.round(
+      (supervisorLoad(students, supervisor.id) / supervisor.capacity) * 100,
+    ),
   );
 }
 
@@ -71,7 +97,7 @@ export type CapacityStatus = "available" | "near-limit" | "full";
 /** Capacity bucket — used by the SupervisorPicker for color coding. */
 export function capacityStatus(
   students: Student[],
-  supervisor: Supervisor
+  supervisor: Supervisor,
 ): CapacityStatus {
   if (supervisor.status !== "active") return "full";
   const load = supervisorLoad(students, supervisor.id);
@@ -80,36 +106,51 @@ export function capacityStatus(
   return "available";
 }
 
-export function journalsForStudent(journals: Journal[], studentId: string): Journal[] {
+export function journalsForStudent(
+  journals: Journal[],
+  studentId: string,
+): Journal[] {
   return journals
     .filter((j) => j.studentId === studentId)
     .sort((a, b) => (a.date < b.date ? 1 : -1));
 }
 
-export function evaluationsForStudent(evals: Evaluation[], studentId: string): Evaluation[] {
+export function evaluationsForStudent(
+  evals: Evaluation[],
+  studentId: string,
+): Evaluation[] {
   return evals
     .filter((e) => e.studentId === studentId)
-    .sort((a, b) => ((a.submittedAt ?? a.createdAt) < (b.submittedAt ?? b.createdAt) ? 1 : -1));
+    .sort((a, b) =>
+      (a.submittedAt ?? a.createdAt) < (b.submittedAt ?? b.createdAt) ? 1 : -1,
+    );
 }
 
-export function evaluationsForSupervisor(evals: Evaluation[], supervisorId: string): Evaluation[] {
+export function evaluationsForSupervisor(
+  evals: Evaluation[],
+  supervisorId: string,
+): Evaluation[] {
   return evals
     .filter((e) => e.supervisorId === supervisorId)
-    .sort((a, b) => ((a.submittedAt ?? a.createdAt) < (b.submittedAt ?? b.createdAt) ? 1 : -1));
+    .sort((a, b) =>
+      (a.submittedAt ?? a.createdAt) < (b.submittedAt ?? b.createdAt) ? 1 : -1,
+    );
 }
 
 /** Journals pending approval for a given supervisor (across their interns). */
 export function pendingJournalsForSupervisor(
   journals: Journal[],
   students: Student[],
-  supervisorId: string
+  supervisorId: string,
 ): Journal[] {
   const internIds = new Set(
-    studentsForSupervisor(students, supervisorId).map((s) => s.id)
+    studentsForSupervisor(students, supervisorId).map((s) => s.id),
   );
   return journals
     .filter((j) => j.status === "pending" && internIds.has(j.studentId))
-    .sort((a, b) => (a.submittedAt ?? a.createdAt) < (b.submittedAt ?? b.createdAt) ? 1 : -1);
+    .sort((a, b) =>
+      (a.submittedAt ?? a.createdAt) < (b.submittedAt ?? b.createdAt) ? 1 : -1,
+    );
 }
 
 /** Interns without a submitted evaluation; optionally scope to an explicit term. */
@@ -117,7 +158,7 @@ export function unevaluatedInterns(
   students: Student[],
   evals: Evaluation[],
   supervisorId: string,
-  term?: string
+  term?: string,
 ): Student[] {
   const interns = studentsForSupervisor(students, supervisorId);
   return interns.filter(
@@ -127,8 +168,8 @@ export function unevaluatedInterns(
           e.studentId === s.id &&
           e.supervisorId === supervisorId &&
           e.status === "submitted" &&
-          (!term || e.term === term)
-      )
+          (!term || e.term === term),
+      ),
   );
 }
 
@@ -136,7 +177,10 @@ export function unevaluatedInterns(
  * Days since a student's most recent journal (draft/pending/approved/rejected).
  * Returns Infinity if the student has no journals at all.
  */
-export function daysSinceLastJournal(journals: Journal[], studentId: string): number {
+export function daysSinceLastJournal(
+  journals: Journal[],
+  studentId: string,
+): number {
   const stu = journals
     .filter((j) => j.studentId === studentId)
     .sort((a, b) => (a.date < b.date ? 1 : -1));
@@ -155,21 +199,32 @@ export function daysSinceLastJournal(journals: Journal[], studentId: string): nu
 export function studentsWithOverdueJournals(
   students: Student[],
   journals: Journal[],
-  thresholdDays = 10
+  thresholdDays = 10,
 ): Array<{ student: Student; daysOverdue: number }> {
   return students
-    .filter((s) => s.status === "active" && s.supervisorId && hoursPercent(s) < 100)
-    .map((s) => ({ student: s, daysOverdue: daysSinceLastJournal(journals, s.id) }))
+    .filter(
+      (s) => s.status === "active" && s.supervisorId && hoursPercent(s) < 100,
+    )
+    .map((s) => ({
+      student: s,
+      daysOverdue: daysSinceLastJournal(journals, s.id),
+    }))
     .filter((x) => x.daysOverdue > thresholdDays || x.daysOverdue === Infinity)
     .sort((a, b) => b.daysOverdue - a.daysOverdue);
 }
 
 export function averageScore(e: Evaluation): number {
-  if (e.status === "draft" || (e.qualityOfWork + e.jobKnowledge + e.dependability) === 0) return 0;
+  if (
+    e.status === "draft" ||
+    e.qualityOfWork + e.jobKnowledge + e.dependability === 0
+  )
+    return 0;
   return (e.qualityOfWork + e.jobKnowledge + e.dependability) / 3;
 }
 
-export function hoursPercent(s: Pick<Student, "loggedHours" | "requiredHours">): number {
+export function hoursPercent(
+  s: Pick<Student, "loggedHours" | "requiredHours">,
+): number {
   if (s.requiredHours === 0) return 0;
   return Math.min(100, Math.round((s.loggedHours / s.requiredHours) * 100));
 }
@@ -193,24 +248,25 @@ export function hoursPercent(s: Pick<Student, "loggedHours" | "requiredHours">):
  */
 export function computeSubscriptionMetrics(
   subscription: Subscription,
-  students: Student[]
+  students: Student[],
 ): SubscriptionMetrics {
   const active = students.filter((s) => s.status === "active");
   const totalAssignedHours = active.reduce(
     (sum, s) => sum + (s.requiredHours || 0),
-    0
+    0,
   );
   const totalUsedHours = active.reduce(
     (sum, s) => sum + (s.loggedHours || 0),
-    0
+    0,
   );
   // Fall back to the current tier's rate if the stored rate is missing/invalid
   // (e.g. hydrating an old localStorage payload from the pool model).
   const plan = SUBSCRIPTION_PLANS.find((p) => p.tier === subscription.planTier);
   const hourlyRatePhp =
-    Number.isFinite(subscription.hourlyRatePhp) && subscription.hourlyRatePhp > 0
+    Number.isFinite(subscription.hourlyRatePhp) &&
+    subscription.hourlyRatePhp > 0
       ? subscription.hourlyRatePhp
-      : plan?.hourlyRatePhp ?? 0.0667;
+      : (plan?.hourlyRatePhp ?? 0.0667);
   const committedCostPhp = totalAssignedHours * hourlyRatePhp;
   const accruedCostPhp = totalUsedHours * hourlyRatePhp;
   const outstandingCostPhp = Math.max(0, committedCostPhp - accruedCostPhp);
@@ -303,11 +359,22 @@ export function weekLabel(iso: string): string {
 }
 
 export function todayISODate(): string {
-  return new Intl.DateTimeFormat("en-CA", { timeZone: PORTAL_TIME_ZONE, year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: PORTAL_TIME_ZONE,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date());
 }
 
 export function greeting(): string {
-  const h = Number(new Intl.DateTimeFormat("en-US", { timeZone: PORTAL_TIME_ZONE, hour: "numeric", hourCycle: "h23" }).format(new Date()));
+  const h = Number(
+    new Intl.DateTimeFormat("en-US", {
+      timeZone: PORTAL_TIME_ZONE,
+      hour: "numeric",
+      hourCycle: "h23",
+    }).format(new Date()),
+  );
   if (h < 12) return "Good morning";
   if (h < 18) return "Good afternoon";
   return "Good evening";
@@ -329,7 +396,8 @@ const AVATAR_COLORS = [
 
 export function avatarColorFor(name: string): string {
   let hash = 0;
-  for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
+  for (let i = 0; i < name.length; i++)
+    hash = name.charCodeAt(i) + ((hash << 5) - hash);
   return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
 }
 
@@ -342,7 +410,10 @@ export function userInitials(u: User): string {
 // ============================================================
 
 /** The active (open) time log for a user, or undefined if clocked out. */
-export function activeTimeLog(timeLogs: TimeLog[], userId: string): TimeLog | undefined {
+export function activeTimeLog(
+  timeLogs: TimeLog[],
+  userId: string,
+): TimeLog | undefined {
   return timeLogs.find((t) => t.userId === userId && t.clockOutAt === null);
 }
 
@@ -354,30 +425,47 @@ export function allActiveTimeLogs(timeLogs: TimeLog[]): TimeLog[] {
 }
 
 /** All currently-active time logs for a given role. */
-export function activeTimeLogsForRole(timeLogs: TimeLog[], role: Role): TimeLog[] {
+export function activeTimeLogsForRole(
+  timeLogs: TimeLog[],
+  role: Role,
+): TimeLog[] {
   return allActiveTimeLogs(timeLogs).filter((t) => t.role === role);
 }
 
 /** Sum of completed session durations for ALL students in the last 7 days (ms), plus live active sessions. */
-export function cohortWeeklyTimeMs(timeLogs: TimeLog[], now = Date.now()): number {
+export function cohortWeeklyTimeMs(
+  timeLogs: TimeLog[],
+  now = Date.now(),
+): number {
   const weekAgo = now - 7 * 24 * 60 * 60 * 1000;
   return timeLogs
-    .filter((t) => t.role === "student" && new Date(t.clockInAt).getTime() >= weekAgo && new Date(t.clockInAt).getTime() <= now)
+    .filter(
+      (t) =>
+        t.role === "student" &&
+        new Date(t.clockInAt).getTime() >= weekAgo &&
+        new Date(t.clockInAt).getTime() <= now,
+    )
     .reduce((sum, t) => {
-      if (t.clockOutAt !== null && t.durationMs !== null) return sum + t.durationMs;
+      if (t.clockOutAt !== null && t.durationMs !== null)
+        return sum + t.durationMs;
       return sum + Math.max(0, now - new Date(t.clockInAt).getTime());
     }, 0);
 }
 
 /** Total completed hours across ALL students (for cohort KPIs). */
 export function cohortTotalHours(timeLogs: TimeLog[]): number {
-  return timeLogs
-    .filter((t) => t.role === "student" && t.clockOutAt && t.durationMs)
-    .reduce((sum, t) => sum + (t.durationMs ?? 0), 0) / 3600_000;
+  return (
+    timeLogs
+      .filter((t) => t.role === "student" && t.clockOutAt && t.durationMs)
+      .reduce((sum, t) => sum + (t.durationMs ?? 0), 0) / 3600_000
+  );
 }
 
 /** All time logs for a user, newest first. */
-export function timeLogsForUser(timeLogs: TimeLog[], userId: string): TimeLog[] {
+export function timeLogsForUser(
+  timeLogs: TimeLog[],
+  userId: string,
+): TimeLog[] {
   return timeLogs
     .filter((t) => t.userId === userId)
     .sort((a, b) => (a.clockInAt < b.clockInAt ? 1 : -1));
@@ -389,7 +477,10 @@ export function isClockedIn(timeLogs: TimeLog[], userId: string): boolean {
 }
 
 /** Completed (closed) time logs for a user. */
-export function completedTimeLogsForUser(timeLogs: TimeLog[], userId: string): TimeLog[] {
+export function completedTimeLogsForUser(
+  timeLogs: TimeLog[],
+  userId: string,
+): TimeLog[] {
   return timeLogsForUser(timeLogs, userId).filter((t) => t.clockOutAt !== null);
 }
 
@@ -399,7 +490,13 @@ export const timeLogsForStudent = timeLogsForUser;
 export const completedTimeLogsForStudent = completedTimeLogsForUser;
 
 function isSameDay(a: Date, b: Date): boolean {
-  const dateKey = (date: Date) => new Intl.DateTimeFormat("en-CA", { timeZone: PORTAL_TIME_ZONE, year: "numeric", month: "2-digit", day: "2-digit" }).format(date);
+  const dateKey = (date: Date) =>
+    new Intl.DateTimeFormat("en-CA", {
+      timeZone: PORTAL_TIME_ZONE,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).format(date);
   return dateKey(a) === dateKey(b);
 }
 
@@ -407,27 +504,39 @@ function isSameDay(a: Date, b: Date): boolean {
 export function todaysTimeLogs(timeLogs: TimeLog[], userId: string): TimeLog[] {
   const now = new Date();
   return timeLogsForUser(timeLogs, userId).filter((t) =>
-    isSameDay(new Date(t.clockInAt), now)
+    isSameDay(new Date(t.clockInAt), now),
   );
 }
 
 /** Sum of completed session durations in the last 7 days (ms), plus the live active session if open. */
-export function weeklyTimeMs(timeLogs: TimeLog[], userId: string, now = Date.now()): number {
+export function weeklyTimeMs(
+  timeLogs: TimeLog[],
+  userId: string,
+  now = Date.now(),
+): number {
   const weekAgo = now - 7 * 24 * 60 * 60 * 1000;
   return timeLogsForUser(timeLogs, userId)
-    .filter((t) => new Date(t.clockInAt).getTime() >= weekAgo && new Date(t.clockInAt).getTime() <= now)
+    .filter(
+      (t) =>
+        new Date(t.clockInAt).getTime() >= weekAgo &&
+        new Date(t.clockInAt).getTime() <= now,
+    )
     .reduce((sum, t) => {
-      if (t.clockOutAt !== null && t.durationMs !== null) return sum + t.durationMs;
+      if (t.clockOutAt !== null && t.durationMs !== null)
+        return sum + t.durationMs;
       // include the active session up to "now"
       return sum + Math.max(0, now - new Date(t.clockInAt).getTime());
     }, 0);
 }
 
 /** Sum of completed session durations for a user (ms). */
-export function totalCompletedTimeMs(timeLogs: TimeLog[], userId: string): number {
+export function totalCompletedTimeMs(
+  timeLogs: TimeLog[],
+  userId: string,
+): number {
   return completedTimeLogsForUser(timeLogs, userId).reduce(
     (sum, t) => sum + (t.durationMs ?? 0),
-    0
+    0,
   );
 }
 
@@ -502,19 +611,24 @@ export function connectedTools(config: ToolsConfig): {
 /** Validate a tool URL against its expected host. Returns "" if valid, error message if not. */
 export function validateToolUrl(
   field: "drive" | "journalTemplate" | "form" | "formCsv" | "jibble",
-  url: string
+  url: string,
 ): string {
   const v = url.trim();
   if (!v) return ""; // empty is valid (skip for now)
   try {
     const u = new URL(v);
     const host = u.hostname.toLowerCase();
-    if (u.protocol !== "https:" || u.username || u.password) return "Use an HTTPS URL without embedded credentials.";
+    if (u.protocol !== "https:" || u.username || u.password)
+      return "Use an HTTPS URL without embedded credentials.";
     switch (field) {
       case "drive":
-        return host === "drive.google.com" ? "" : "Use a Google Drive folder URL (drive.google.com).";
+        return host === "drive.google.com"
+          ? ""
+          : "Use a Google Drive folder URL (drive.google.com).";
       case "journalTemplate":
-        return host === "docs.google.com" ? "" : "Use a Google Docs URL (docs.google.com).";
+        return host === "docs.google.com"
+          ? ""
+          : "Use a Google Docs URL (docs.google.com).";
       case "form":
         return host === "forms.gle" || host === "docs.google.com"
           ? ""
@@ -524,7 +638,9 @@ export function validateToolUrl(
           ? ""
           : "Use a published Google Sheets CSV URL.";
       case "jibble":
-        return (host === "jibble.io" || host.endsWith(".jibble.io")) ? "" : "Use a Jibble URL (jibble.io).";
+        return host === "jibble.io" || host.endsWith(".jibble.io")
+          ? ""
+          : "Use a Jibble URL (jibble.io).";
       default:
         return "";
     }
@@ -546,10 +662,12 @@ export function validateToolUrl(
  */
 export function assignmentAppliesTo(
   assignment: FormAssignment,
-  user: User
+  user: User,
 ): boolean {
   if (user.role === "coordinator") return false;
-  if (assignment.target === "all_supervisors") return user.role === "supervisor";
+  if (assignment.retired) return false;
+  if (assignment.target === "all_supervisors")
+    return user.role === "supervisor";
   if (assignment.target === "all_students") return user.role === "student";
   return assignment.targetUserIds.includes(user.id);
 }
@@ -561,26 +679,28 @@ export function assignmentAppliesTo(
 export function assignedFormsForUser(
   forms: FormDocument[],
   assignments: FormAssignment[],
-  user: User
+  user: User,
 ): { form: FormDocument; assignment: FormAssignment }[] {
-  const matching = forms
+  return forms
     .filter((f) => f.status === "published")
-    .map((form) => {
-      const formAssignments = assignments
-        .filter((a) => a.formId === form.id && assignmentAppliesTo(a, user))
+    .flatMap((form) => {
+      const matches = assignments.filter(
+        (a) => a.formId === form.id && assignmentAppliesTo(a, user),
+      );
+      const generic = matches
+        .filter((a) => !a.reportId)
         .sort((a, b) => (a.dueDate ?? "").localeCompare(b.dueDate ?? ""));
-      return formAssignments.length > 0
-        ? { form, assignment: formAssignments[0] }
-        : null;
-    })
-    .filter((x): x is { form: FormDocument; assignment: FormAssignment } => x !== null);
-  return matching;
+      return [
+        ...(generic.length ? [generic[0]] : []),
+        ...matches.filter((a) => a.reportId),
+      ].map((assignment) => ({ form, assignment }));
+    });
 }
 
 /** All submissions belonging to a user, newest first. */
 export function submissionsForUser(
   submissions: FormSubmission[],
-  userId: string
+  userId: string,
 ): FormSubmission[] {
   return submissions
     .filter((s) => s.userId === userId)
@@ -590,7 +710,7 @@ export function submissionsForUser(
 /** All submissions for a form, newest first. */
 export function submissionsForForm(
   submissions: FormSubmission[],
-  formId: string
+  formId: string,
 ): FormSubmission[] {
   return submissions
     .filter((s) => s.formId === formId)
@@ -606,31 +726,37 @@ export function submissionFor(
   submissions: FormSubmission[],
   formId: string,
   userId: string,
-  targetStudentId?: string
+  targetStudentId?: string,
+  assignmentId?: string,
 ): FormSubmission | undefined {
   return submissions.find(
     (s) =>
       s.formId === formId &&
       s.userId === userId &&
-      (targetStudentId ? s.targetStudentId === targetStudentId : !s.targetStudentId)
+      s.assignmentId === assignmentId &&
+      (targetStudentId
+        ? s.targetStudentId === targetStudentId
+        : !s.targetStudentId),
   );
 }
 
 /** All assignments targeting a given form. */
 export function assignmentsForForm(
   assignments: FormAssignment[],
-  formId: string
+  formId: string,
 ): FormAssignment[] {
   return assignments.filter((a) => a.formId === formId);
 }
 
 /** Submissions awaiting coordinator review (submitted or under_review). */
 export function pendingSubmissionsForCoordinator(
-  submissions: FormSubmission[]
+  submissions: FormSubmission[],
 ): FormSubmission[] {
   return submissions
     .filter((s) => s.status === "submitted" || s.status === "under_review")
-    .sort((a, b) => (a.submittedAt ?? a.updatedAt) < (b.submittedAt ?? b.updatedAt) ? 1 : -1);
+    .sort((a, b) =>
+      (a.submittedAt ?? a.updatedAt) < (b.submittedAt ?? b.updatedAt) ? 1 : -1,
+    );
 }
 
 /**
@@ -649,8 +775,13 @@ export function formResponseStats(
   assignments: FormAssignment[],
   submissions: FormSubmission[],
   supervisors: Supervisor[],
-  students: Student[]
-): { assigned: number; submitted: number; approved: number; needsRevision: number } {
+  students: Student[],
+): {
+  assigned: number;
+  submitted: number;
+  approved: number;
+  needsRevision: number;
+} {
   const formAssignments = assignmentsForForm(assignments, form.id);
   const activeStudents = students.filter((s) => s.status === "active");
   const activeSupervisors = supervisors.filter((s) => s.status === "active");
@@ -679,10 +810,12 @@ export function formResponseStats(
       s.status === "submitted" ||
       s.status === "under_review" ||
       s.status === "approved" ||
-      s.status === "needs_revision"
+      s.status === "needs_revision",
   ).length;
   const approved = formSubs.filter((s) => s.status === "approved").length;
-  const needsRevision = formSubs.filter((s) => s.status === "needs_revision").length;
+  const needsRevision = formSubs.filter(
+    (s) => s.status === "needs_revision",
+  ).length;
 
   return { assigned, submitted, approved, needsRevision };
 }
@@ -714,7 +847,7 @@ export function sectionOptions(students: { section?: string }[]): string[] {
  * e.g. ["2025-2026 2nd Semester", "2024-2025 Summer"].
  */
 export function schoolYearOptions(
-  sources: { schoolYear?: string }[][]
+  sources: { schoolYear?: string }[][],
 ): string[] {
   const set = new Set<string>();
   for (const arr of sources) {
@@ -764,16 +897,87 @@ export function buildFormAutoFillContext(ctx: {
     });
   // Each key maps to a list of label-fragments that should match it.
   const map: { key: string; fragments: string[]; value: string }[] = [
-    { key: "studentName", fragments: ["student name", "name of intern", "intern name", "name of student", "trainee name", "name of trainee"], value: ctx.studentName ?? "" },
-    { key: "studentNumber", fragments: ["student no", "student number", "id number", "student id", "registration no"], value: ctx.studentNumber ?? "" },
-    { key: "course", fragments: ["course", "program", "degree"], value: ctx.course ?? "" },
-    { key: "section", fragments: ["section", "block", "year & section", "year and section"], value: ctx.section ?? "" },
-    { key: "schoolYear", fragments: ["school year", "sy", "academic year", "batch", "school yr"], value: ctx.schoolYear ?? "" },
-    { key: "companyName", fragments: ["company", "establishment", "firm", "organization", "organisation", "practicum site", "host company", "agency"], value: ctx.companyName ?? "" },
-    { key: "supervisorName", fragments: ["supervisor", "immediate supervisor", "company supervisor", "mentor"], value: ctx.supervisorName ?? "" },
-    { key: "supervisorTitle", fragments: ["supervisor title", "supervisor position", "position of supervisor"], value: ctx.supervisorTitle ?? "" },
-    { key: "term", fragments: ["term", "semester", "school term"], value: ctx.term ?? "" },
-    { key: "date", fragments: ["date", "date accomplished", "date submitted", "date filled"], value: today },
+    {
+      key: "studentName",
+      fragments: [
+        "student name",
+        "name of intern",
+        "intern name",
+        "name of student",
+        "trainee name",
+        "name of trainee",
+      ],
+      value: ctx.studentName ?? "",
+    },
+    {
+      key: "studentNumber",
+      fragments: [
+        "student no",
+        "student number",
+        "id number",
+        "student id",
+        "registration no",
+      ],
+      value: ctx.studentNumber ?? "",
+    },
+    {
+      key: "course",
+      fragments: ["course", "program", "degree"],
+      value: ctx.course ?? "",
+    },
+    {
+      key: "section",
+      fragments: ["section", "block", "year & section", "year and section"],
+      value: ctx.section ?? "",
+    },
+    {
+      key: "schoolYear",
+      fragments: ["school year", "sy", "academic year", "batch", "school yr"],
+      value: ctx.schoolYear ?? "",
+    },
+    {
+      key: "companyName",
+      fragments: [
+        "company",
+        "establishment",
+        "firm",
+        "organization",
+        "organisation",
+        "practicum site",
+        "host company",
+        "agency",
+      ],
+      value: ctx.companyName ?? "",
+    },
+    {
+      key: "supervisorName",
+      fragments: [
+        "supervisor",
+        "immediate supervisor",
+        "company supervisor",
+        "mentor",
+      ],
+      value: ctx.supervisorName ?? "",
+    },
+    {
+      key: "supervisorTitle",
+      fragments: [
+        "supervisor title",
+        "supervisor position",
+        "position of supervisor",
+      ],
+      value: ctx.supervisorTitle ?? "",
+    },
+    {
+      key: "term",
+      fragments: ["term", "semester", "school term"],
+      value: ctx.term ?? "",
+    },
+    {
+      key: "date",
+      fragments: ["date", "date accomplished", "date submitted", "date filled"],
+      value: today,
+    },
   ];
   const out: Record<string, string> = {};
   for (const m of map) {
@@ -788,22 +992,76 @@ export function buildFormAutoFillContext(ctx: {
  */
 export function resolveAutoFillValue(
   label: string,
-  ctx: Record<string, string>
+  ctx: Record<string, string>,
 ): string {
   const l = label.toLowerCase().trim();
   if (!l) return "";
   // Ordered fragments → value. Longer/more-specific fragments first.
   const entries: { fragments: string[]; value: string }[] = [
-    { fragments: ["supervisor title", "supervisor position"], value: ctx.supervisorTitle ?? "" },
-    { fragments: ["supervisor", "immediate supervisor", "company supervisor", "mentor"], value: ctx.supervisorName ?? "" },
-    { fragments: ["student no", "student number", "id number", "student id", "registration no"], value: ctx.studentNumber ?? "" },
-    { fragments: ["student name", "name of intern", "intern name", "name of student", "trainee name", "name of trainee", "name"], value: ctx.studentName ?? "" },
-    { fragments: ["school year", "school yr", "academic year", "batch", "sy"], value: ctx.schoolYear ?? "" },
-    { fragments: ["year & section", "year and section", "section", "block"], value: ctx.section ?? "" },
-    { fragments: ["company name", "name of company", "company", "establishment", "firm", "practicum site", "host company", "agency", "organization", "organisation"], value: ctx.companyName ?? "" },
+    {
+      fragments: ["supervisor title", "supervisor position"],
+      value: ctx.supervisorTitle ?? "",
+    },
+    {
+      fragments: [
+        "supervisor",
+        "immediate supervisor",
+        "company supervisor",
+        "mentor",
+      ],
+      value: ctx.supervisorName ?? "",
+    },
+    {
+      fragments: [
+        "student no",
+        "student number",
+        "id number",
+        "student id",
+        "registration no",
+      ],
+      value: ctx.studentNumber ?? "",
+    },
+    {
+      fragments: [
+        "student name",
+        "name of intern",
+        "intern name",
+        "name of student",
+        "trainee name",
+        "name of trainee",
+        "name",
+      ],
+      value: ctx.studentName ?? "",
+    },
+    {
+      fragments: ["school year", "school yr", "academic year", "batch", "sy"],
+      value: ctx.schoolYear ?? "",
+    },
+    {
+      fragments: ["year & section", "year and section", "section", "block"],
+      value: ctx.section ?? "",
+    },
+    {
+      fragments: [
+        "company name",
+        "name of company",
+        "company",
+        "establishment",
+        "firm",
+        "practicum site",
+        "host company",
+        "agency",
+        "organization",
+        "organisation",
+      ],
+      value: ctx.companyName ?? "",
+    },
     { fragments: ["course", "program", "degree"], value: ctx.course ?? "" },
     { fragments: ["term", "semester", "school term"], value: ctx.term ?? "" },
-    { fragments: ["date accomplished", "date submitted", "date filled", "date"], value: ctx.date ?? "" },
+    {
+      fragments: ["date accomplished", "date submitted", "date filled", "date"],
+      value: ctx.date ?? "",
+    },
   ];
   for (const e of entries) {
     if (!e.value) continue;

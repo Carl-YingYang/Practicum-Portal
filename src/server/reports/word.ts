@@ -19,6 +19,7 @@ import {
   Footer,
   PageNumber,
   AlignmentType,
+  VerticalAlign,
   TableOfContents,
   ImageRun,
   BorderStyle,
@@ -166,9 +167,14 @@ function formRatingTable(block: FormBlock, value: FormFieldValue | undefined) {
     ? ["Maximum", "Score"]
     : (block.scaleLabels ?? []);
   const columns = labels.length + 1,
+    criterionWidth = block.scoreMode
+      ? 5200
+      : Math.min(5200, Math.max(3000, 8640 - labels.length * 1000)),
     widths = [
-      5200,
-      ...labels.map(() => Math.floor(3440 / Math.max(1, labels.length))),
+      criterionWidth,
+      ...labels.map(() =>
+        Math.floor((8640 - criterionWidth) / Math.max(1, labels.length)),
+      ),
     ];
   const cell = (text: string, index: number, bold = false, span = 1) =>
     new TableCell({
@@ -177,18 +183,34 @@ function formRatingTable(block: FormBlock, value: FormFieldValue | undefined) {
         size: widths.slice(index, index + span).reduce((a, b) => a + b, 0),
         type: WidthType.DXA,
       },
-      margins: { top: 80, bottom: 80, left: 100, right: 100 },
+      verticalAlign: VerticalAlign.CENTER,
+      margins: { top: 100, bottom: 100, left: 70, right: 70 },
       children: [
         new Paragraph({
-          spacing: { line: 240, after: 80 },
-          children: [new TextRun({ text, bold })],
+          alignment: index === 0 ? AlignmentType.LEFT : AlignmentType.CENTER,
+          spacing: { line: 240, after: 40 },
+          children: text.split("\n").map(
+            (line, i) =>
+              new TextRun({
+                text: line,
+                bold,
+                size: bold && index > 0 ? 20 : 24,
+                ...(i ? { break: 1 } : {}),
+              }),
+          ),
         }),
       ],
     });
   const rows = [
     new TableRow({
       tableHeader: true,
-      children: ["Criterion", ...labels].map((text, i) => cell(text, i, true)),
+      children: ["Criterion", ...labels].map((text, i) =>
+        cell(
+          i > 0 ? text.replace(/\s*(\(\d+(?:\.\d+)?\))$/, "\n$1") : text,
+          i,
+          true,
+        ),
+      ),
     }),
   ];
   for (const criterion of block.criteria ?? []) {
@@ -234,8 +256,8 @@ export async function buildReportWord(
   sectionIds?: string[],
 ) {
   const children: FileChild[] = [];
-  const students = content.studentIds.map((id) =>
-    data.students.find((s) => s.id === id)!,
+  const students = content.studentIds.map(
+    (id) => data.students.find((s) => s.id === id)!,
   );
   const company = data.companies.find((c) => c.id === students[0]?.companyId);
   const full = !sectionIds;
@@ -406,8 +428,8 @@ export async function buildSectionBlocks(
   definitions?: import("@/domain/templates/model").TemplateSection[],
 ): Promise<FileChild[]> {
   const children: FileChild[] = [];
-  const students = content.studentIds.map((id) =>
-    data.students.find((s) => s.id === id)!,
+  const students = content.studentIds.map(
+    (id) => data.students.find((s) => s.id === id)!,
   );
   const included = content.sections.filter(
     (s) => s.included && (!sectionIds || sectionIds.includes(s.id)),
@@ -519,6 +541,12 @@ export async function buildSectionBlocks(
         children.push(heading(`${form.title} · Version ${form.version}`, 2));
         for (const block of form.blocks) {
           if (!formBlockVisible(block, sub.values)) continue;
+          if (
+            block.id === form.blocks[0]?.id &&
+            block.type === "heading" &&
+            block.text?.trim() === form.title.trim()
+          )
+            continue;
           const value = sub.values[block.id];
           if (block.type === "heading")
             children.push(heading(block.text ?? "", 2));

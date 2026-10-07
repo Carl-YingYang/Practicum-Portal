@@ -124,10 +124,16 @@ const TemplateWorkspace = dynamic(
     import("../templates/template-workspace").then((m) => m.TemplateWorkspace),
   { loading: () => <WorkspaceLoader /> },
 );
+const PracticumWorkspace = dynamic(
+  () => import("./practicum-workspace").then((m) => m.PracticumWorkspace),
+  { loading: () => <WorkspaceLoader /> },
+);
 export function CoordinatorWorkspace() {
   const view = useAppStore((s) => s.view);
   const viewParams = useAppStore((s) => s.viewParams);
   switch (view) {
+    case "coordinator.practicum":
+      return <PracticumWorkspace />;
     case "coordinator.dashboard":
       return <CoordinatorDashboard />;
     case "coordinator.students":
@@ -151,7 +157,11 @@ export function CoordinatorWorkspace() {
     case "coordinator.journal-view":
       return <JournalView journalId={viewParams.journalId} />;
     case "coordinator.forms":
-      return <FormsHub />;
+      return (
+        <FormsHub
+          key={`${viewParams.tab ?? "forms"}:${viewParams.formId ?? "all"}`}
+        />
+      );
     case "coordinator.form-editor":
       return <FormEditor formId={viewParams.formId} />;
     case "coordinator.user-management":

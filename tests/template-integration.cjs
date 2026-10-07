@@ -147,7 +147,12 @@ const { startServer } = require("./server-harness.cjs");
     assert.ok(r.content.sections.every((s) => s.body === ""));
     const assignedPortal = await json(await student.get("/api/portal"));
     assert.ok(
-      assignedPortal.data.formAssignments.some((a) => a.formId === form.id),
+      assignedPortal.data.formAssignments.some(
+        (a) =>
+          a.reportId === r.id &&
+          assignedPortal.data.formDocuments.find((f) => f.id === a.formId)
+            ?.origin?.formId === form.id,
+      ),
     );
     assert.equal((await outsider.get(reportPath)).status(), 403);
     assert.equal(

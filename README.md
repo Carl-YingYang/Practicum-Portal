@@ -25,6 +25,8 @@ Existing installations: after pulling this report update, stop the server, run `
 
 ## What changed
 
+- [Connected practicum workflow](docs/CONNECTED_WORKFLOW.md): one coordinator task workspace, direct form-to-report linking, fixed rubrics and requirement-specific responses, reopenable help, guided testing and bounded file storage.
+
 - Report Builder: section templates, individual/combined dossiers, exact attendance bindings, evidence and editable versioned Word exports with grammarian-reviewed uploads.
 - Validated form starters, conditional questions, response recovery and persistent notification read state with optional sound.
 - Shared server persistence, hashed passwords, HTTP-only sessions, school/role ownership and retry-safe commands.

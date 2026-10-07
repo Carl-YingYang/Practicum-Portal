@@ -1,4 +1,5 @@
 "use client";
+import { useAppStore } from "@/store/use-app-store";
 import { useEffect, useState } from "react";
 import { reportRequest } from "@/client/reports";
 import type { TemplateRecord } from "@/domain/templates/model";
@@ -30,6 +31,21 @@ export function TemplateWorkspace() {
       setPending(false);
     }
   }
+  const templateId = useAppStore((s) => s.viewParams.templateId);
+  useEffect(() => {
+    let active = true;
+    if (templateId)
+      void reportRequest<TemplateRecord>(`/api/templates/${templateId}`)
+        .then((record) => {
+          if (active) setCurrent(record);
+        })
+        .catch((e) => {
+          if (active) setError((e as Error).message);
+        });
+    return () => {
+      active = false;
+    };
+  }, [templateId]);
   useEffect(() => {
     let active = true;
     void reportRequest<{ templates: Summary[] }>("/api/templates")

@@ -40,6 +40,8 @@ function bindingFor(
   dueDate: string | null,
 ): TemplateBinding {
   return {
+    contextual: content.contextVersion === 1,
+    cycle: content.cycle,
     hasExample: !!version.exampleName,
     versionId: version.id,
     templateId: version.templateId,
@@ -63,13 +65,27 @@ async function assignLinkedForms(
     student = data.students.find((s) => s.id === studentId)!;
   const users = accountUsers(data);
   let changed = false;
+  binding.assignments ??= {};
   for (const section of binding.sections)
     for (const fid of section.formIds) {
       const user =
         section.respondent === "student"
           ? users.find((u) => u.studentId === studentId)
           : users.find((u) => u.supervisorId === student.supervisorId);
-      if (!user)
+      const liveUser = user
+        ? await tx.portalAccount.findFirst({
+            where: {
+              schoolId: account.schoolId,
+              profileId:
+                section.respondent === "student"
+                  ? studentId
+                  : (student.supervisorId ?? ""),
+              role: section.respondent,
+              status: "active",
+            },
+          })
+        : null;
+      if (!user || !liveUser)
         throw new HttpError(
           400,
           `${student.name} needs an active ${section.respondent} account for ${section.title}.`,
@@ -83,6 +99,37 @@ async function assignLinkedForms(
           409,
           "A linked form was archived. Publish a new template version with an active form.",
         );
+      if (binding.contextual) {
+        const assignment = data.formAssignments.find(
+          (a) =>
+            a.reportId === binding.reportId &&
+            a.sectionKey === section.key &&
+            a.formId === fid &&
+            !a.retired,
+        );
+        const aid = assignment?.id ?? randomUUID();
+        (binding.assignments[section.key] ??= {})[fid] = aid;
+        if (!assignment) {
+          data.formAssignments.push({
+            id: aid,
+            formId: fid,
+            reportId: binding.reportId,
+            sectionKey: section.key,
+            sectionTitle: section.title,
+            reportTitle: binding.title,
+            templateVersion: binding.number,
+            studentId,
+            cycle: binding.cycle,
+            target: "specific_users",
+            targetUserIds: [user.id],
+            dueDate: binding.dueDate,
+            createdBy: actor.id,
+            createdAt: new Date().toISOString(),
+          });
+          changed = true;
+        }
+        continue;
+      }
       if (
         !data.formAssignments.some(
           (a) =>
@@ -166,14 +213,17 @@ export async function assignTemplate(
           ids.push(existing.reportId);
           continue;
         }
+        const reportId = randomUUID();
         const binding = bindingFor(version, config, parsed.data.dueDate);
+        binding.reportId = reportId;
+        binding.cycle ||= student.schoolYear || "Current practicum";
+        await assignLinkedForms(tx, account, binding, studentId);
         const content = createReportContent([studentId], randomUUID);
         content.title = config.title;
         content.settings.degree = student.course;
         content.settings.start = student.startDate ?? "";
         content.settings.end = student.endDate ?? "";
         content.sections = assignedSections(config, studentId, randomUUID);
-        const reportId = randomUUID();
         await tx.practicumReport.create({
           data: {
             id: reportId,
@@ -191,7 +241,6 @@ export async function assignTemplate(
             dueDate: parsed.data.dueDate,
           },
         });
-        await assignLinkedForms(tx, account, binding, studentId);
         ids.push(reportId);
       }
     },
@@ -298,6 +347,23 @@ export async function upgradeAssignment(
         title: config.title,
         sections: next,
       };
+      binding.reportId = reportId;
+      binding.cycle ||= old.cycle;
+      if (old.contextual) {
+        const school = await tx.portalSchool.update({
+          where: { id: account.schoolId },
+          data: { revision: { increment: 1 } },
+        });
+        const data = JSON.parse(
+          school.stateJson,
+        ) as import("@/domain/portal/snapshot").PortalData;
+        for (const a of data.formAssignments)
+          if (a.reportId === reportId) a.retired = true;
+        await tx.portalSchool.update({
+          where: { id: school.id },
+          data: { stateJson: JSON.stringify(data) },
+        });
+      }
       r.state.binding = binding;
       await assignLinkedForms(
         tx,

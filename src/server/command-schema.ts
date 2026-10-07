@@ -353,7 +353,13 @@ const schemas: Partial<Record<MutationName, z.ZodType>> = {
   ]),
   deleteEvaluation: z.tuple([id]),
   startFormResponse: z.tuple([
-    z.object({ formId: id, targetStudentId: id.optional() }).strict(),
+    z
+      .object({
+        formId: id,
+        targetStudentId: id.optional(),
+        assignmentId: id.optional(),
+      })
+      .strict(),
   ]),
   saveSubmissionDraft: z.tuple([
     id,

@@ -79,7 +79,10 @@ const { startServer } = require("./server-harness.cjs");
     await page.goto(app.baseURL);
     await page.getByRole("heading", { name: "Welcome back." }).waitFor();
     await login("coordinator");
-    await nav("Templates & Assignments");
+    await nav("Practicum");
+    await page
+      .getByRole("button", { name: "Set up format", exact: true })
+      .click();
     await page
       .getByRole("button", { name: "New template from pilot", exact: true })
       .click();
@@ -121,7 +124,16 @@ const { startServer } = require("./server-harness.cjs");
           pageBreak: true,
           formIds: ["form-4"],
         },
-        {key:"mentor_form",title:"Supervisor weekly form",instructions:"Complete for this intern.",kind:"forms",required:false,respondent:"supervisor",pageBreak:true,formIds:["form-1"]},
+        {
+          key: "mentor_form",
+          title: "Supervisor weekly form",
+          instructions: "Complete for this intern.",
+          kind: "forms",
+          required: false,
+          respondent: "supervisor",
+          pageBreak: true,
+          formIds: ["form-1"],
+        },
         {
           key: "mentor_note",
           title: "Mentor feedback",
@@ -283,7 +295,9 @@ const { startServer } = require("./server-harness.cjs");
     await page.getByRole("dialog").waitFor({ state: "hidden" });
     const portal = await api("/api/portal"),
       sub = portal.data.formSubmissions.find(
-        (s) => s.formId === "form-4" && s.userId === portal.currentUser.id,
+        (s) =>
+          s.formSnapshot?.origin?.formId === "form-4" &&
+          s.userId === portal.currentUser.id,
       );
     assert.equal(sub.status, "submitted");
     assert.equal(sub.values.b7.o1a, "3");
@@ -320,14 +334,54 @@ const { startServer } = require("./server-harness.cjs");
       0,
     );
     await login("coordinator");
-    const published=await api(path),school=await api("/api/portal"),targetIntern=school.data.students.find(s=>s.name==="Sample Student 5");
-    await api(path,"POST",{action:"assign",versionId:published.versions[0].id,studentIds:[targetIntern.id],dueDate:null});
-    await login("supervisor");await nav("My Interns");
-    await page.getByRole("button").filter({has:page.getByText("Sample Student 5",{exact:true})}).click();await page.getByRole("button",{name:"Review practicum report",exact:true}).click();await page.getByRole("button",{name:/Browser Official Format/}).click();
-    await page.getByLabel("Current section",{exact:true}).selectOption({label:"Sample Student 5 — Supervisor weekly form"});await page.getByRole("button",{name:/^Open Practicum Weekly Journal/}).click();
-    await page.getByRole("heading",{name:"Select intern to evaluate",exact:true}).waitFor();
-    assert.equal(await page.getByRole("button",{name:/Sample Student 5/}).getAttribute("aria-pressed"),"true");
-    await page.waitForFunction(async(id)=>{const portal=await(await fetch("/api/portal")).json();return portal.data.formSubmissions.some(s=>s.formId==="form-1" && s.targetStudentId===id);},targetIntern.id);
+    const published = await api(path),
+      school = await api("/api/portal"),
+      targetIntern = school.data.students.find(
+        (s) => s.name === "Sample Student 5",
+      );
+    await api(path, "POST", {
+      action: "assign",
+      versionId: published.versions[0].id,
+      studentIds: [targetIntern.id],
+      dueDate: null,
+    });
+    await login("supervisor");
+    await nav("My Interns");
+    await page
+      .getByRole("button")
+      .filter({ has: page.getByText("Sample Student 5", { exact: true }) })
+      .click();
+    await page
+      .getByRole("button", { name: "Review practicum report", exact: true })
+      .click();
+    await page.getByRole("button", { name: /Browser Official Format/ }).click();
+    await page
+      .getByLabel("Current section", { exact: true })
+      .selectOption({ label: "Sample Student 5 — Supervisor weekly form" });
+    await page
+      .getByRole("button", { name: /^Open Practicum Weekly Journal/ })
+      .click();
+    await page
+      .getByRole("heading", { name: "Select intern to evaluate", exact: true })
+      .waitFor();
+    assert.equal(
+      await page
+        .getByRole("button", { name: /Sample Student 5/ })
+        .getAttribute("aria-pressed"),
+      "true",
+    );
+    await page
+      .getByRole("textbox")
+      .first()
+      .fill("Supervisor response for the correct intern.");
+    await page.waitForFunction(async (id) => {
+      const portal = await (await fetch("/api/portal")).json();
+      return portal.data.formSubmissions.some(
+        (s) =>
+          s.formSnapshot?.origin?.formId === "form-1" &&
+          s.targetStudentId === id,
+      );
+    }, targetIntern.id);
     await overflow();
     assert.deepEqual(errors, []);
     console.log(

@@ -13,6 +13,7 @@ import {
   type ReportRecord,
   type ReportVersion,
 } from "@/domain/reports/model";
+import { reportSources } from "@/domain/reports/sources";
 import type { User } from "@/lib/types";
 export type ReportState = {
   content: ReportContent;
@@ -67,7 +68,12 @@ export function canReadReport(
         ))
   );
 }
-export function sourceFingerprint(content: ReportContent, data: PortalData) {
+export function sourceFingerprint(
+  content: ReportContent,
+  data: PortalData,
+  binding?: import("@/domain/templates/model").TemplateBinding,
+) {
+  data = reportSources(content, data, binding);
   const ids = new Set(content.studentIds);
   const students = data.students
     .filter((s) => ids.has(s.id))
@@ -160,7 +166,7 @@ export function reportFingerprint(
       JSON.stringify({
         content,
         binding,
-        source: sourceFingerprint(content, data),
+        source: sourceFingerprint(content, data, binding),
         evidence: assets
           .filter((a) => a.kind === "evidence")
           .map(({ id, sectionId, caption, rotation, order }) => ({
@@ -219,7 +225,11 @@ export async function reportResponse(
       assets,
       r.state.binding,
     ),
-    boundSourceFingerprint: sourceFingerprint(r.state.content, r.data),
+    boundSourceFingerprint: sourceFingerprint(
+      r.state.content,
+      r.data,
+      r.state.binding,
+    ),
   };
 }
 export async function createReport(account: PortalAccount, input: unknown) {
@@ -399,7 +409,11 @@ export async function reviewSection(
     section.status = input.status;
     section.reviewNote = input.note.trim();
     section.reviewedAt = new Date().toISOString();
-    section.reviewedSource = sourceFingerprint(r.state.content, r.data);
+    section.reviewedSource = sourceFingerprint(
+      r.state.content,
+      r.data,
+      r.state.binding,
+    );
     await tx.practicumReport.update({
       where: { id },
       data: { stateJson: JSON.stringify(r.state) },

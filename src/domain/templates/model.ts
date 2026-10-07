@@ -14,6 +14,8 @@ export const templateSectionSchema = z
   .strict();
 export const templateSchema = z
   .object({
+    contextVersion: z.literal(1).optional(),
+    cycle: z.string().trim().max(120).optional(),
     title: z.string().trim().min(1).max(200),
     description: z.string().max(3000),
     allowStudentExtras: z.boolean(),
@@ -23,6 +25,10 @@ export const templateSchema = z
 export type TemplateContent = z.infer<typeof templateSchema>;
 export type TemplateSection = z.infer<typeof templateSectionSchema>;
 export interface TemplateBinding {
+  contextual?: boolean;
+  cycle?: string;
+  reportId?: string;
+  assignments?: Record<string, Record<string, string>>;
   hasExample?: boolean;
   versionId: string;
   templateId: string;

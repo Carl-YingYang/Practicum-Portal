@@ -1,3 +1,4 @@
+import { linkForm } from "@/server/templates/link-form";
 import { assignTemplate } from "@/server/templates/assignments";
 import {
   checkOrigin,
@@ -86,6 +87,10 @@ export async function POST(request: Request, ctx: Context) {
     const body = await jsonBody(request);
     if (!body || typeof body !== "object")
       throw new HttpError(400, "Choose a template action.");
+    if (body.action === "link") {
+      const { action: _action, ...input } = body;
+      return Response.json(await linkForm(id, account, input));
+    }
     if (body.action === "sync")
       return Response.json(
         await syncTemplateLayout(id, account, body.revision),

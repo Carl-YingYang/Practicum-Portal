@@ -10,8 +10,9 @@ export function useFormDraft(
   userId: string | undefined,
   targetStudentId: string | undefined,
   initial: FormSubmission | undefined,
+  assignmentId?: string,
 ) {
-  const key = `practo:form-draft:${userId}:${formId}:${targetStudentId ?? "self"}`;
+  const key = `practo:form-draft:${userId}:${formId}:${targetStudentId ?? "self"}:${assignmentId ?? "legacy"}`;
   const [values, setValues] = useState<Values>(initial?.values ?? {}),
     [saveState, setSaveState] = useState<"idle" | "saving" | "saved" | "error">(
       "idle",
@@ -61,6 +62,7 @@ export function useFormDraft(
             (s) =>
               s.formId === formId &&
               s.userId === userId &&
+              s.assignmentId === assignmentId &&
               (s.targetStudentId ?? undefined) === targetStudentId,
           );
           if (
@@ -72,7 +74,11 @@ export function useFormDraft(
             );
           const id =
             record?.id ??
-            state.startFormResponse({ formId: formId!, targetStudentId });
+            state.startFormResponse({
+              formId: formId!,
+              targetStudentId,
+              assignmentId,
+            });
           if (!id)
             throw new Error(
               "This form is no longer assigned or published. Your answers are retained.",
@@ -97,7 +103,7 @@ export function useFormDraft(
       inFlight.current = null;
     });
     return inFlight.current;
-  }, [formId, userId, targetStudentId, key]);
+  }, [formId, userId, targetStudentId, assignmentId, key]);
   function update(blockId: string, value: FormFieldValue) {
     const next = { ...valuesRef.current, [blockId]: value };
     valuesRef.current = next;

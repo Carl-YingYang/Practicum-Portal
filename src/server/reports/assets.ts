@@ -1,5 +1,7 @@
 import type { PortalAccount } from "@prisma/client";
 import { randomUUID } from "node:crypto";
+import { createHash } from "node:crypto";
+import { reserveStorage, REPORT_STORAGE_BYTES } from "@/server/storage";
 import sharp from "sharp";
 import JSZip from "jszip";
 import { db } from "@/server/database";
@@ -43,7 +45,18 @@ export async function uploadReportAsset(
       const info = await image.metadata();
       if (!["png", "jpeg"].includes(info.format ?? "")) throw new Error();
       const normalized = await image
-        .toFormat(info.format as "png" | "jpeg")
+        .resize({
+          width: 2000,
+          height: 2000,
+          fit: "inside",
+          withoutEnlargement: true,
+        })
+        .toFormat(
+          info.format as "png" | "jpeg",
+          info.format === "jpeg"
+            ? { quality: 85, mozjpeg: true }
+            : { compressionLevel: 9 },
+        )
         .toBuffer({ resolveWithObject: true });
       bytes = normalized.data;
       mime = info.format === "png" ? "image/png" : "image/jpeg";
@@ -60,6 +73,7 @@ export async function uploadReportAsset(
     throw new HttpError(400, "Normalized image exceeds 32 MB.");
   if (kind === "reviewed" && !mime.includes("wordprocessingml"))
     throw new HttpError(400, "Upload the grammarian-reviewed DOCX.");
+  const contentHash = createHash("sha256").update(bytes).digest("hex");
   const ext =
     mime === "image/png"
       ? "png"
@@ -106,6 +120,13 @@ export async function uploadReportAsset(
         400,
         "Choose the exported version that was reviewed.",
       );
+    if (
+      await tx.reportAsset.findFirst({
+        where: { reportId: id, sectionId, kind, contentHash },
+      })
+    )
+      return;
+    await reserveStorage(tx, account.schoolId, bytes.length);
     const totals = await tx.reportAsset.aggregate({
       where: { reportId: id },
       _sum: { size: true },
@@ -113,11 +134,11 @@ export async function uploadReportAsset(
     });
     if (
       totals._count >= 200 ||
-      (totals._sum.size ?? 0) + bytes.length > 250 * 1024 * 1024
+      (totals._sum.size ?? 0) + bytes.length > REPORT_STORAGE_BYTES
     )
       throw new HttpError(
         400,
-        "Report storage limit reached (200 files / 250 MB).",
+        "Report storage limit reached (200 files / 100 MB).",
       );
     await tx.reportAsset.create({
       data: {
@@ -127,6 +148,7 @@ export async function uploadReportAsset(
         mime,
         kind,
         sectionId,
+        contentHash,
         bytes: new Uint8Array(bytes),
         width,
         height,

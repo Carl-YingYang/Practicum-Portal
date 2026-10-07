@@ -12,6 +12,8 @@ import {
   templateErrors,
   type TemplateContent,
 } from "@/domain/templates/model";
+import { reserveStorage } from "@/server/storage";
+import { pinPublishedForms } from "./published-forms";
 import { inspectTemplateWord } from "./word";
 type Database = Prisma.TransactionClient;
 export async function professor(account: PortalAccount, tx: Database = db) {
@@ -35,7 +37,7 @@ export async function draft(
   if (!record) throw new HttpError(404, "Template not found.");
   return record;
 }
-async function lockDraft(
+export async function lockDraft(
   id: string,
   account: PortalAccount,
   revision: number,
@@ -68,7 +70,17 @@ export async function listTemplates(account: PortalAccount) {
   const records = await db.practicumTemplate.findMany({
     where: { schoolId: account.schoolId },
     orderBy: { updatedAt: "desc" },
-    include: { versions: { orderBy: { number: "desc" } } },
+    select: {
+      id: true,
+      draftJson: true,
+      revision: true,
+      archived: true,
+      versions: {
+        orderBy: { number: "desc" },
+        take: 1,
+        select: { number: true },
+      },
+    },
   });
   return {
     templates: records.map((r) => ({
@@ -113,21 +125,26 @@ export async function templateResponse(id: string, account: PortalAccount) {
     })),
   };
 }
-export async function createTemplate(account: PortalAccount) {
+export async function createTemplate(
+  account: PortalAccount,
+  id: string = randomUUID(),
+) {
   await professor(account);
   const bytes = await readFile(
     join(process.cwd(), "public/templates/practicum-pilot.docx"),
   );
-  const id = randomUUID();
-  await db.practicumTemplate.create({
-    data: {
-      id,
-      schoolId: account.schoolId,
-      ownerId: account.id,
-      draftJson: JSON.stringify(pilotContent()),
-      wordName: "practicum-pilot.docx",
-      wordBytes: new Uint8Array(bytes),
-    },
+  await db.$transaction(async (tx) => {
+    await reserveStorage(tx, account.schoolId, bytes.length);
+    await tx.practicumTemplate.create({
+      data: {
+        id,
+        schoolId: account.schoolId,
+        ownerId: account.id,
+        draftJson: JSON.stringify(pilotContent()),
+        wordName: "practicum-pilot.docx",
+        wordBytes: new Uint8Array(bytes),
+      },
+    });
   });
   return templateResponse(id, account);
 }
@@ -178,7 +195,15 @@ export async function uploadTemplate(
       .slice(0, 150)
       .replace(/\.[^.]*$/, "") + ".docx";
   await db.$transaction(async (tx) => {
-    await lockDraft(id, account, revision, tx);
+    const r = await lockDraft(id, account, revision, tx);
+    await reserveStorage(
+      tx,
+      account.schoolId,
+      bytes.length -
+        (kind === "word"
+          ? (r.wordBytes?.length ?? 0)
+          : (r.exampleBytes?.length ?? 0)),
+    );
     await tx.practicumTemplate.update({
       where: { id },
       data:
@@ -204,6 +229,10 @@ export async function publishTemplate(
         errors = templateErrors(content, info.slots);
       const { data } = await professor(account, tx);
       for (const s of content.sections) {
+        if (s.kind === "forms" && !s.formIds.length)
+          errors.push(
+            `${s.title}: link at least one published form before publishing this format.`,
+          );
         if (s.kind !== "forms" && s.formIds.length)
           errors.push(`${s.title}: only form sections can link forms.`);
         if (s.formIds.length && s.respondent === "coordinator")
@@ -224,12 +253,25 @@ export async function publishTemplate(
         orderBy: { number: "desc" },
         select: { number: true },
       });
+      await reserveStorage(
+        tx,
+        account.schoolId,
+        r.wordBytes.length + (r.exampleBytes?.length ?? 0),
+      );
+      const versionId = randomUUID();
+      const pinned = await pinPublishedForms(
+        tx,
+        account,
+        content,
+        id,
+        versionId,
+      );
       await tx.practicumTemplateVersion.create({
         data: {
-          id: randomUUID(),
+          id: versionId,
           templateId: id,
           number: (latest?.number ?? 0) + 1,
-          schemaJson: JSON.stringify(content),
+          schemaJson: JSON.stringify(pinned),
           wordBytes: r.wordBytes,
           wordName: r.wordName,
           exampleBytes: r.exampleBytes,
@@ -316,17 +358,19 @@ export async function syncTemplateLayout(
       if (!r.wordBytes)
         throw new HttpError(400, "Upload a blank format first.");
       const { syncWordSlots } = await import("./word");
+      const bytes = await syncWordSlots(
+        r.wordBytes,
+        content.sections.map((s) => s.key),
+        content.allowStudentExtras,
+      );
+      await reserveStorage(
+        tx,
+        account.schoolId,
+        bytes.length - r.wordBytes.length,
+      );
       await tx.practicumTemplate.update({
         where: { id },
-        data: {
-          wordBytes: new Uint8Array(
-            await syncWordSlots(
-              r.wordBytes,
-              content.sections.map((s) => s.key),
-              content.allowStudentExtras,
-            ),
-          ),
-        },
+        data: { wordBytes: new Uint8Array(bytes) },
       });
     },
     { timeout: 30000 },

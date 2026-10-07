@@ -500,3 +500,13 @@ Implemented on `practo/testing-platform` after fetching the user's current branc
 | Documentation | `PROFESSOR_TEMPLATES.md`, verification results, screenshots and a fictional mapped DOCX sample |
 
 Validation commands: `typecheck`, `lint`, `build`, `test`, `test:templates`, `test:templates-ui`, `test:templates-doc`, and relevant report/server/browser regressions. Detailed results are in `VERIFICATION.md`.
+
+## Connected practicum workflow — 2026-10-07
+
+- Unified coordinator task navigation and preserved legacy record routes; distinguished official reports from independent drafts with progress/next actions.
+- Added direct revision-checked library-form linking to format drafts, fixed shared form definitions on publication and distinct report/section/intern response contexts. Explicit upgrades retire old assignments while preserving answers and Word history.
+- Aligned preview/checklist/Word requirement filtering and bounded new official attendance/journal sources to placement dates. Added visible cycle/section/version context and advanced Word-placeholder copy controls.
+- Added role-specific reopenable help and a gated, repeatable guided sample using existing fictional accounts, with no reset or automatic approval.
+- Added additive asset hashes, bounded image normalization, a configurable school file budget, actual usage display, equivalent-file/export reuse and explicit cleanup that retains every Word and protected ZIP.
+- Improved rating-table header widths/alignment in Word and prevented duplicated matching form headings. Mobile linked-form buttons and long download filenames wrap within their container.
+- Added connected unit/API/browser coverage and documented safe migration, usage, compatibility and resource limits in `CONNECTED_WORKFLOW.md`. Preserved the user's login/hero/SVG/copy, and left AI and wet signatures outside this update.

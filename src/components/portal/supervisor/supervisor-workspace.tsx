@@ -93,9 +93,10 @@ export function SupervisorWorkspace() {
     case "supervisor.form-view":
       return (
         <SupervisorFormWorkspace
-          key={`${viewParams.formId}:${viewParams.studentId ?? ""}`}
+          key={`${viewParams.formId}:${viewParams.studentId ?? ""}:${viewParams.assignmentId ?? ""}`}
           formId={viewParams.formId}
           studentId={viewParams.studentId}
+          assignmentId={viewParams.assignmentId}
         />
       );
     case "supervisor.report-builder":

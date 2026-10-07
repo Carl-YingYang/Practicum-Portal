@@ -1,3 +1,4 @@
+import { reportSources } from "./sources";
 import type { ReportContent, ReportAssetInfo } from "./model";
 import type { PortalData } from "@/domain/portal/snapshot";
 import { accountUsers } from "@/lib/prototype";
@@ -8,6 +9,7 @@ export function reportChecks(
   assets: Pick<ReportAssetInfo, "kind" | "sectionId" | "mime">[],
   binding?: import("@/domain/templates/model").TemplateBinding,
 ) {
+  data = reportSources(content, data, binding);
   const issues: string[] = [];
   for (const s of content.sections.filter((s) => s.included)) {
     const prefix = s.studentId
@@ -40,11 +42,12 @@ export function reportChecks(
         issues.push(`${prefix}Some journals are drafts or awaiting approval.`);
     }
     if (s.kind === "forms") {
+      const scoped = reportSources(content, data, binding, s.template);
       const user = accountUsers(data).find((u) => u.studentId === s.studentId);
       for (const fid of binding?.sections.find((d) => d.key === s.template)
         ?.formIds ?? []) {
         if (
-          !data.formSubmissions.some(
+          !scoped.formSubmissions.some(
             (f) =>
               f.formId === fid &&
               f.status === "approved" &&
@@ -56,12 +59,12 @@ export function reportChecks(
           );
       }
       if (
-        !data.formSubmissions.some(
+        !scoped.formSubmissions.some(
           (f) =>
             f.status === "approved" &&
             (f.targetStudentId === s.studentId || f.userId === user?.id),
         ) &&
-        !data.evaluations.some(
+        !scoped.evaluations.some(
           (e) => e.studentId === s.studentId && e.status === "submitted",
         )
       )

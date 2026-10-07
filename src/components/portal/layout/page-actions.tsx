@@ -24,6 +24,7 @@ import {
 } from "lucide-react";
 import { useTheme } from "next-themes";
 import { ROLE_LABELS } from "@/lib/types";
+import { WorkflowHelp } from "../shared/workflow-help";
 import { NotificationsDropdown } from "./notifications-dropdown";
 interface PageActionsProps {
   onOpenTestingScenarios?: () => void;
@@ -82,6 +83,7 @@ export function PageActions({
           </button>
         )}
 
+        <WorkflowHelp />
         {/* Notifications */}
         <div className="relative flex items-center">
           <NotificationsDropdown />

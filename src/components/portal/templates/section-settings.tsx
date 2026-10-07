@@ -1,4 +1,5 @@
 "use client";
+import { useState } from "react";
 import type { TemplateSection } from "@/domain/templates/model";
 import { useAppStore } from "@/store/use-app-store";
 import { Input } from "@/components/ui/input";
@@ -19,6 +20,7 @@ export function SectionSettings({
   onMove: (delta: number) => void;
   onDelete: () => void;
 }) {
+  const [copyNotice, setCopyNotice] = useState("");
   const forms = useAppStore((s) => s.formDocuments);
   const selectClass =
     "mt-1 min-h-10 w-full min-w-0 rounded-md border bg-background px-2 text-sm";
@@ -77,7 +79,10 @@ export function SectionSettings({
               onChange={(e) => onChange({ ...section, title: e.target.value })}
             />
           </label>
-          <label className="min-w-0 text-sm">
+          <details className="min-w-0 text-sm">
+            <summary className="cursor-pointer">
+              Word mapping (advanced)
+            </summary>
             Word placeholder key
             <Input
               value={section.key}
@@ -85,7 +90,28 @@ export function SectionSettings({
               onChange={(e) => onChange({ ...section, key: e.target.value })}
             />
             <small className="block break-all text-muted-foreground">{`{{section_${section.key}}}`}</small>
-          </label>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="mt-2"
+              onClick={async () => {
+                try {
+                  await navigator.clipboard.writeText(
+                    `{{section_${section.key}}}`,
+                  );
+                  setCopyNotice("Copied.");
+                } catch {
+                  setCopyNotice("Copy the placeholder text above manually.");
+                }
+              }}
+            >
+              Copy Word placeholder
+            </Button>
+            <span role="status" className="ml-2 text-xs">
+              {copyNotice}
+            </span>
+          </details>
           <label className="text-sm">
             Content source
             <select
@@ -166,7 +192,7 @@ export function SectionSettings({
               Approved responses appear here in the report.
             </p>
             {forms
-              .filter((f) => f.status === "published")
+              .filter((f) => f.status === "published" && !f.origin)
               .map((f) => (
                 <label
                   key={f.id}

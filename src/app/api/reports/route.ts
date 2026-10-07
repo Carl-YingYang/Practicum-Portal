@@ -31,6 +31,12 @@ export async function GET() {
                   id: r.id,
                   title: state.content.title,
                   templateVersion: state.binding?.number ?? null,
+                  cycle: state.binding?.cycle ?? null,
+                  total: state.content.sections.filter((s) => s.included)
+                    .length,
+                  reviewed: state.content.sections.filter(
+                    (s) => s.included && s.status === "reviewed",
+                  ).length,
                   dueDate: state.binding?.dueDate ?? null,
                   ready: state.content.sections.filter(
                     (s) => s.included && s.status === "ready",

@@ -69,7 +69,10 @@ const StudentFormWorkspace = dynamic(
  * Top-level router for the Student workspace. Reads `view` from the store
  * and renders the matching page component. Default falls back to dashboard.
  */
-const ReportWorkspace = dynamic(() => import("../reports/report-workspace").then(m => m.ReportWorkspace), { loading: () => <WorkspaceLoader /> });
+const ReportWorkspace = dynamic(
+  () => import("../reports/report-workspace").then((m) => m.ReportWorkspace),
+  { loading: () => <WorkspaceLoader /> },
+);
 export function StudentWorkspace() {
   const view = useAppStore((s) => s.view);
   const viewParams = useAppStore((s) => s.viewParams);
@@ -77,7 +80,9 @@ export function StudentWorkspace() {
   const student = useAppStore((s) =>
     s.students.find((st) => st.id === currentUser?.studentId),
   );
-  const journal = useAppStore((s) => s.journals.find((j) => j.id === viewParams.journalId));
+  const journal = useAppStore((s) =>
+    s.journals.find((j) => j.id === viewParams.journalId),
+  );
   if (!student?.supervisorId && view !== "student.profile")
     return <StudentDashboard />;
   switch (view) {
@@ -86,7 +91,12 @@ export function StudentWorkspace() {
     case "student.journals":
       return <JournalsList />;
     case "student.journal-new":
-      return viewParams.journalId && (!journal || !["draft", "rejected"].includes(journal.status)) ? <JournalDetail /> : <JournalForm />;
+      return viewParams.journalId &&
+        (!journal || !["draft", "rejected"].includes(journal.status)) ? (
+        <JournalDetail />
+      ) : (
+        <JournalForm />
+      );
     case "student.journal-view":
       return <JournalDetail />;
     case "student.evaluations":
@@ -102,7 +112,13 @@ export function StudentWorkspace() {
     case "student.forms":
       return <StudentForms />;
     case "student.form-view":
-      return <StudentFormWorkspace formId={viewParams.formId} />;
+      return (
+        <StudentFormWorkspace
+          key={`${viewParams.formId}:${viewParams.assignmentId ?? ""}`}
+          formId={viewParams.formId}
+          assignmentId={viewParams.assignmentId}
+        />
+      );
     case "student.profile":
       return <StudentProfile />;
     default:

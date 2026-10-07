@@ -50,16 +50,19 @@ export function StudentForms() {
 
   const assigned = React.useMemo(
     () => assignedFormsForUser(forms, assignments, currentUser),
-    [forms, assignments, currentUser]
+    [forms, assignments, currentUser],
   );
 
   const mySubs = React.useMemo(
     () => submissionsForUser(submissions, currentUser.id),
-    [submissions, currentUser.id]
+    [submissions, currentUser.id],
   );
 
   type Row = {
     form: FormDocument;
+    assignmentId?: string;
+    cycle?: string;
+    requirement?: string;
     status: FormSubmissionStatus;
     dueDate?: string | null;
     reviewNote?: string | null;
@@ -70,22 +73,40 @@ export function StudentForms() {
     const q = search.trim().toLowerCase();
     return assigned
       .map(({ form, assignment }) => {
-        const sub = submissionFor(submissions, form.id, currentUser.id);
+        const sub = submissionFor(
+          submissions,
+          form.id,
+          currentUser.id,
+          undefined,
+          assignment.reportId ? assignment.id : undefined,
+        );
         return {
           form,
+          assignmentId: assignment.reportId ? assignment.id : undefined,
+          cycle: assignment.cycle,
+          requirement: assignment.sectionTitle,
           status: sub?.status ?? "not_started",
           dueDate: assignment.dueDate,
           reviewNote: sub?.reviewNote,
           updatedAt: sub?.updatedAt,
         };
       })
-      .filter((r) => (q ? r.form.title.toLowerCase().includes(q) || r.form.description.toLowerCase().includes(q) : true));
+      .filter((r) =>
+        q
+          ? r.form.title.toLowerCase().includes(q) ||
+            r.form.description.toLowerCase().includes(q)
+          : true,
+      );
   }, [assigned, submissions, currentUser.id, search]);
 
   const buckets = React.useMemo(() => {
-    const actionNeeded = rows.filter((r) => r.status === "not_started" || r.status === "needs_revision");
+    const actionNeeded = rows.filter(
+      (r) => r.status === "not_started" || r.status === "needs_revision",
+    );
     const inProgress = rows.filter((r) => r.status === "in_progress");
-    const submitted = rows.filter((r) => r.status === "submitted" || r.status === "under_review");
+    const submitted = rows.filter(
+      (r) => r.status === "submitted" || r.status === "under_review",
+    );
     const completed = rows.filter((r) => r.status === "approved");
     return { actionNeeded, inProgress, submitted, completed };
   }, [rows]);
@@ -100,10 +121,30 @@ export function StudentForms() {
 
       {/* KPI Tiles */}
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <KpiTile label="Assigned" value={rows.length} icon={FileText} tone="slate" />
-        <KpiTile label="Action needed" value={buckets.actionNeeded.length} icon={AlertCircle} tone={buckets.actionNeeded.length > 0 ? "amber" : "slate"} />
-        <KpiTile label="In progress" value={buckets.inProgress.length} icon={Clock} tone="teal" />
-        <KpiTile label="Completed" value={buckets.completed.length} icon={CheckCircle2} tone="emerald" />
+        <KpiTile
+          label="Assigned"
+          value={rows.length}
+          icon={FileText}
+          tone="slate"
+        />
+        <KpiTile
+          label="Action needed"
+          value={buckets.actionNeeded.length}
+          icon={AlertCircle}
+          tone={buckets.actionNeeded.length > 0 ? "amber" : "slate"}
+        />
+        <KpiTile
+          label="In progress"
+          value={buckets.inProgress.length}
+          icon={Clock}
+          tone="teal"
+        />
+        <KpiTile
+          label="Completed"
+          value={buckets.completed.length}
+          icon={CheckCircle2}
+          tone="emerald"
+        />
       </div>
 
       {/* Streamlined Search Bar */}
@@ -129,16 +170,44 @@ export function StudentForms() {
       ) : (
         <div className="space-y-8">
           {buckets.actionNeeded.length > 0 && (
-            <FormGroup title="Action needed" tone="amber" rows={buckets.actionNeeded} onOpen={(formId) => navigate("student.form-view", { formId })} />
+            <FormGroup
+              title="Action needed"
+              tone="amber"
+              rows={buckets.actionNeeded}
+              onOpen={(formId, assignmentId) =>
+                navigate("student.form-view", { formId, assignmentId })
+              }
+            />
           )}
           {buckets.inProgress.length > 0 && (
-            <FormGroup title="In progress" tone="teal" rows={buckets.inProgress} onOpen={(formId) => navigate("student.form-view", { formId })} />
+            <FormGroup
+              title="In progress"
+              tone="teal"
+              rows={buckets.inProgress}
+              onOpen={(formId, assignmentId) =>
+                navigate("student.form-view", { formId, assignmentId })
+              }
+            />
           )}
           {buckets.submitted.length > 0 && (
-            <FormGroup title="Submitted — awaiting review" tone="slate" rows={buckets.submitted} onOpen={(formId) => navigate("student.form-view", { formId })} />
+            <FormGroup
+              title="Submitted — awaiting review"
+              tone="slate"
+              rows={buckets.submitted}
+              onOpen={(formId, assignmentId) =>
+                navigate("student.form-view", { formId, assignmentId })
+              }
+            />
           )}
           {buckets.completed.length > 0 && (
-            <FormGroup title="Completed" tone="emerald" rows={buckets.completed} onOpen={(formId) => navigate("student.form-view", { formId })} />
+            <FormGroup
+              title="Completed"
+              tone="emerald"
+              rows={buckets.completed}
+              onOpen={(formId, assignmentId) =>
+                navigate("student.form-view", { formId, assignmentId })
+              }
+            />
           )}
         </div>
       )}
@@ -156,25 +225,34 @@ function FormGroup({
   tone: "amber" | "teal" | "slate" | "emerald";
   rows: Array<{
     form: FormDocument;
+    assignmentId?: string;
+    cycle?: string;
+    requirement?: string;
     status: FormSubmissionStatus;
     dueDate?: string | null;
     reviewNote?: string | null;
     updatedAt?: string;
   }>;
-  onOpen: (formId: string) => void;
+  onOpen: (formId: string, assignmentId?: string) => void;
 }) {
   const dotCls =
-    tone === "amber" ? "bg-amber-500" :
-      tone === "teal" ? "bg-teal-500" :
-        tone === "emerald" ? "bg-emerald-500" :
-          "bg-slate-400";
+    tone === "amber"
+      ? "bg-amber-500"
+      : tone === "teal"
+        ? "bg-teal-500"
+        : tone === "emerald"
+          ? "bg-emerald-500"
+          : "bg-slate-400";
 
   return (
     <div className="space-y-3">
       <div className="flex items-center gap-2 border-b border-border/40 pb-2">
         <span className={cn("h-2.5 w-2.5 rounded-full shadow-sm", dotCls)} />
         <h2 className="text-[13px] font-semibold uppercase tracking-[0.05em] text-muted-foreground">
-          {title} <span className="ml-1 rounded-full bg-muted px-1.5 py-0.5 text-[11px] text-foreground">{rows.length}</span>
+          {title}{" "}
+          <span className="ml-1 rounded-full bg-muted px-1.5 py-0.5 text-[11px] text-foreground">
+            {rows.length}
+          </span>
         </h2>
       </div>
       {/* 
@@ -183,7 +261,11 @@ function FormGroup({
       */}
       <div className="flex flex-col gap-3">
         {rows.map((r) => (
-          <StudentFormCard key={r.form.id} {...r} onOpen={() => onOpen(r.form.id)} />
+          <StudentFormCard
+            key={r.assignmentId ?? r.form.id}
+            {...r}
+            onOpen={() => onOpen(r.form.id, r.assignmentId)}
+          />
         ))}
       </div>
     </div>
@@ -192,12 +274,16 @@ function FormGroup({
 
 function StudentFormCard({
   form,
+  cycle,
+  requirement,
   status,
   dueDate,
   reviewNote,
   onOpen,
 }: {
   form: FormDocument;
+  cycle?: string;
+  requirement?: string;
   status: FormSubmissionStatus;
   dueDate?: string | null;
   reviewNote?: string | null;
@@ -205,33 +291,41 @@ function StudentFormCard({
   onOpen: () => void;
 }) {
   const blockCount = form.blocks.length;
-  const ratingTables = form.blocks.filter((b) => b.type === "rating-table").length;
-  const published = form.publishedAt ? format(new Date(form.publishedAt), "MMM d, yyyy") : "";
-  const dueInDays = dueDate ? differenceInDays(new Date(dueDate), new Date()) : null;
+  const ratingTables = form.blocks.filter(
+    (b) => b.type === "rating-table",
+  ).length;
+  const published = form.publishedAt
+    ? format(new Date(form.publishedAt), "MMM d, yyyy")
+    : "";
+  const dueInDays = dueDate
+    ? differenceInDays(new Date(dueDate), new Date())
+    : null;
   const overdue = dueDate && isPast(new Date(dueDate)) && status !== "approved";
 
   const cta = (() => {
-    if (status === "not_started") return { label: "Start Form", icon: PlayCircle };
-    if (status === "in_progress") return { label: "Continue", icon: PlayCircle };
-    if (status === "needs_revision") return { label: "Revise & Resubmit", icon: RotateCcw };
-    if (status === "submitted" || status === "under_review") return { label: "View Submission", icon: Eye };
-    if (status === "approved") return { label: "View Details", icon: CheckCircle2 };
+    if (status === "not_started")
+      return { label: "Start Form", icon: PlayCircle };
+    if (status === "in_progress")
+      return { label: "Continue", icon: PlayCircle };
+    if (status === "needs_revision")
+      return { label: "Revise & Resubmit", icon: RotateCcw };
+    if (status === "submitted" || status === "under_review")
+      return { label: "View Submission", icon: Eye };
+    if (status === "approved")
+      return { label: "View Details", icon: CheckCircle2 };
     return { label: "Open", icon: Eye };
   })();
 
   return (
     <div className="group flex flex-col overflow-hidden rounded-xl border border-border/60 bg-card shadow-sm transition-all hover:shadow-md hover:border-border">
-
       {/* 
         Responsive Inner Layout
         Mobile: flex-col (stacked like a card)
         Desktop: flex-row (horizontal list row)
       */}
       <div className="flex flex-col md:flex-row md:items-center p-4 sm:p-5 gap-4 md:gap-6">
-
         {/* Left Side: Information */}
         <div className="flex flex-1 flex-col min-w-0">
-
           <div className="mb-2.5 flex flex-wrap items-center gap-2">
             <SubmissionStatusBadge status={status} withIcon />
             <span className="rounded-md bg-muted/60 px-2 py-0.5 text-[11px] font-medium text-muted-foreground border border-border/50">
@@ -245,6 +339,11 @@ function StudentFormCard({
           <h3 className="text-[15px] font-semibold leading-tight text-foreground truncate md:whitespace-normal md:line-clamp-1">
             {form.title}
           </h3>
+          {cycle && (
+            <p className="mt-1 break-words text-xs font-medium text-primary">
+              {cycle} · {requirement || "Assigned report requirement"}
+            </p>
+          )}
           {form.description && (
             <p className="mt-1 line-clamp-2 md:line-clamp-1 text-[13px] text-muted-foreground">
               {form.description}
@@ -266,19 +365,27 @@ function StudentFormCard({
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <span className={cn(
-                      "inline-flex items-center gap-1.5 rounded-md px-1.5 py-0.5 ring-1 ring-inset",
-                      overdue
-                        ? "bg-red-50 text-red-700 ring-red-200/70 dark:bg-red-950/40 dark:text-red-300 dark:ring-red-900/50"
-                        : dueInDays !== null && dueInDays <= 7
-                          ? "bg-amber-50 text-amber-800 ring-amber-200/70 dark:bg-amber-950/40 dark:text-amber-300 dark:ring-amber-900/50"
-                          : "bg-muted/50 text-muted-foreground ring-border/60"
-                    )}>
+                    <span
+                      className={cn(
+                        "inline-flex items-center gap-1.5 rounded-md px-1.5 py-0.5 ring-1 ring-inset",
+                        overdue
+                          ? "bg-red-50 text-red-700 ring-red-200/70 dark:bg-red-950/40 dark:text-red-300 dark:ring-red-900/50"
+                          : dueInDays !== null && dueInDays <= 7
+                            ? "bg-amber-50 text-amber-800 ring-amber-200/70 dark:bg-amber-950/40 dark:text-amber-300 dark:ring-amber-900/50"
+                            : "bg-muted/50 text-muted-foreground ring-border/60",
+                      )}
+                    >
                       <CalendarClock className="h-3.5 w-3.5" />
-                      {overdue ? "Overdue" : dueInDays === 0 ? "Due today" : `Due ${format(new Date(dueDate), "MMM d")}`}
+                      {overdue
+                        ? "Overdue"
+                        : dueInDays === 0
+                          ? "Due today"
+                          : `Due ${format(new Date(dueDate), "MMM d")}`}
                     </span>
                   </TooltipTrigger>
-                  <TooltipContent>Due {format(new Date(dueDate), "MMM d, yyyy")}</TooltipContent>
+                  <TooltipContent>
+                    Due {format(new Date(dueDate), "MMM d, yyyy")}
+                  </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
             )}
@@ -294,14 +401,17 @@ function StudentFormCard({
         <div className="mt-2 flex shrink-0 items-center border-t border-border/50 pt-4 md:mt-0 md:border-t-0 md:pt-0">
           <Button
             size="sm"
-            variant={status === "not_started" || status === "needs_revision" ? "default" : "secondary"}
+            variant={
+              status === "not_started" || status === "needs_revision"
+                ? "default"
+                : "secondary"
+            }
             className="w-full h-9 gap-2 font-medium md:w-auto"
             onClick={onOpen}
           >
             <cta.icon className="h-4 w-4" /> {cta.label}
           </Button>
         </div>
-
       </div>
 
       {/* Feedback Alert: Appears full-width at the bottom if revision is needed */}
@@ -338,12 +448,21 @@ function KpiTile({
           : "text-slate-600 bg-slate-100/70 ring-slate-200/70 dark:bg-slate-800/60 dark:text-slate-300 dark:ring-slate-700/60";
   return (
     <div className="flex flex-col sm:flex-row sm:items-center gap-3 rounded-xl border border-border/60 bg-card p-4 shadow-sm">
-      <span className={cn("flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ring-1 ring-inset", toneCls)}>
+      <span
+        className={cn(
+          "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ring-1 ring-inset",
+          toneCls,
+        )}
+      >
         <Icon className="h-4.5 w-4.5" />
       </span>
       <div>
-        <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{label}</div>
-        <div className="text-xl font-bold tabular-nums leading-tight text-foreground">{value}</div>
+        <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+          {label}
+        </div>
+        <div className="text-xl font-bold tabular-nums leading-tight text-foreground">
+          {value}
+        </div>
       </div>
     </div>
   );
